@@ -1,189 +1,238 @@
 import SwiftUI
-import HouseholdCore
+import EvenCore
 
-// Even iOS shell v1 (handoff 2026-07-17): Today + Inbox over HouseholdCore
-// demo data. Design language per docs/design/README.md — cream paper,
-// espresso ink, terracotta accent, serif display. Fonts ship later; the
-// system serif design stands in for Newsreader.
-
-enum EvenTokens {
-    static let paper = Color(red: 0xE9 / 255, green: 0xE1 / 255, blue: 0xD2 / 255)
-    static let paperRaised = Color(red: 0xF6 / 255, green: 0xF1 / 255, blue: 0xE6 / 255)
-    static let ink = Color(red: 0x26 / 255, green: 0x20 / 255, blue: 0x1A / 255)
-    static let terracotta = Color(red: 0xA6 / 255, green: 0x55 / 255, blue: 0x2F / 255)
-    static let pine = Color(red: 0x37 / 255, green: 0x75 / 255, blue: 0x6D / 255)
-    static let stone = Color(red: 0x8A / 255, green: 0x7D / 255, blue: 0x69 / 255)
-}
+// Even iOS root — session routing + the app chrome per the Even Play design:
+// serif wordmark with the floating scale glyph, manual dark toggle, custom
+// four-item tab bar, paper grain, global ink-stamp toast.
 
 public struct EvenRootView: View {
-    private let seed = EvenDemoSeed.make()
+    @State private var session = SessionStore()
+    @State private var model: AppModel?
+    @AppStorage("even-dark") private var isDark = false
 
     public init() {}
 
+    private var palette: EvenPalette { isDark ? .dark : .light }
+
     public var body: some View {
-        TabView {
-            NavigationStack {
-                TodayScreen(model: TodayReviewModel(drafts: seed.initialDrafts,
-                                                    household: seed.household))
-            }
-            .tabItem { Label("Today", systemImage: "sun.max") }
+        ZStack {
+            palette.bg.ignoresSafeArea()
 
-            NavigationStack {
-                InboxScreen(model: InboxPresentationModel(drafts: seed.initialDrafts),
-                            household: seed.household)
+            switch session.phase {
+            case .booting:
+                ProgressView().tint(palette.sub)
+            case .signedOut, .needsHousehold:
+                OnboardingFlow(session: session)
+            case .ready:
+                if let model {
+                    MainScaffold(model: model, isDark: $isDark)
+                }
             }
-            .tabItem { Label("Inbox", systemImage: "tray") }
+
+            GrainOverlay()
         }
-        .tint(EvenTokens.terracotta)
+        .environment(\.palette, palette)
+        .animation(.easeInOut(duration: 0.35), value: isDark)
+        .task {
+            EvenFont.register()
+            await session.bootstrap()
+        }
+        .onChange(of: session.phase) { _, phase in
+            if phase == .ready, model == nil {
+                model = AppModel(session: session)
+            }
+        }
+        .preferredColorScheme(isDark ? .dark : .light)
     }
 }
 
-// MARK: - Today
+// MARK: - Main scaffold
 
-struct TodayScreen: View {
-    let model: TodayReviewModel
+struct MainScaffold: View {
+    @Bindable var model: AppModel
+    @Binding var isDark: Bool
+    @Environment(\.palette) private var palette
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        List {
-            ForEach(model.sections, id: \.title) { section in
-                Section {
-                    ForEach(section.drafts) { draft in
-                        DraftRow(draft: draft)
-                    }
-                } header: {
-                    Label(section.title, systemImage: section.systemImage)
-                        .font(.system(.footnote, design: .serif).weight(.semibold))
-                        .foregroundStyle(EvenTokens.terracotta)
-                        .textCase(nil)
+        VStack(spacing: 0) {
+            header
+
+            Group {
+                switch model.tab {
+                case .today: TodayView(model: model)
+                case .inbox: InboxView(model: model)
+                case .money: MoneyView(model: model)
+                case .reset: ResetView(model: model)
                 }
             }
-            if model.sections.isEmpty {
-                ContentUnavailableView("All settled",
-                                       systemImage: "checkmark.seal",
-                                       description: Text("Nothing needs the two of you today."))
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            EvenTabBar(model: model)
+        }
+        .overlay(alignment: .bottom) {
+            if let message = model.stampMessage {
+                StampToast(message: message)
+                    .padding(.bottom, 110)
             }
         }
-        .scrollContentBackground(.hidden)
-        .background(EvenTokens.paper.ignoresSafeArea())
-        .navigationTitle("Today")
-        .evenLargeTitle()
+        .overlay(alignment: .top) {
+            if let error = model.errorMessage {
+                ErrorBanner(message: error) { model.errorMessage = nil }
+            }
+        }
+        .animation(.spring(response: 0.4, dampingFraction: 0.6), value: model.stampMessage)
+        .task { await model.refreshAll() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                Task { await model.refreshAll() }
+            }
+        }
+    }
+
+    private var header: some View {
+        HStack {
+            HStack(spacing: 7) {
+                ScaleGlyph()
+                    .stroke(palette.ink, style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
+                    .frame(width: 15, height: 15)
+                Text("Even")
+                    .font(EvenFont.serif(18, .semibold, italic: true))
+                    .foregroundStyle(palette.ink)
+            }
+            Spacer()
+            Button {
+                isDark.toggle()
+            } label: {
+                Image(systemName: isDark ? "sun.max" : "moon")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(palette.sub)
+                    .frame(width: 30, height: 30)
+                    .overlay(Circle().stroke(palette.line, lineWidth: 1))
+            }
+            .buttonStyle(PressScaleStyle(scale: 0.9))
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 8)
+        .padding(.bottom, 4)
     }
 }
 
-// MARK: - Inbox
+/// The little balance-scale mark: beam, pointer triangle, base.
+struct ScaleGlyph: Shape {
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        let w = rect.width, h = rect.height
+        p.move(to: CGPoint(x: 0.09 * w, y: 0.42 * h))
+        p.addLine(to: CGPoint(x: 0.91 * w, y: 0.29 * h))
+        p.move(to: CGPoint(x: 0.5 * w, y: 0.4 * h))
+        p.addLine(to: CGPoint(x: 0.66 * w, y: 0.66 * h))
+        p.addLine(to: CGPoint(x: 0.34 * w, y: 0.66 * h))
+        p.closeSubpath()
+        p.move(to: CGPoint(x: 0.28 * w, y: 0.84 * h))
+        p.addLine(to: CGPoint(x: 0.72 * w, y: 0.84 * h))
+        return p
+    }
+}
 
-struct InboxScreen: View {
-    @State var model: InboxPresentationModel
-    let household: HouseholdContext
+// MARK: - Tab bar
+
+struct EvenTabBar: View {
+    @Bindable var model: AppModel
+    @Environment(\.palette) private var palette
 
     var body: some View {
-        List {
-            Section {
-                HStack(spacing: 14) {
-                    counter("Pending", model.pendingApprovalCount, EvenTokens.terracotta)
-                    counter("Approved", model.approvedCount, EvenTokens.pine)
-                    counter("Needs retry", model.retryRequiredCount, EvenTokens.stone)
-                }
-                .listRowBackground(EvenTokens.paperRaised)
+        HStack(spacing: 0) {
+            item(.today, label: "TODAY") {
+                ScaleGlyph().stroke(style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
+                    .frame(width: 21, height: 21)
             }
-            Section {
-                ForEach(model.drafts) { draft in
-                    DraftRow(draft: draft)
-                }
+            item(.inbox, label: badgeLabel) {
+                Image(systemName: "tray")
+                    .font(.system(size: 18, weight: .light))
+            }
+            item(.money, label: "MONEY") {
+                CoinsGlyph().stroke(lineWidth: 1.5)
+                    .frame(width: 21, height: 21)
+            }
+            item(.reset, label: "RESET") {
+                Image(systemName: "arrow.trianglehead.clockwise")
+                    .font(.system(size: 17, weight: .light))
             }
         }
-        .scrollContentBackground(.hidden)
-        .background(EvenTokens.paper.ignoresSafeArea())
-        .navigationTitle("Inbox")
-        .evenLargeTitle()
+        .padding(.horizontal, 4)
+        .padding(.top, 8)
+        .background(
+            palette.bg
+                .overlay(alignment: .top) { palette.line.frame(height: 1) }
+                .ignoresSafeArea(edges: .bottom)
+        )
     }
 
-    private func counter(_ label: String, _ count: Int, _ color: Color) -> some View {
-        VStack(spacing: 2) {
-            Text("\(count)")
-                .font(.system(.title2, design: .serif).weight(.bold))
-                .foregroundStyle(color)
-            Text(label)
-                .font(.caption2)
-                .foregroundStyle(EvenTokens.stone)
+    private var badgeLabel: String {
+        let count = model.summary?.pendingDraftCount ?? model.drafts.count
+        return count > 0 ? "INBOX · \(count)" : "INBOX"
+    }
+
+    private func item<Icon: View>(_ tab: EvenTab, label: String,
+                                  @ViewBuilder icon: () -> Icon) -> some View {
+        let active = model.tab == tab
+        return Button {
+            model.tab = tab
+            if tab == .reset {
+                Task { await model.refreshReset() }
+            }
+        } label: {
+            VStack(spacing: 4) {
+                icon()
+                Text(label).capsLabel(8.5, tracking: 0.9)
+            }
+            .foregroundStyle(active ? palette.ink : palette.sub)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 6)
+            .contentShape(Rectangle())
         }
-        .frame(maxWidth: .infinity)
+        .buttonStyle(PressScaleStyle(scale: 0.9))
     }
 }
 
-// MARK: - Shared row
+struct CoinsGlyph: Shape {
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        let r = rect.width * 0.225
+        p.addEllipse(in: CGRect(x: rect.midX - r * 1.6 - r, y: rect.midY - r, width: r * 2, height: r * 2))
+        p.addEllipse(in: CGRect(x: rect.midX + r * 1.6 - r, y: rect.midY - r, width: r * 2, height: r * 2))
+        return p
+    }
+}
 
-struct DraftRow: View {
-    let draft: InboxDraft
+// MARK: - Error banner
+
+struct ErrorBanner: View {
+    @Environment(\.palette) private var palette
+    let message: String
+    let dismiss: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text(draft.title)
-                .font(.system(.body, design: .serif).weight(.medium))
-                .foregroundStyle(EvenTokens.ink)
-            HStack(spacing: 8) {
-                if let due = draft.dueDate {
-                    Label(due.formatted(date: .abbreviated, time: .omitted),
-                          systemImage: "calendar")
-                }
-                if let amount = draft.amount {
-                    Label("€\(amount)", systemImage: "eurosign.circle")
-                }
-                Spacer()
-                statusChip
-            }
-            .font(.caption)
-            .foregroundStyle(EvenTokens.stone)
-            if let error = draft.lastError {
-                Text(error)
-                    .font(.caption2)
-                    .foregroundStyle(EvenTokens.terracotta)
-                    .lineLimit(2)
+        HStack(spacing: 8) {
+            Text(message)
+                .font(EvenFont.serif(13, italic: true))
+                .foregroundStyle(palette.ink)
+            Button(action: dismiss) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(palette.sub)
             }
         }
-        .padding(.vertical, 3)
-        .listRowBackground(EvenTokens.paperRaised)
-    }
-
-    private var statusChip: some View {
-        Text(statusLabel)
-            .font(.caption2.weight(.semibold))
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background(statusColor.opacity(0.14), in: Capsule())
-            .foregroundStyle(statusColor)
-    }
-
-    private var statusLabel: String {
-        switch draft.status {
-        case .pendingApproval: return "Pending"
-        case .approved: return "Approved"
-        case .rejected: return "Rejected"
-        case .calendarRetryRequired: return "Retry"
-        case .calendarUpdateRequired: return "Update"
-        case .changedExternally: return "Changed"
-        default: return String(describing: draft.status).capitalized
+        .padding(.horizontal, 14)
+        .padding(.vertical, 9)
+        .background(Capsule().fill(palette.card).shadow(color: .black.opacity(0.12), radius: 10, y: 4))
+        .overlay(Capsule().stroke(palette.line, lineWidth: 1))
+        .padding(.top, 6)
+        .transition(.move(edge: .top).combined(with: .opacity))
+        .task {
+            try? await Task.sleep(nanoseconds: 4_000_000_000)
+            dismiss()
         }
-    }
-
-    private var statusColor: Color {
-        switch draft.status {
-        case .approved: return EvenTokens.pine
-        case .calendarRetryRequired, .changedExternally: return EvenTokens.terracotta
-        default: return EvenTokens.stone
-        }
-    }
-}
-
-
-extension View {
-    /// Large-title mode is iOS-only; swift test builds this target for
-    /// macOS too, so the modifier hides behind the platform check.
-    @ViewBuilder func evenLargeTitle() -> some View {
-        #if os(iOS)
-        self.toolbarTitleDisplayMode(.large)
-        #else
-        self
-        #endif
     }
 }

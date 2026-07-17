@@ -1,0 +1,311 @@
+import SwiftUI
+import EvenCore
+import AuthenticationServices
+import CryptoKit
+
+// Onboarding — sign in, then create or join the household. Same paper
+// language as the app; not in the design file, so kept quiet and minimal.
+
+struct OnboardingFlow: View {
+    let session: SessionStore
+    @Environment(\.palette) private var palette
+
+    var body: some View {
+        switch session.phase {
+        case .needsHousehold:
+            HouseholdSetupView(session: session)
+        default:
+            WelcomeView(session: session)
+        }
+    }
+}
+
+// MARK: - Welcome / sign-in
+
+struct WelcomeView: View {
+    let session: SessionStore
+    @Environment(\.palette) private var palette
+    @State private var rawNonce = ""
+    @State private var errorText: String?
+    @State private var working = false
+    @State private var showDebugAuth = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Spacer()
+
+            ScaleGlyph()
+                .stroke(palette.ink, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+                .frame(width: 44, height: 44)
+
+            Text("Even")
+                .font(EvenFont.serif(40, .semibold, italic: true))
+                .foregroundStyle(palette.ink)
+                .padding(.top, 10)
+
+            Text("The house, weighed honestly.")
+                .font(EvenFont.serif(15, italic: true))
+                .foregroundStyle(palette.sub)
+                .padding(.top, 6)
+
+            Spacer()
+
+            if let errorText {
+                Text(errorText)
+                    .font(EvenFont.serif(13, italic: true))
+                    .foregroundStyle(palette.clay)
+                    .multilineTextAlignment(.center)
+                    .padding(.bottom, 12)
+            }
+
+            SignInWithAppleButton(.signIn) { request in
+                rawNonce = Self.randomNonce()
+                request.requestedScopes = [.fullName, .email]
+                request.nonce = Self.sha256(rawNonce)
+            } onCompletion: { result in
+                handleApple(result)
+            }
+            .signInWithAppleButtonStyle(.black)
+            .frame(height: 50)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .disabled(working)
+
+            #if DEBUG
+            Button {
+                showDebugAuth = true
+            } label: {
+                Text("DEV — EMAIL SIGN-IN")
+                    .capsLabel(9, tracking: 1.4)
+                    .foregroundStyle(palette.sub)
+                    .padding(.top, 14)
+            }
+            .sheet(isPresented: $showDebugAuth) {
+                DebugAuthSheet(session: session)
+            }
+            #endif
+
+            Text("Two people, one household. Your data stays on your own server.")
+                .font(EvenFont.serif(11.5, italic: true))
+                .foregroundStyle(palette.sub)
+                .multilineTextAlignment(.center)
+                .padding(.top, 18)
+                .padding(.bottom, 30)
+        }
+        .padding(.horizontal, 34)
+    }
+
+    private func handleApple(_ result: Result<ASAuthorization, Error>) {
+        switch result {
+        case .success(let auth):
+            guard let credential = auth.credential as? ASAuthorizationAppleIDCredential,
+                  let tokenData = credential.identityToken,
+                  let token = String(data: tokenData, encoding: .utf8) else {
+                errorText = "Apple didn't return a usable identity."
+                return
+            }
+            working = true
+            Task {
+                do {
+                    try await session.signInWithApple(identityToken: token, rawNonce: rawNonce)
+                } catch {
+                    errorText = (error as? LocalizedError)?.errorDescription ?? "Sign-in failed."
+                }
+                working = false
+            }
+        case .failure(let error):
+            if (error as? ASAuthorizationError)?.code != .canceled {
+                errorText = "Sign in with Apple failed. Try again."
+            }
+        }
+    }
+
+    static func randomNonce(length: Int = 32) -> String {
+        let charset = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-._")
+        return String((0..<length).map { _ in charset.randomElement()! })
+    }
+
+    static func sha256(_ input: String) -> String {
+        SHA256.hash(data: Data(input.utf8)).map { String(format: "%02x", $0) }.joined()
+    }
+}
+
+#if DEBUG
+/// Simulator-friendly auth: email+password accounts on our GoTrue
+/// (autoconfirmed). Debug builds only — never ships.
+struct DebugAuthSheet: View {
+    let session: SessionStore
+    @Environment(\.palette) private var palette
+    @Environment(\.dismiss) private var dismiss
+    @State private var email = ""
+    @State private var password = ""
+    @State private var errorText: String?
+    @State private var working = false
+
+    var body: some View {
+        SheetChrome(title: "DEV EMAIL SIGN-IN — DEBUG ONLY") {
+            UnderlineField(placeholder: "email@example.com", text: $email, serifSize: 15)
+            SecureField("password", text: $password)
+                .font(EvenFont.serif(15))
+                .textFieldStyle(.plain)
+            Rectangle().fill(palette.line).frame(height: 1.5)
+
+            if let errorText {
+                Text(errorText)
+                    .font(EvenFont.serif(12.5, italic: true))
+                    .foregroundStyle(palette.clay)
+            }
+
+            HStack(spacing: 8) {
+                GhostButton(title: "Sign up") { authenticate(signUp: true) }
+                PrimaryButton(title: working ? "…" : "Sign in", enabled: !working) {
+                    authenticate(signUp: false)
+                }
+            }
+        }
+        #if os(iOS)
+        .textInputAutocapitalization(.never)
+        #endif
+        .autocorrectionDisabled()
+    }
+
+    private func authenticate(signUp: Bool) {
+        working = true
+        errorText = nil
+        Task {
+            do {
+                if signUp {
+                    try await session.signUp(email: email, password: password)
+                } else {
+                    try await session.signIn(email: email, password: password)
+                }
+                dismiss()
+            } catch {
+                errorText = (error as? LocalizedError)?.errorDescription ?? "Failed."
+            }
+            working = false
+        }
+    }
+}
+#endif
+
+// MARK: - Household setup
+
+struct HouseholdSetupView: View {
+    let session: SessionStore
+    @Environment(\.palette) private var palette
+
+    private enum Mode { case pick, create, join }
+    @State private var mode: Mode = .pick
+    @State private var householdName = ""
+    @State private var displayName = ""
+    @State private var inviteCode = ""
+    @State private var errorText: String?
+    @State private var working = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("ALMOST THERE")
+                .capsLabel(10, tracking: 1.8)
+                .foregroundStyle(palette.sub)
+                .padding(.top, 30)
+
+            Text(mode == .join ? "Join your\nhousehold" : "Set up your\nhousehold")
+                .font(EvenFont.serif(32, .medium))
+                .foregroundStyle(palette.ink)
+                .padding(.top, 10)
+
+            switch mode {
+            case .pick: pickButtons
+            case .create: createForm
+            case .join: joinForm
+            }
+
+            Spacer()
+
+            Button {
+                Task { await session.signOut() }
+            } label: {
+                Text("SIGN OUT")
+                    .capsLabel(9, tracking: 1.4)
+                    .foregroundStyle(palette.sub)
+            }
+            .padding(.bottom, 24)
+        }
+        .padding(.horizontal, 28)
+    }
+
+    private var pickButtons: some View {
+        VStack(spacing: 12) {
+            PrimaryButton(title: "Start our household") { mode = .create }
+            GhostButton(title: "I have an invite code") { mode = .join }
+        }
+        .padding(.top, 40)
+    }
+
+    private var createForm: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            UnderlineField(placeholder: "Household name — e.g. Prinsengracht 12", text: $householdName)
+            UnderlineField(placeholder: "Your name — what your partner calls you", text: $displayName)
+            errorLine
+            PrimaryButton(title: working ? "Creating…" : "Create — get the invite code",
+                          enabled: ready(householdName) && ready(displayName) && !working) {
+                submit {
+                    try await session.createHousehold(
+                        name: householdName.trimmingCharacters(in: .whitespaces),
+                        displayName: displayName.trimmingCharacters(in: .whitespaces))
+                }
+            }
+            Button { mode = .join } label: {
+                Text("HAVE A CODE INSTEAD?").capsLabel(9, tracking: 1.2).foregroundStyle(palette.sub)
+            }
+        }
+        .padding(.top, 34)
+    }
+
+    private var joinForm: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            UnderlineField(placeholder: "Invite code — 6 characters", text: $inviteCode)
+            UnderlineField(placeholder: "Your name — what your partner calls you", text: $displayName)
+            errorLine
+            PrimaryButton(title: working ? "Joining…" : "Join the household",
+                          enabled: inviteCode.trimmingCharacters(in: .whitespaces).count >= 6
+                                   && ready(displayName) && !working) {
+                submit {
+                    try await session.joinHousehold(
+                        inviteCode: inviteCode.trimmingCharacters(in: .whitespaces).uppercased(),
+                        displayName: displayName.trimmingCharacters(in: .whitespaces))
+                }
+            }
+            Button { mode = .create } label: {
+                Text("START FRESH INSTEAD?").capsLabel(9, tracking: 1.2).foregroundStyle(palette.sub)
+            }
+        }
+        .padding(.top, 34)
+    }
+
+    @ViewBuilder
+    private var errorLine: some View {
+        if let errorText {
+            Text(errorText)
+                .font(EvenFont.serif(13, italic: true))
+                .foregroundStyle(palette.clay)
+        }
+    }
+
+    private func ready(_ text: String) -> Bool {
+        !text.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    private func submit(_ action: @escaping () async throws -> Void) {
+        working = true
+        errorText = nil
+        Task {
+            do {
+                try await action()
+            } catch {
+                errorText = (error as? LocalizedError)?.errorDescription ?? "That didn't work."
+            }
+            working = false
+        }
+    }
+}

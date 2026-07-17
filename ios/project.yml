@@ -14,12 +14,24 @@ targets:
     dependencies:
       - package: HouseholdCommandCenter
         product: EvenMobile
+    info:
+      path: EvenApp/Info.plist
+      properties:
+        UILaunchScreen: {}
+        ITSAppUsesNonExemptEncryption: false
+        # HTTP allowances for the home-server API: localhost (simulator) is
+        # covered by NSAllowsLocalNetworking; even-api.home (LAN devices)
+        # needs an explicit exception until the API gets real TLS.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+          NSExceptionDomains:
+            even-api.home:
+              NSExceptionAllowsInsecureHTTPLoads: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.umuryavuz.even
         DEVELOPMENT_TEAM: C3XSV85364
         CODE_SIGN_STYLE: Automatic
-        INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_ENTITLEMENTS: EvenApp/Even.entitlements
         TARGETED_DEVICE_FAMILY: "1"
         SUPPORTS_MACCATALYST: NO

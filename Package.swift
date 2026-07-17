@@ -9,6 +9,7 @@ let package = Package(
     ],
     products: [
         .library(name: "HouseholdCore", targets: ["HouseholdCore"]),
+        .library(name: "EvenCore", targets: ["EvenCore"]),
         .library(name: "EvenMobile", targets: ["EvenMobile"]),
         .executable(name: "HouseholdCommandCenter", targets: ["HouseholdCommandCenter"])
     ],
@@ -18,9 +19,14 @@ let package = Package(
             path: "Sources/HouseholdCore"
         ),
         .target(
+            name: "EvenCore",
+            path: "Sources/EvenCore"
+        ),
+        .target(
             name: "EvenMobile",
-            dependencies: ["HouseholdCore"],
-            path: "Sources/EvenMobile"
+            dependencies: ["EvenCore"],
+            path: "Sources/EvenMobile",
+            resources: [.process("Resources")]
         ),
         .executableTarget(
             name: "HouseholdCommandCenter",
@@ -31,6 +37,11 @@ let package = Package(
             name: "HouseholdCoreTests",
             dependencies: ["HouseholdCore"],
             path: "Tests/HouseholdCoreTests"
+        ),
+        .testTarget(
+            name: "EvenCoreTests",
+            dependencies: ["EvenCore"],
+            path: "Tests/EvenCoreTests"
         )
     ]
 )

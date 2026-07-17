@@ -12,9 +12,11 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		39DA8231A84CF0BBDCAFC8C5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		42223694485ED1E379B25DCB /* Even.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Even.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		737DB88BD2FE01869083C344 /* thisiseven */ = {isa = PBXFileReference; lastKnownFileType = folder; name = thisiseven; path = ..; sourceTree = SOURCE_ROOT; };
 		A95A43EE2CE1E45F9972E3E5 /* EvenApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvenApp.swift; sourceTree = "<group>"; };
+		E3446E7667BA618A453D43C4 /* Even.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Even.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -40,7 +42,9 @@
 		633EF34419996FEE49CB3FA1 /* EvenApp */ = {
 			isa = PBXGroup;
 			children = (
+				E3446E7667BA618A453D43C4 /* Even.entitlements */,
 				A95A43EE2CE1E45F9972E3E5 /* EvenApp.swift */,
+				39DA8231A84CF0BBDCAFC8C5 /* Info.plist */,
 			);
 			path = EvenApp;
 			sourceTree = "<group>";
@@ -137,11 +141,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = EvenApp/Even.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = C3XSV85364;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_FILE = EvenApp/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -157,11 +161,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = EvenApp/Even.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = C3XSV85364;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_FILE = EvenApp/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
