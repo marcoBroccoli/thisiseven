@@ -111,6 +111,7 @@ struct MainScaffold: View {
                     .overlay(Circle().stroke(palette.line, lineWidth: 1))
             }
             .buttonStyle(PressScaleStyle(scale: 0.9))
+            .accessibilityIdentifier("dark-toggle")
         }
         .padding(.horizontal, 20)
         .padding(.top, 8)

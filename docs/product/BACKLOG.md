@@ -68,32 +68,32 @@ execution order. AC = acceptance criteria.
   root scaffold + wordmark header + dark toggle (persisted).
 - [x] **EV-42** Onboarding: welcome, SIWA button (+debug email form), create
   vs join household, name entry, invite-code share/entry, waiting/solo state.
-- [~] **EV-43** Today: beam scale view (rotation math, pans, pebble layout,
+- [x] **EV-43** Today: beam scale view (rotation math, pans, pebble layout,
   pct, captions) + section lists + task row (check animation, heft, owner
   chip) + Quick Add sheet. Wired to summary/tasks API.
-- [~] **EV-44** Inbox: card list, propose sheet, review bottom sheet
+- [x] **EV-44** Inbox: card list, propose sheet, review bottom sheet
   (title field, owner pills, reminder chips, dismiss/approve), stamp toasts,
   empty state, badge. Wired.
-- [~] **EV-45** Money: balance card + avatars + coin, settle interaction,
+- [x] **EV-45** Money: balance card + avatars + coin, settle interaction,
   expense list + add sheet. Wired.
-- [~] **EV-46** Reset: intro, progress header, step 1 bars + biggest carry,
+- [x] **EV-46** Reset: intro, progress header, step 1 bars + biggest carry,
   step 2 appreciation cards, step 3 trades, close-week action, poured-out
   end screen. Wired.
 
 ## P4 Polish
-- [ ] **EV-50** Motion pass: pebbleDrop, beam spring, coinSlide, stampIn,
+- [x] **EV-50** Motion pass: pebbleDrop, beam spring, coinSlide, stampIn,
   sheet transitions, fadeUp.
-- [ ] **EV-51** Dark mode pass across all screens (design's dark palette).
-- [ ] **EV-52** Empty/error states: fresh household, offline banner, retry.
-- [ ] **EV-53** Refresh strategy: pull-to-refresh + foreground refetch.
+- [x] **EV-51** Dark mode pass across all screens (design's dark palette).
+- [x] **EV-52** Empty/error states: fresh household, offline banner, retry.
+- [x] **EV-53** Refresh strategy: pull-to-refresh + foreground refetch.
 
 ## P5 Verification
-- [~] **EV-60** `swift test` + `go test` green; macOS app still builds.
-- [~] **EV-61** Simulator E2E with two debug accounts per PRD definition of
+- [x] **EV-60** `swift test` + `go test` green; macOS app still builds.
+- [x] **EV-61** Simulator E2E with two debug accounts per PRD definition of
   done (pair → tasks → beam → draft approve → money settle → reset close).
-- [ ] **EV-62** SIWA smoke on simulator (button, flow start) + written
+- [x] **EV-62** SIWA smoke on simulator (button, flow start) + written
   device-test plan.
-- [ ] **EV-63** Screenshots (4 tabs × light/dark) → `docs/screenshots/`,
+- [x] **EV-63** Screenshots (4 tabs × light/dark) → `docs/screenshots/`,
   README + CLAUDE.md updated, final commit.
 
 ## P6 Google integration (promoted to MVP core by Umur, 2026-07-17)

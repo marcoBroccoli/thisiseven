@@ -4,7 +4,13 @@
 (Umur + Beste). Domain: **thisiseven.app** (Cloudflare, zone in ~/.env context).
 
 ## Layout
-- `Sources/HouseholdCore/` — domain models + workflow services (testable core)
+- `Sources/EvenCore/` — mobile API client + GoTrue auth + Keychain session
+- `Sources/EvenMobile/` — the iOS app UI (Even Play design; fonts bundled)
+- `ios/` — xcodegen project (`Even` app + `EvenUITests` E2E/capture suites)
+- `backend/` — evend Go API + GoTrue + Postgres compose (all app data;
+  Gmail discovery + Calendar writes live here)
+- `docs/product/` — PRD, battle plan, backlog, API contract (source of truth)
+- `Sources/HouseholdCore/` — mac prototype domain models (Google plumbing origin)
 - `Sources/HouseholdCommandCenter/` — SwiftUI macOS app target
 - `Tests/HouseholdCoreTests/` — 12 test suites; run `swift test` before claiming done
 - `supabase/` — starter schema + Edge Function stubs
@@ -14,8 +20,13 @@
 - `scripts/run-mac-app.sh` — launch the mac app
 
 ## Commands
-- Test: `swift test`
-- Run app: `./scripts/run-mac-app.sh`
+- Test: `swift test` (Swift) · `docker run --rm -v "$PWD/backend":/src -w /src golang:1.24-alpine go test ./...` (Go)
+- Run mac app: `./scripts/run-mac-app.sh`
+- iOS app: `cd ios && xcodegen generate` then build scheme **Even** for iPhone sim;
+  E2E: `xcodebuild … test` (EvenUITests — needs the backend stack up)
+- Backend stack: `cd backend && docker compose up -d --build` (project `evend`:
+  api 127.0.0.1:8091 + GoTrue + Postgres 5433; Caddy route http://even-api.home)
+- Stack secrets: backend/.env (gitignored) from ~/.env THISISEVEN_* + GOOGLE_OAUTH_*
 - Deploy coming-soon page (Cloudflare Pages project `thisiseven`):
   ```bash
   cd web/coming-soon && CLOUDFLARE_ACCOUNT_ID=64d6def322d7854f96a2460c2b1a88a4 \

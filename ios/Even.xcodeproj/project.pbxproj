@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		11EB501584EEC0179413FDAB /* EvenCaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 485A1F14A32A42EC812D3FEC /* EvenCaptureTests.swift */; };
 		13170EB5F01F31BEFBA32669 /* EvenApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A95A43EE2CE1E45F9972E3E5 /* EvenApp.swift */; };
 		821468CA8DC9C28DA7DFF161 /* EvenE2ETests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0AAF5AFC5B42AA346D03E33 /* EvenE2ETests.swift */; };
 		D9A79A3430AED369FE1207BE /* EvenMobile in Frameworks */ = {isa = PBXBuildFile; productRef = C1DC674DFF5C0654B3196823 /* EvenMobile */; };
@@ -25,6 +26,7 @@
 /* Begin PBXFileReference section */
 		39DA8231A84CF0BBDCAFC8C5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		42223694485ED1E379B25DCB /* Even.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Even.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		485A1F14A32A42EC812D3FEC /* EvenCaptureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvenCaptureTests.swift; sourceTree = "<group>"; };
 		737DB88BD2FE01869083C344 /* thisiseven */ = {isa = PBXFileReference; lastKnownFileType = folder; name = thisiseven; path = ..; sourceTree = SOURCE_ROOT; };
 		A95A43EE2CE1E45F9972E3E5 /* EvenApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvenApp.swift; sourceTree = "<group>"; };
 		AEA39CF6AF81E4C3FFCDD70C /* EvenUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = EvenUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -47,6 +49,7 @@
 		43AC4B346ED2F5989C6B07E1 /* EvenUITests */ = {
 			isa = PBXGroup;
 			children = (
+				485A1F14A32A42EC812D3FEC /* EvenCaptureTests.swift */,
 				F0AAF5AFC5B42AA346D03E33 /* EvenE2ETests.swift */,
 			);
 			path = EvenUITests;
@@ -177,6 +180,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				11EB501584EEC0179413FDAB /* EvenCaptureTests.swift in Sources */,
 				821468CA8DC9C28DA7DFF161 /* EvenE2ETests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
