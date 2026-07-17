@@ -36,6 +36,7 @@ struct TodayView: View {
             }
             .padding(.horizontal, 20)
             .animation(.easeOut(duration: 0.25), value: model.summary?.week.id)
+            .animation(.spring(response: 0.35, dampingFraction: 0.85), value: model.summary?.sections)
         }
         .refreshable { await model.refreshAll() }
         .overlay(alignment: .bottomTrailing) {
@@ -81,6 +82,7 @@ struct TodayView: View {
                         .padding(.top, 18)
                     ForEach(section.tasks) { task in
                         TaskRow(model: model, task: task)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
                     }
                 }
             }
@@ -221,11 +223,15 @@ struct BeamScaleView: View {
                     Text("\(summary.percentMe)")
                         .font(EvenFont.serif(34, .medium))
                         .monospacedDigit()
+                        .contentTransition(.numericText())
+                        .animation(.spring(response: 0.6, dampingFraction: 0.8), value: summary.percentMe)
                         .foregroundStyle(meColor)
                         .offset(x: -128, y: -26)
                     Text("\(summary.percentPartner)")
                         .font(EvenFont.serif(34, .medium))
                         .monospacedDigit()
+                        .contentTransition(.numericText())
+                        .animation(.spring(response: 0.6, dampingFraction: 0.8), value: summary.percentPartner)
                         .foregroundStyle(partnerColor)
                         .offset(x: 128, y: -26)
                 }

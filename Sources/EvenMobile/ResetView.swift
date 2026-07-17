@@ -12,23 +12,35 @@ struct ResetView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 switch model.resetStep {
-                case 0: intro
-                case 4: pouredOut
+                case 0:
+                    intro.transition(stepTransition)
+                case 4:
+                    pouredOut.transition(stepTransition)
                 default:
                     stepHeader
-                    switch model.resetStep {
-                    case 1: weekHonestly
-                    case 2: kindThing
-                    default: trades
+                    Group {
+                        switch model.resetStep {
+                        case 1: weekHonestly
+                        case 2: kindThing
+                        default: trades
+                        }
                     }
+                    .id(model.resetStep)
+                    .transition(stepTransition)
                 }
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 26)
-            .animation(.easeOut(duration: 0.3), value: model.resetStep)
+            .animation(.spring(response: 0.4, dampingFraction: 0.85), value: model.resetStep)
         }
         .refreshable { await model.refreshReset() }
         .task { await model.refreshReset() }
+    }
+
+    /// Steps advance like pages: slide in from the trailing edge.
+    private var stepTransition: AnyTransition {
+        .asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity),
+                    removal: .move(edge: .leading).combined(with: .opacity))
     }
 
     // MARK: Step 0 — intro

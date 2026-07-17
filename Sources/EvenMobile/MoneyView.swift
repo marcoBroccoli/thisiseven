@@ -89,6 +89,8 @@ struct MoneyView: View {
             Text(EvenFormat.euros(money.balanceCents))
                 .font(EvenFont.serif(38, .medium))
                 .monospacedDigit()
+                .contentTransition(.numericText())
+                .animation(.spring(response: 0.6, dampingFraction: 0.8), value: money.balanceCents)
                 .foregroundStyle(palette.ink)
                 .padding(.top, 7)
 
@@ -179,9 +181,11 @@ struct MoneyView: View {
         VStack(spacing: 0) {
             ForEach(money.feed) { item in
                 feedRow(item)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
         .padding(.top, 14)
+        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: money.feed)
     }
 
     @ViewBuilder

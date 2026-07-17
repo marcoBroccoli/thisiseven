@@ -31,7 +31,7 @@ final class EvenCaptureTests: XCTestCase {
         password.typeText("capture-pass1")
         app.buttons["Sign in"].tap()
 
-        XCTAssertTrue(app.buttons["tab-money"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 15))
         sleep(2)
         // Trigger the interruption monitor (it only fires on interaction),
         // and dismiss the save-password sheet directly if it is visible.
@@ -43,9 +43,9 @@ final class EvenCaptureTests: XCTestCase {
         sleep(1)
 
         snap(app, "01-today-light")
-        go(app, "tab-inbox"); snap(app, "02-inbox-light")
-        go(app, "tab-money"); snap(app, "03-money-light")
-        go(app, "tab-reset"); snap(app, "04-reset-light")
+        go(app, "Inbox"); snap(app, "02-inbox-light")
+        go(app, "Money"); snap(app, "03-money-light")
+        go(app, "Reset"); snap(app, "04-reset-light")
 
         // Reset step 1 + 3 (computed bars, trades)
         if app.buttons["Start the reset"].waitForExistence(timeout: 5) {
@@ -60,12 +60,12 @@ final class EvenCaptureTests: XCTestCase {
         }
 
         // Dark mode
-        go(app, "tab-today")
+        go(app, "Today")
         app.buttons["dark-toggle"].tap()
         sleep(1)
         snap(app, "07-today-dark")
-        go(app, "tab-inbox"); snap(app, "08-inbox-dark")
-        go(app, "tab-money"); snap(app, "09-money-dark")
+        go(app, "Inbox"); snap(app, "08-inbox-dark")
+        go(app, "Money"); snap(app, "09-money-dark")
         app.buttons["dark-toggle"].tap()   // leave the app in light mode
     }
 
@@ -78,7 +78,8 @@ final class EvenCaptureTests: XCTestCase {
     }
 
     private func go(_ app: XCUIApplication, _ tab: String) {
-        app.buttons[tab].tap()
+        app.tabBars.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH %@", tab)).firstMatch.tap()
         sleep(1)
     }
 

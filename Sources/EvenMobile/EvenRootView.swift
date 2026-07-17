@@ -1,33 +1,49 @@
 import SwiftUI
 import EvenCore
 
-// Even iOS root — session routing + the app chrome per the Even Play design:
-// serif wordmark with the floating scale glyph, manual dark toggle, custom
-// four-item tab bar, paper grain, global ink-stamp toast.
+// Even iOS root — native structure (system TabView, SF Symbols, system
+// motion) wearing the Even Play design language: paper ground, serif
+// wordmark chrome, grain, ink-stamp toasts.
 
 public struct EvenRootView: View {
     @State private var session = SessionStore()
     @State private var model: AppModel?
+    @State private var splashHoldDone = false
     @AppStorage("even-dark") private var isDark = false
 
     public init() {}
 
     private var palette: EvenPalette { isDark ? .dark : .light }
 
+    private var showSplash: Bool {
+        !splashHoldDone || session.phase == .booting
+    }
+
     public var body: some View {
         ZStack {
             palette.bg.ignoresSafeArea()
 
-            switch session.phase {
-            case .booting:
-                ProgressView().tint(palette.sub)
-            case .signedOut, .needsHousehold:
-                OnboardingFlow(session: session)
-            case .ready:
-                if let model {
-                    MainScaffold(model: model, isDark: $isDark)
+            ZStack {
+                if showSplash {
+                    SplashView()
+                        .transition(.opacity)
+                } else {
+                    switch session.phase {
+                    case .booting:
+                        EmptyView()
+                    case .signedOut, .needsHousehold:
+                        OnboardingFlow(session: session)
+                            .transition(.opacity.combined(with: .scale(scale: 0.98)))
+                    case .ready:
+                        if let model {
+                            MainScaffold(model: model, isDark: $isDark)
+                                .transition(.opacity.combined(with: .scale(scale: 0.98)))
+                        }
+                    }
                 }
             }
+            .animation(.easeInOut(duration: 0.4), value: session.phase)
+            .animation(.easeInOut(duration: 0.4), value: showSplash)
 
             GrainOverlay()
         }
@@ -35,7 +51,11 @@ public struct EvenRootView: View {
         .animation(.easeInOut(duration: 0.35), value: isDark)
         .task {
             EvenFont.register()
-            await session.bootstrap()
+            async let boot: Void = session.bootstrap()
+            // Let the splash breathe even when the server answers instantly.
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            _ = await boot
+            splashHoldDone = true
         }
         .onChange(of: session.phase) { _, phase in
             if phase == .ready, model == nil {
@@ -46,7 +66,36 @@ public struct EvenRootView: View {
     }
 }
 
-// MARK: - Main scaffold
+// MARK: - Splash
+
+/// Branded boot screen: the scale glyph draws itself, the wordmark lands.
+struct SplashView: View {
+    @Environment(\.palette) private var palette
+    @State private var glyphProgress: CGFloat = 0
+    @State private var showWordmark = false
+
+    var body: some View {
+        VStack(spacing: 12) {
+            ScaleGlyph()
+                .trim(from: 0, to: glyphProgress)
+                .stroke(palette.ink, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+                .frame(width: 52, height: 52)
+            Text("Even")
+                .font(EvenFont.serif(34, .semibold, italic: true))
+                .foregroundStyle(palette.ink)
+                .opacity(showWordmark ? 1 : 0)
+                .offset(y: showWordmark ? 0 : 8)
+        }
+        .onAppear {
+            withAnimation(.easeInOut(duration: 0.65)) { glyphProgress = 1 }
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.45)) {
+                showWordmark = true
+            }
+        }
+    }
+}
+
+// MARK: - Main scaffold (native TabView)
 
 struct MainScaffold: View {
     @Bindable var model: AppModel
@@ -54,26 +103,35 @@ struct MainScaffold: View {
     @Environment(\.palette) private var palette
     @Environment(\.scenePhase) private var scenePhase
 
+    private var resetSymbol: String {
+        if #available(iOS 18.0, *) { return "arrow.trianglehead.clockwise" }
+        return "arrow.clockwise"
+    }
+
     var body: some View {
-        VStack(spacing: 0) {
-            header
+        TabView(selection: $model.tab) {
+            screen { TodayView(model: model) }
+                .tabItem { Label("Today", systemImage: "scalemass") }
+                .tag(EvenTab.today)
 
-            Group {
-                switch model.tab {
-                case .today: TodayView(model: model)
-                case .inbox: InboxView(model: model)
-                case .money: MoneyView(model: model)
-                case .reset: ResetView(model: model)
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            screen { InboxView(model: model) }
+                .tabItem { Label("Inbox", systemImage: "tray") }
+                .badge(model.summary?.pendingDraftCount ?? 0)
+                .tag(EvenTab.inbox)
 
-            EvenTabBar(model: model)
+            screen { MoneyView(model: model) }
+                .tabItem { Label("Money", systemImage: "eurosign.circle") }
+                .tag(EvenTab.money)
+
+            screen { ResetView(model: model) }
+                .tabItem { Label("Reset", systemImage: resetSymbol) }
+                .tag(EvenTab.reset)
         }
+        .tint(palette.clay)
         .overlay(alignment: .bottom) {
             if let message = model.stampMessage {
                 StampToast(message: message)
-                    .padding(.bottom, 110)
+                    .padding(.bottom, 100)
             }
         }
         .overlay(alignment: .top) {
@@ -83,11 +141,26 @@ struct MainScaffold: View {
         }
         .animation(.spring(response: 0.4, dampingFraction: 0.6), value: model.stampMessage)
         .task { await model.refreshAll() }
+        .onChange(of: model.tab) { _, tab in
+            if tab == .reset {
+                Task { await model.refreshReset() }
+            }
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 Task { await model.refreshAll() }
             }
         }
+    }
+
+    /// Each tab: paper ground + the wordmark header above its content.
+    private func screen<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        VStack(spacing: 0) {
+            header
+            content()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .background(palette.bg.ignoresSafeArea())
     }
 
     private var header: some View {
@@ -109,6 +182,7 @@ struct MainScaffold: View {
                     .foregroundStyle(palette.sub)
                     .frame(width: 30, height: 30)
                     .overlay(Circle().stroke(palette.line, lineWidth: 1))
+                    .contentTransition(.symbolEffect(.replace))
             }
             .buttonStyle(PressScaleStyle(scale: 0.9))
             .accessibilityIdentifier("dark-toggle")
@@ -132,78 +206,6 @@ struct ScaleGlyph: Shape {
         p.closeSubpath()
         p.move(to: CGPoint(x: 0.28 * w, y: 0.84 * h))
         p.addLine(to: CGPoint(x: 0.72 * w, y: 0.84 * h))
-        return p
-    }
-}
-
-// MARK: - Tab bar
-
-struct EvenTabBar: View {
-    @Bindable var model: AppModel
-    @Environment(\.palette) private var palette
-
-    var body: some View {
-        HStack(spacing: 0) {
-            item(.today, label: "TODAY") {
-                ScaleGlyph().stroke(style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
-                    .frame(width: 21, height: 21)
-            }
-            item(.inbox, label: badgeLabel) {
-                Image(systemName: "tray")
-                    .font(.system(size: 18, weight: .light))
-            }
-            item(.money, label: "MONEY") {
-                CoinsGlyph().stroke(lineWidth: 1.5)
-                    .frame(width: 21, height: 21)
-            }
-            item(.reset, label: "RESET") {
-                Image(systemName: "arrow.trianglehead.clockwise")
-                    .font(.system(size: 17, weight: .light))
-            }
-        }
-        .padding(.horizontal, 4)
-        .padding(.top, 8)
-        .background(
-            palette.bg
-                .overlay(alignment: .top) { palette.line.frame(height: 1) }
-                .ignoresSafeArea(edges: .bottom)
-        )
-    }
-
-    private var badgeLabel: String {
-        let count = model.summary?.pendingDraftCount ?? model.drafts.count
-        return count > 0 ? "INBOX · \(count)" : "INBOX"
-    }
-
-    private func item<Icon: View>(_ tab: EvenTab, label: String,
-                                  @ViewBuilder icon: () -> Icon) -> some View {
-        let active = model.tab == tab
-        return Button {
-            model.tab = tab
-            if tab == .reset {
-                Task { await model.refreshReset() }
-            }
-        } label: {
-            VStack(spacing: 4) {
-                icon()
-                Text(label).capsLabel(8.5, tracking: 0.9)
-            }
-            .foregroundStyle(active ? palette.ink : palette.sub)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 6)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(PressScaleStyle(scale: 0.9))
-        .accessibilityIdentifier("tab-\(tab.rawValue)")
-    }
-}
-
-struct CoinsGlyph: Shape {
-    func path(in rect: CGRect) -> Path {
-        var p = Path()
-        let r = rect.width * 0.225
-        p.addEllipse(in: CGRect(x: rect.midX - r * 1.6 - r, y: rect.midY - r, width: r * 2, height: r * 2))
-        p.addEllipse(in: CGRect(x: rect.midX + r * 1.6 - r, y: rect.midY - r, width: r * 2, height: r * 2))
         return p
     }
 }

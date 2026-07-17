@@ -42,9 +42,11 @@ struct InboxView: View {
                     VStack(spacing: 10) {
                         ForEach(model.drafts) { draft in
                             DraftCard(model: model, draft: draft) { reviewing = draft }
+                                .transition(.opacity.combined(with: .scale(scale: 0.97)))
                         }
                     }
                     .padding(.top, 14)
+                    .animation(.spring(response: 0.35, dampingFraction: 0.85), value: model.drafts)
 
                     FooterAphorism(text: "Nothing becomes shared work until one of you approves it.")
                 }

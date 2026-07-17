@@ -39,7 +39,7 @@ final class EvenE2ETests: XCTestCase {
                       "solo completion should read 100%")
 
         // ── A: propose a draft, approve it into THE ADMIN ────────────────
-        tap(app.buttons["tab-inbox"])
+        tap(tab(app, "Inbox"))
         tapExpecting(app.buttons["fab-propose"], reveals: app.textFields["draft-from"])
         typeInto(app.textFields["draft-from"], "Vattenfall", app: app)
         typeInto(app.textFields["draft-subject"], "July energy bill", app: app)
@@ -49,12 +49,12 @@ final class EvenE2ETests: XCTestCase {
                      reveals: app.buttons["draft-approve"])
         tap(app.buttons["draft-approve"])
         XCTAssertTrue(app.staticTexts["ON THE CALENDAR ✓"].waitForExistence(timeout: 10))
-        tap(app.buttons["tab-today"])
+        tap(tab(app, "Today"))
         XCTAssertTrue(app.staticTexts["July energy bill"].waitForExistence(timeout: 10),
                       "approved draft becomes admin work")
 
         // ── A: front an expense ──────────────────────────────────────────
-        tap(app.buttons["tab-money"])
+        tap(tab(app, "Money"))
         tapExpecting(app.buttons["fab-add-expense"], reveals: app.textFields["expense-title"])
         typeInto(app.textFields["expense-title"], "Weekly groceries", app: app)
         typeInto(app.textFields["expense-amount"], "86.20", app: app)
@@ -72,14 +72,14 @@ final class EvenE2ETests: XCTestCase {
         // Shared state visible to B: A's open task appears after joining.
         tapExpecting(app.buttons["Join the household"],
                      reveals: app.staticTexts["Water the plants"])
-        tap(app.buttons["tab-money"])
+        tap(tab(app, "Money"))
         XCTAssertTrue(app.staticTexts["€43.10"].waitForExistence(timeout: 10),
                       "B owes half of A's groceries")
         tapExpecting(app.buttons["Settle up"], reveals: app.buttons["Settled ✓"])
         XCTAssertTrue(app.staticTexts["€0.00"].waitForExistence(timeout: 10))
 
         // ── B: run the Sunday reset and pour the pans ────────────────────
-        tap(app.buttons["tab-reset"])
+        tap(tab(app, "Reset"))
         tapExpecting(app.buttons["Start the reset"],
                      reveals: app.buttons["Next — say one kind thing"])
         tap(app.buttons["Next — say one kind thing"])
@@ -143,6 +143,12 @@ final class EvenE2ETests: XCTestCase {
         if app.keyboards.buttons["Return"].exists {
             app.keyboards.buttons["Return"].tap()
         }
+    }
+
+    /// Native tab-bar button; the Inbox label may carry a badge value.
+    private func tab(_ app: XCUIApplication, _ name: String) -> XCUIElement {
+        app.tabBars.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH %@", name)).firstMatch
     }
 
     private func tap(_ element: XCUIElement, timeout: TimeInterval = 10) {
