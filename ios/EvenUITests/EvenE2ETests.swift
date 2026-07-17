@@ -84,12 +84,9 @@ final class EvenE2ETests: XCTestCase {
                      reveals: app.buttons["Next — say one kind thing"])
         tap(app.buttons["Next — say one kind thing"])
         tap(app.buttons["Next — trade for next week"])
-        tap(app.buttons["Close the week — pour the pans"])
-        // Confirmation dialog repeats the same label; tap the newest match.
-        let confirm = app.buttons["Close the week — pour the pans"]
-        if confirm.waitForExistence(timeout: 4) {
-            confirm.tap()
-        }
+        tapExpecting(app.buttons["Close the week — pour the pans"],
+                     reveals: app.staticTexts["Week 1, poured out."],
+                     revealTimeout: 6)
         XCTAssertTrue(app.staticTexts["Week 1, poured out."].waitForExistence(timeout: 12))
 
         // ── Back as A: partner present, pans empty, level again ──────────
@@ -151,11 +148,21 @@ final class EvenE2ETests: XCTestCase {
     private func tap(_ element: XCUIElement, timeout: TimeInterval = 10) {
         XCTAssertTrue(element.waitForExistence(timeout: timeout), "missing: \(element)")
         // Sheets dismissing over an element leave it briefly unhittable.
-        let deadline = Date().addingTimeInterval(timeout)
+        let deadline = Date().addingTimeInterval(5)
         while !element.isHittable && Date() < deadline {
             RunLoop.current.run(until: Date().addingTimeInterval(0.25))
         }
-        element.tap()
+        forceTap(element)
+    }
+
+    /// Elements that are visible but report unhittable (contextMenu wrappers,
+    /// mid-dismiss sheets) get a coordinate tap instead.
+    private func forceTap(_ element: XCUIElement) {
+        if element.isHittable {
+            element.tap()
+        } else {
+            element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        }
     }
 
     /// Taps that must reveal a new surface can silently miss during sheet
@@ -165,7 +172,7 @@ final class EvenE2ETests: XCTestCase {
         XCTAssertTrue(button.waitForExistence(timeout: 10), "missing: \(button)")
         for _ in 0..<attempts {
             if !button.exists { break }   // tap landed; surface may be mid-transition
-            button.tap()
+            forceTap(button)
             if reveals.waitForExistence(timeout: revealTimeout) { return }
         }
         XCTAssertTrue(reveals.waitForExistence(timeout: 8),

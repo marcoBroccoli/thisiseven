@@ -6,7 +6,7 @@ import EvenCore
 struct ResetView: View {
     @Bindable var model: AppModel
     @Environment(\.palette) private var palette
-    @State private var confirmingClose = false
+    @State private var closing = false
 
     var body: some View {
         ScrollView {
@@ -29,19 +29,6 @@ struct ResetView: View {
         }
         .refreshable { await model.refreshReset() }
         .task { await model.refreshReset() }
-        .confirmationDialog("Close week \(model.reset?.week.index ?? 0)?",
-                            isPresented: $confirmingClose, titleVisibility: .visible) {
-            Button("Close the week — pour the pans", role: .destructive) {
-                Task {
-                    if await model.closeWeek() {
-                        model.resetStep = 4
-                    }
-                }
-            }
-            Button("Not yet", role: .cancel) {}
-        } message: {
-            Text("Accepted trades apply, the pans empty, and Monday starts level.")
-        }
     }
 
     // MARK: Step 0 — intro
@@ -201,8 +188,15 @@ struct ResetView: View {
             }
             .padding(.top, 18)
 
-            PrimaryButton(title: "Close the week — pour the pans") {
-                confirmingClose = true
+            PrimaryButton(title: closing ? "Pouring…" : "Close the week — pour the pans",
+                          enabled: !closing) {
+                closing = true
+                Task {
+                    if await model.closeWeek() {
+                        model.resetStep = 4
+                    }
+                    closing = false
+                }
             }
             .accessibilityIdentifier("reset-close")
             .padding(.top, 20)
@@ -224,7 +218,7 @@ struct ResetView: View {
             .frame(height: 90)
             .padding(.top, 36)
 
-            Text("Week \(model.reset?.week.index ?? max(1, (model.summary?.week.index ?? 1) - 1)), poured out.")
+            Text("Week \(model.lastClosedWeekIndex ?? max(1, (model.summary?.week.index ?? 2) - 1)), poured out.")
                 .font(EvenFont.serif(27, .medium))
                 .foregroundStyle(palette.ink)
                 .padding(.top, 12)

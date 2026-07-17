@@ -281,7 +281,8 @@ public extension EvenAPIClient {
         }
     }
 
-    func addExpense(_ body: ExpenseBody) async throws -> Expense {
+    /// The server replies with the refreshed Money state, not the expense.
+    func addExpense(_ body: ExpenseBody) async throws -> Money {
         try await post("v1/expenses", body)
     }
 

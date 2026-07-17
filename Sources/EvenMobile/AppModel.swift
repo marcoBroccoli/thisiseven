@@ -21,6 +21,7 @@ final class AppModel {
     var gmailSyncing = false
     var reset: ResetSummary?
     var resetStep: Int = 0
+    var lastClosedWeekIndex: Int?
 
     var stampMessage: String?
     var errorMessage: String?
@@ -180,8 +181,7 @@ final class AppModel {
 
     func addExpense(_ body: EvenAPIClient.ExpenseBody) async -> Bool {
         do {
-            _ = try await api.addExpense(body)
-            money = try await api.money()
+            money = try await api.addExpense(body)
             return true
         } catch {
             surface(error)
@@ -229,7 +229,8 @@ final class AppModel {
 
     func closeWeek() async -> Bool {
         do {
-            _ = try await api.closeWeek()
+            let closed = try await api.closeWeek()
+            lastClosedWeekIndex = closed.closedWeek.index
             await refreshAll()
             await refreshReset()
             return true
