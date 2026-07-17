@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/base64"
 	"context"
 	"errors"
 	"log/slog"
@@ -536,8 +537,13 @@ func (a *API) calendarEventForApproval(ctx context.Context, m *Membership,
 		slog.Error("calendar token", "err", err)
 		return "Google access expired — reconnect to write calendar events"
 	}
+	calID, err := a.ensureHouseholdCalendar(ctx, m, token, g.CalendarID)
+	if err != nil {
+		slog.Error("calendar create", "err", err)
+		return "the shared calendar could not be created"
+	}
 	payload := google.BuildEvent(title, fromLabel, amountCents, *dueOn, reminder)
-	eventID, url, err := a.Google.InsertEvent(ctx, token, g.CalendarID, payload)
+	eventID, url, err := a.Google.InsertEvent(ctx, token, calID, payload)
 	if err != nil {
 		slog.Error("calendar insert", "err", err)
 		return "the calendar event could not be created"
@@ -548,4 +554,47 @@ func (a *API) calendarEventForApproval(ctx context.Context, m *Membership,
 		return "the event was created but could not be recorded"
 	}
 	return ""
+}
+
+// ensureHouseholdCalendar lazily creates the shared "Even — <household>"
+// calendar the first time an event is written, so approvals never land on
+// anyone's personal primary calendar.
+func (a *API) ensureHouseholdCalendar(ctx context.Context, m *Membership, token, current string) (string, error) {
+	if current != "" && current != "primary" {
+		return current, nil
+	}
+	id, err := a.Google.CreateCalendar(ctx, token, "Even — "+m.Household)
+	if err != nil {
+		return "", err
+	}
+	if _, err := a.DB.Exec(ctx, `
+		update google_accounts set calendar_id = $1 where household_id = $2`,
+		id, m.HouseholdID); err != nil {
+		return "", err
+	}
+	return id, nil
+}
+
+// GoogleCalendarInfo exposes the shared calendar so the partner can add it
+// in their own Google Calendar ("add by calendar id" link).
+func (a *API) GoogleCalendarInfo(w http.ResponseWriter, r *http.Request) {
+	m := membership(r)
+	g, err := a.googleAccount(r.Context(), m.HouseholdID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		httpx.Error(w, http.StatusConflict, "not_connected", "connect Google first")
+		return
+	}
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "internal", "calendar lookup failed")
+		return
+	}
+	out := map[string]any{
+		"calendar_id": g.CalendarID,
+		"shared":      g.CalendarID != "primary",
+	}
+	if g.CalendarID != "primary" {
+		cid := base64.RawURLEncoding.EncodeToString([]byte(g.CalendarID))
+		out["share_url"] = "https://calendar.google.com/calendar/r?cid=" + cid
+	}
+	httpx.JSON(w, http.StatusOK, out)
 }

@@ -410,6 +410,40 @@ func BuildEvent(title, fromLabel string, amountCents *int64, dueOn time.Time, re
 	}
 }
 
+// CreateCalendar makes a secondary Google calendar (the shared household
+// calendar) and returns its id.
+func (c *Client) CreateCalendar(ctx context.Context, accessToken, summary string) (string, error) {
+	body, err := json.Marshal(map[string]string{"summary": summary, "timeZone": "Europe/Amsterdam"})
+	if err != nil {
+		return "", err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.APIBase+"/calendar/v3/calendars", bytes.NewReader(body))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := c.HTTP.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return "", fmt.Errorf("calendar create: http %d", resp.StatusCode)
+	}
+	var out struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return "", err
+	}
+	if out.ID == "" {
+		return "", fmt.Errorf("calendar create: empty id")
+	}
+	return out.ID, nil
+}
+
 // InsertEvent creates the event; returns (eventID, htmlLink).
 func (c *Client) InsertEvent(ctx context.Context, accessToken, calendarID string, payload EventPayload) (string, string, error) {
 	body, err := json.Marshal(payload)
