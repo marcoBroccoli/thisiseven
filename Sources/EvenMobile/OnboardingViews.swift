@@ -228,6 +228,38 @@ private extension View {
     }
 }
 
+// MARK: - Onboarding progress
+
+/// Post-sign-in progress: household → google. Thin capsule segments in the
+/// app's tones, current-step caps label underneath. Hidden when there is
+/// only one step (Google connect disabled).
+struct OnboardingStepper: View {
+    @Environment(\.palette) private var palette
+    let step: Int
+    let label: String
+
+    private var total: Int { GoogleConnectConfig.isEnabled ? 2 : 1 }
+
+    var body: some View {
+        if total > 1 {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 6) {
+                    ForEach(1...total, id: \.self) { i in
+                        Capsule()
+                            .fill(i <= step ? AnyShapeStyle(palette.ink)
+                                            : AnyShapeStyle(palette.faint))
+                            .frame(height: 3)
+                    }
+                }
+                .animation(.easeOut(duration: 0.3), value: step)
+                Text("STEP \(step) OF \(total) · \(label)")
+                    .capsLabel(9, tracking: 1.6)
+                    .foregroundStyle(palette.sub)
+            }
+        }
+    }
+}
+
 // MARK: - Household setup
 
 struct HouseholdSetupView: View {
@@ -244,10 +276,13 @@ struct HouseholdSetupView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            OnboardingStepper(step: 1, label: "HOUSEHOLD")
+                .padding(.top, 24)
+
             Text("ALMOST THERE")
                 .capsLabel(10, tracking: 1.8)
                 .foregroundStyle(palette.sub)
-                .padding(.top, 30)
+                .padding(.top, 18)
 
             Text(mode == .join ? "Join your\nhousehold" : "Set up your\nhousehold")
                 .font(EvenFont.serif(32, .medium))

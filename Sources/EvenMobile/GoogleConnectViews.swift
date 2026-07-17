@@ -88,10 +88,13 @@ struct GoogleConnectPrompt: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            OnboardingStepper(step: 2, label: "GOOGLE")
+                .padding(.top, 24)
+
             Text("ONE LAST THING — OPTIONAL")
                 .capsLabel(10, tracking: 1.8)
                 .foregroundStyle(palette.sub)
-                .padding(.top, 30)
+                .padding(.top, 18)
 
             Text("Let Even read\nthe mail pile")
                 .font(EvenFont.serif(32, .medium))

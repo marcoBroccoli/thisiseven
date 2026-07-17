@@ -51,10 +51,16 @@ public struct EvenRootView: View {
         .animation(.easeInOut(duration: 0.35), value: isDark)
         .task {
             EvenFont.register()
-            async let boot: Void = session.bootstrap()
-            // Let the splash breathe even when the server answers instantly.
-            try? await Task.sleep(nanoseconds: 1_000_000_000)
-            _ = await boot
+            let holdUntil = Date().addingTimeInterval(1.0)
+            await session.bootstrap()
+            // Returning users get a breath of splash; a signed-out launch
+            // cuts straight to the welcome screen's own choreography.
+            if session.phase != .signedOut {
+                let remaining = holdUntil.timeIntervalSinceNow
+                if remaining > 0 {
+                    try? await Task.sleep(nanoseconds: UInt64(remaining * 1_000_000_000))
+                }
+            }
             splashHoldDone = true
         }
         .onChange(of: session.phase) { _, phase in
