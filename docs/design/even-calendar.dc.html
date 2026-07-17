@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<title>Even — Calendar</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..700&family=Source+Sans+3:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#E9E1D2; -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; }
+  a { color:#A0522D; text-decoration:underline; text-underline-offset:2px; }
+  a:hover { color:#7A3A1D; }
+  *::-webkit-scrollbar { width:0; height:0; }
+  [data-grain] { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E"); }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+</style>
+</helmet>
+<div style="min-height:100vh; box-sizing:border-box; display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:center; gap:52px; padding:56px 40px 80px; font-family:'Newsreader',Georgia,serif; color:#2A231B;">
+
+  <div style="width:290px; max-width:92vw; display:flex; flex-direction:column; gap:14px; padding-top:120px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">EVEN · CALENDAR TAB · iPHONE 402×874</div>
+    <div style="font-size:31px; line-height:1.14; font-weight:500; letter-spacing:-.01em;">The shared month.</div>
+    <div style="font-size:15px; line-height:1.55; color:#6E6353;">One calendar for the household: bills, renewals, visits and dated chores, marked in each person&rsquo;s color. It lives in Google too — an &ldquo;Even&rdquo; calendar you both subscribe to.</div>
+    <div style="display:flex; flex-direction:column; gap:7px; margin-top:6px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.06em; color:#8B7E6B; line-height:1.6;">
+      <div>TRY —</div>
+      <div>· TAP THE 20TH — THREE THINGS, ONE DAY</div>
+      <div>· TAP A BLANK DAY — THE QUIET STATE</div>
+      <div>· STEP ‹ › TO AUGUST — AN EMPTY MONTH</div>
+    </div>
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.06em; color:#8B7E6B; line-height:1.6;">THE APP ITSELF → <a href="Even Play.dc.html">EVEN PLAY</a><br>THE WAY IN → <a href="Even Onboarding.dc.html">ONBOARDING</a></div>
+  </div>
+
+  <div style="flex:none; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">01 · CALENDAR — INTERACTIVE</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+      <div data-screen-label="Calendar" style="height:100%; box-sizing:border-box; display:flex; flex-direction:column; position:relative; overflow:hidden; background:#F6F1E6; color:#26201A; font-family:'Newsreader',Georgia,serif;">
+        <div data-grain style="position:absolute; inset:0; z-index:50; opacity:.055; pointer-events:none; mix-blend-mode:multiply;"></div>
+
+        <div style="padding:64px 20px 6px; display:flex; align-items:center; justify-content:space-between;">
+          <div style="display:flex; align-items:center; gap:7px;">
+            <svg width="15" height="15" viewBox="0 0 16 16"><line x1="1.5" y1="6.8" x2="14.5" y2="4.6" stroke="#26201A" stroke-width="1.6" stroke-linecap="round"></line><path d="M8 6.4 L10.6 10.6 H5.4 Z" fill="none" stroke="#26201A" stroke-width="1.5" stroke-linejoin="round"></path><line x1="4.5" y1="13.4" x2="11.5" y2="13.4" stroke="#26201A" stroke-width="1.4" stroke-linecap="round"></line></svg>
+            <span style="font-size:18px; font-style:italic; font-weight:600;">Even</span>
+          </div>
+          <div title="Published as a shared Google calendar" style="display:flex; align-items:center; gap:5px; padding:5px 10px; border-radius:999px; border:1px solid rgba(38,32,26,.14); color:#8A7D69;">
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><rect x="1.8" y="2.8" width="12.4" height="11.4" rx="2"></rect><path d="M1.8 6.4h12.4M5.2 1.2v3M10.8 1.2v3"></path></svg>
+            <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:600; letter-spacing:.14em;">SHARED · GOOGLE</span>
+          </div>
+        </div>
+
+        <div style="flex:1; overflow-y:auto; overflow-x:hidden; padding:0 20px 26px;">
+
+          <div style="display:flex; align-items:center; margin-top:6px;">
+            <button onClick="{{prevM}}" style-active="transform:scale(.88)" style="width:32px; height:32px; border-radius:999px; border:1px solid rgba(38,32,26,.14); background:transparent; color:#26201A; opacity:{{prevOp}}; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; transition:transform .15s;">
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8.8 2.5 4.3 7l4.5 4.5"></path></svg>
+            </button>
+            <div style="flex:1; text-align:center; font-size:22px; font-weight:500; font-style:italic; letter-spacing:-.01em;">{{monthLabel}}</div>
+            <button onClick="{{nextM}}" style-active="transform:scale(.88)" style="width:32px; height:32px; border-radius:999px; border:1px solid rgba(38,32,26,.14); background:transparent; color:#26201A; opacity:{{nextOp}}; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; transition:transform .15s;">
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5.2 2.5 9.7 7l-4.5 4.5"></path></svg>
+            </button>
+          </div>
+
+          <div style="display:grid; grid-template-columns:repeat(7,1fr); margin-top:12px;">
+            <sc-for list="{{dows}}" as="w" hint-placeholder-count="7">
+              <span style="text-align:center; font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:600; letter-spacing:.12em; color:#8A7D69; padding-bottom:6px;">{{w.l}}</span>
+            </sc-for>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(7,1fr); row-gap:2px;">
+            <sc-for list="{{cells}}" as="c" hint-placeholder-count="35">
+              <button onClick="{{c.click}}" style="height:50px; border:none; background:transparent; cursor:{{c.cur}}; display:flex; flex-direction:column; align-items:center; gap:3px; padding:3px 0 0; font-family:'Newsreader',Georgia,serif;">
+                <span style="width:30px; height:30px; border-radius:999px; display:flex; align-items:center; justify-content:center; font-size:14.5px; box-sizing:border-box; background:{{c.bg}}; color:{{c.col}}; border:1.2px solid {{c.ring}}; transition:background .15s, color .15s;">{{c.n}}</span>
+                <span style="display:flex; gap:2.5px; height:5px; align-items:center;">
+                  <sc-for list="{{c.dots}}" as="dt" hint-placeholder-count="0">
+                    <span style="width:4.5px; height:4.5px; border-radius:99px; background:{{dt.c}};"></span>
+                  </sc-for>
+                </span>
+              </button>
+            </sc-for>
+          </div>
+
+          <sc-if value="{{monthEmpty}}" hint-placeholder-val="{{false}}">
+            <div style="margin-top:22px; padding:26px 22px; border-radius:14px; border:1px dashed rgba(38,32,26,.2); text-align:center; animation:fadeUp .25s ease both;">
+              <svg width="46" height="30" viewBox="0 0 46 30"><line x1="4" y1="14" x2="42" y2="14" stroke="#26201A" stroke-width="1.8" stroke-linecap="round"></line><path d="M23 13 L26 18 H20 Z" fill="none" stroke="#26201A" stroke-width="1.4" stroke-linejoin="round"></path><line x1="15" y1="25" x2="31" y2="25" stroke="#26201A" stroke-width="1.4" stroke-linecap="round"></line></svg>
+              <div style="margin-top:10px; font-size:17px; font-style:italic;">Nothing due in {{monthName}} — yet.</div>
+              <div style="margin-top:6px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:11.5px; line-height:1.55; color:#8A7D69;">Bills, renewals and appointments will land here as Gmail and Calendar find them.</div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{hasSel}}" hint-placeholder-val="{{true}}">
+            <div style="margin-top:14px; border-radius:14px; border:1px solid rgba(38,32,26,.14); background:#FBF7EE; padding:13px 16px 5px; animation:fadeUp .2s ease both;">
+              <div style="display:flex; align-items:center; gap:8px; padding-bottom:2px;">
+                <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9.5px; font-weight:600; letter-spacing:.16em; color:#8A7D69;">{{selLabel}}</span>
+                <sc-if value="{{selIsToday}}" hint-placeholder-val="{{true}}">
+                  <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:8px; font-weight:700; letter-spacing:.12em; color:#FBF7EE; background:#26201A; border-radius:99px; padding:2.5px 7px;">TODAY</span>
+                </sc-if>
+              </div>
+              <sc-if value="{{selEmpty}}" hint-placeholder-val="{{false}}">
+                <div style="padding:16px 0 20px; text-align:center; font-style:italic; font-size:14.5px; color:#8A7D69;">Nothing due. Enjoy the blank space.</div>
+              </sc-if>
+              <sc-for list="{{selItems}}" as="it" hint-placeholder-count="2">
+                <div style="display:flex; gap:10px; align-items:center; padding:11px 0; border-bottom:1px solid rgba(38,32,26,.055);">
+                  <div style="flex:1; min-width:0;">
+                    <div style="font-size:15px; line-height:1.3;">{{it.t}}</div>
+                    <div style="margin-top:2px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:600; letter-spacing:.06em; color:#8A7D69;">{{it.meta}}</div>
+                  </div>
+                  <span style="flex:none; font-family:'Source Sans 3',system-ui,sans-serif; font-size:13px; font-weight:600; font-variant-numeric:tabular-nums;">{{it.amt}}</span>
+                  <sc-if value="{{it.gcal}}" hint-placeholder-val="{{false}}">
+                    <button title="Open in Google Calendar" style-active="transform:scale(.88)" style="flex:none; width:26px; height:26px; border-radius:999px; border:1px solid rgba(38,32,26,.14); background:transparent; color:#8A7D69; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; transition:transform .15s;">
+                      <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4.4 1.8h5.8v5.8"></path><path d="M10.2 1.8 1.8 10.2"></path></svg>
+                    </button>
+                  </sc-if>
+                  <span style="flex:none; width:20px; height:20px; border-radius:999px; background:{{it.oc}}; color:#FBF7EE; display:flex; align-items:center; justify-content:center; font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:700;">{{it.oi}}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{noSel}}" hint-placeholder-val="{{false}}">
+            <div style="margin-top:14px; text-align:center; font-style:italic; font-size:13px; color:#8A7D69;">Tap a marked day to see what&rsquo;s due.</div>
+          </sc-if>
+
+          <div style="margin-top:22px;">
+            <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9.5px; font-weight:600; letter-spacing:.15em; color:#8A7D69;">COMING UP — NEXT {{agendaDaysLbl}} DAYS</div>
+            <sc-for list="{{agenda}}" as="r" hint-placeholder-count="5">
+              <div style="display:flex; gap:10px; align-items:center; padding:10px 0; border-bottom:1px solid rgba(38,32,26,.055);">
+                <span style="flex:none; width:44px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:600; letter-spacing:.08em; color:{{r.lblC}};">{{r.lbl}}</span>
+                <div style="flex:1; min-width:0;">
+                  <div style="font-size:14.5px; line-height:1.3;">{{r.t}}</div>
+                  <div style="margin-top:1px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:8px; font-weight:600; letter-spacing:.06em; color:#8A7D69;">{{r.meta}}</div>
+                </div>
+                <span style="flex:none; font-family:'Source Sans 3',system-ui,sans-serif; font-size:12px; font-weight:600; font-variant-numeric:tabular-nums;">{{r.amt}}</span>
+                <span style="flex:none; width:18px; height:18px; border-radius:999px; background:{{r.oc}}; color:#FBF7EE; display:flex; align-items:center; justify-content:center; font-family:'Source Sans 3',system-ui,sans-serif; font-size:8px; font-weight:700;">{{r.oi}}</span>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="margin-top:20px; padding:14px 16px; border-radius:14px; border:1px dashed rgba(38,32,26,.22); display:flex; gap:12px; align-items:flex-start;">
+            <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="#26201A" stroke-width="1.2" stroke-linecap="round" style="flex:none; margin-top:2px;"><rect x="1.8" y="2.8" width="12.4" height="11.4" rx="2"></rect><path d="M1.8 6.4h12.4M5.2 1.2v3M10.8 1.2v3"></path><circle cx="6" cy="9.4" r="1" fill="#A6552F" stroke="none"></circle><circle cx="10" cy="11.6" r="1" fill="#37756D" stroke="none"></circle></svg>
+            <div>
+              <div style="font-size:14.5px; line-height:1.35;">This calendar lives in Google too.</div>
+              <div style="margin-top:4px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:11px; line-height:1.55; color:#8A7D69;">Even publishes a shared &ldquo;Even&rdquo; calendar — subscribe once and every bill, renewal and visit sits beside your own plans. <a style="color:#A0522D;" href="#">Manage in Settings</a></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="flex:none; display:flex; border-top:1px solid rgba(38,32,26,.14); background:#F6F1E6; padding:8px 4px 26px;">
+          <button style="flex:1; border:none; background:transparent; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px; padding:6px 0; color:#8A7D69;">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3.5 11.2 20.5 8.4"></path><path d="M12 10.4 14.4 14.4 H9.6 Z" stroke-linejoin="round"></path><path d="M7.5 17.5h9"></path></svg>
+            <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:600; letter-spacing:.1em;">TODAY</span>
+          </button>
+          <button style="flex:1; border:none; background:transparent; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px; padding:6px 0; color:#26201A;">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"></rect><path d="M3.5 9.8h17M8 2.8v4M16 2.8v4"></path><circle cx="9" cy="14" r="1.1" fill="currentColor" stroke="none"></circle><circle cx="15" cy="16.6" r="1.1" fill="currentColor" stroke="none"></circle></svg>
+            <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:600; letter-spacing:.1em;">CALENDAR</span>
+          </button>
+          <button style="flex:1; border:none; background:transparent; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px; padding:6px 0; color:#8A7D69;">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13.5 8 5.5h8l4 8"></path><path d="M4 13.5h4.5l1.5 2.5h4l1.5-2.5H20V17a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17Z"></path></svg>
+            <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:600; letter-spacing:.1em;">INBOX</span>
+          </button>
+          <button style="flex:1; border:none; background:transparent; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px; padding:6px 0; color:#8A7D69;">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="12" r="5.4"></circle><circle cx="15" cy="12" r="5.4"></circle></svg>
+            <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:600; letter-spacing:.1em;">MONEY</span>
+          </button>
+          <button style="flex:1; border:none; background:transparent; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px; padding:6px 0; color:#8A7D69;">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"></path><path d="M19.8 3.5v3.6h-3.6"></path></svg>
+            <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:600; letter-spacing:.1em;">RESET</span>
+          </button>
+        </div>
+      </div>
+    </x-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;weekStartsMonday&quot;: { &quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Calendar&quot; },
+  &quot;agendaDays&quot;: { &quot;editor&quot;: &quot;range&quot;, &quot;default&quot;: 7, &quot;min&quot;: 3, &quot;max&quot;: 14, &quot;step&quot;: 1, &quot;tsType&quot;: &quot;number&quot;, &quot;section&quot;: &quot;Calendar&quot; },
+  &quot;focus&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;both&quot;, &quot;ada&quot;, &quot;umut&quot;], &quot;default&quot;: &quot;both&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Calendar&quot; }
+}">
+class Component extends DCLogic {
+  state = { mi: 1, sel: { mi: 1, d: 17 } };
+  renderVals() {
+    const ADA = '#A6552F', UMUT = '#37756D', INK = '#26201A', SUB = '#8A7D69', CREAM = '#FBF7EE';
+    const monWeek = this.props.weekStartsMonday ?? true;
+    const aDays = this.props.agendaDays ?? 7;
+    const focus = this.props.focus ?? 'both';
+    const MONTHS = [{ y: 2026, m: 5 }, { y: 2026, m: 6 }, { y: 2026, m: 7 }];
+    const TODAY = { mi: 1, d: 17 };
+    const TYPE = { BILL: 'BILL', APPT: 'APPOINTMENT', RENEWAL: 'RENEWAL', TASK: 'TASK' };
+    let ITEMS = [
+      { mi: 0, d: 9,  t: 'Waternet water bill — Q2', o: 'U', ty: 'BILL', amt: '€84.30', gcal: true, src: 'GMAIL' },
+      { mi: 0, d: 20, t: 'Rent transfer', o: 'A', ty: 'BILL', amt: '€1,450.00', gcal: true },
+      { mi: 0, d: 26, t: 'Miso — flea treatment', o: 'A', ty: 'TASK' },
+      { mi: 1, d: 2,  t: 'Car insurance renews', o: 'U', ty: 'RENEWAL', gcal: true, src: 'GMAIL' },
+      { mi: 1, d: 6,  t: 'Deep-clean the fridge', o: 'U', ty: 'TASK' },
+      { mi: 1, d: 17, t: 'Vattenfall energy bill', o: 'U', ty: 'BILL', amt: '€112.60', gcal: true, src: 'GMAIL' },
+      { mi: 1, d: 17, t: 'Laundry — towels & bedding', o: 'A', ty: 'TASK', src: 'WEEKLY' },
+      { mi: 1, d: 18, t: 'Miso — vet booster', o: 'A', ty: 'APPT', time: '16:30', gcal: true },
+      { mi: 1, d: 20, t: 'Rent transfer', o: 'A', ty: 'BILL', amt: '€1,450.00', gcal: true },
+      { mi: 1, d: 20, t: 'Health insurance — decide renewal', o: 'A', ty: 'RENEWAL', src: 'GMAIL' },
+      { mi: 1, d: 20, t: 'Dentist — Umut', o: 'U', ty: 'APPT', time: '09:15', gcal: true },
+      { mi: 1, d: 22, t: 'Return the Zalando parcel', o: 'A', ty: 'TASK' },
+      { mi: 1, d: 24, t: 'Boiler service', o: 'U', ty: 'APPT', time: '10:00', gcal: true },
+      { mi: 1, d: 28, t: 'Home contents insurance renews', o: 'U', ty: 'RENEWAL', gcal: true, src: 'GMAIL' },
+      { mi: 1, d: 31, t: 'Waternet water bill — Q3', o: 'U', ty: 'BILL', amt: '€84.30', gcal: true, src: 'GMAIL' }
+    ];
+    if (focus === 'ada') ITEMS = ITEMS.filter(i => i.o === 'A');
+    if (focus === 'umut') ITEMS = ITEMS.filter(i => i.o === 'U');
+
+    const S = this.state;
+    const cur = MONTHS[S.mi];
+    const monthDate = new Date(cur.y, cur.m, 1);
+    const monthLabel = monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const monthName = monthDate.toLocaleDateString('en-US', { month: 'long' });
+    const dows = (monWeek ? ['M', 'T', 'W', 'T', 'F', 'S', 'S'] : ['S', 'M', 'T', 'W', 'T', 'F', 'S']).map(l => ({ l }));
+    const first = monthDate.getDay();
+    const off = monWeek ? (first + 6) % 7 : first;
+    const dim = new Date(cur.y, cur.m + 1, 0).getDate();
+    const itemsOf = (mi, d) => ITEMS.filter(i => i.mi === mi && i.d === d);
+
+    const cells = [];
+    for (let i = 0; i < off; i++) cells.push({ n: '', dots: [], bg: 'transparent', col: INK, ring: 'transparent', cur: 'default' });
+    for (let d = 1; d <= dim; d++) {
+      const its = itemsOf(S.mi, d);
+      const isSel = S.sel && S.sel.mi === S.mi && S.sel.d === d;
+      const isToday = S.mi === TODAY.mi && d === TODAY.d;
+      cells.push({
+        n: String(d),
+        dots: its.slice(0, 4).map(i => ({ c: i.o === 'A' ? ADA : UMUT })),
+        bg: isSel ? INK : 'transparent',
+        col: isSel ? CREAM : INK,
+        ring: isToday && !isSel ? INK : 'transparent',
+        cur: 'pointer',
+        click: () => this.setState({ sel: { mi: S.mi, d } })
+      });
+    }
+
+    const monthEmpty = !ITEMS.some(i => i.mi === S.mi);
+    const hasSel = !monthEmpty && !!S.sel && S.sel.mi === S.mi;
+    const selRaw = hasSel ? itemsOf(S.mi, S.sel.d) : [];
+    const mkMeta = i => TYPE[i.ty] + (i.time ? ' · ' + i.time : '') + (i.src ? ' · ' + i.src : '');
+    const mkIt = i => ({
+      t: i.t, meta: mkMeta(i), amt: i.amt || '',
+      oc: i.o === 'A' ? ADA : UMUT, oi: i.o, gcal: !!i.gcal
+    });
+    const selDate = hasSel ? new Date(cur.y, cur.m, S.sel.d) : null;
+
+    const agenda = [];
+    for (let k = 0; k < aDays; k++) {
+      const dt = new Date(2026, 6, TODAY.d + k);
+      const mi = MONTHS.findIndex(mm => mm.m === dt.getMonth());
+      if (mi < 0) continue;
+      const its = itemsOf(mi, dt.getDate());
+      its.forEach((i, j) => agenda.push(Object.assign(mkIt(i), {
+        lbl: j === 0 ? dt.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase() + ' ' + dt.getDate() : '',
+        lblC: k === 0 ? INK : SUB
+      })));
+    }
+
+    return {
+      monthLabel, monthName, dows, cells,
+      prevM: () => this.setState(s => ({ mi: Math.max(0, s.mi - 1) })),
+      nextM: () => this.setState(s => ({ mi: Math.min(MONTHS.length - 1, s.mi + 1) })),
+      prevOp: S.mi > 0 ? 1 : .3,
+      nextOp: S.mi < MONTHS.length - 1 ? 1 : .3,
+      monthEmpty, hasSel,
+      noSel: !monthEmpty && !hasSel,
+      selEmpty: hasSel && selRaw.length === 0,
+      selItems: selRaw.map(mkIt),
+      selLabel: selDate ? selDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).toUpperCase() : '',
+      selIsToday: hasSel && S.mi === TODAY.mi && S.sel.d === TODAY.d,
+      agenda, agendaDaysLbl: String(aDays)
+    };
+  }
+}
+</script>
+</body>
+</html>
