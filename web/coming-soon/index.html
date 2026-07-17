@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Even — coming soon</title>
+<meta name="description" content="Even — money, settled weekly. A calmer way to keep things fair with the people you share life with. Coming soon.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://thisiseven.app/">
+<meta property="og:title" content="Even — coming soon">
+<meta property="og:description" content="Money, settled weekly. A calmer way to keep things fair with the people you share life with.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://thisiseven.app">
+<meta name="theme-color" content="#E9E1D2">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23E9E1D2'/%3E%3Crect x='10' y='15' width='4' height='9' rx='1.5' fill='%23A6552F'/%3E%3Crect x='18' y='9' width='4' height='15' rx='1.5' fill='%2337756D'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..600;1,6..72,400..500&family=Source+Sans+3:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#E9E1D2; --paper-hi:#F6F1E6; --paper-card:#FBF7EE;
+    --ink:#26201A; --ink-soft:#6E6353; --muted:#8A7D69; --hair:#D8CDB8;
+    --terra:#A6552F; --terra-deep:#7A3A1D; --pine:#37756D;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:'Source Sans 3',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+    display:grid; place-items:center; min-height:100dvh; position:relative; overflow:hidden;
+  }
+  /* soft radial warmth + paper grain */
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none;
+    background:radial-gradient(120% 90% at 50% 0%, var(--paper-hi), transparent 60%);
+  }
+  body::after{
+    content:""; position:fixed; inset:0; pointer-events:none; opacity:.5; mix-blend-mode:multiply;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.42'/%3E%3C/svg%3E");
+  }
+  main{
+    position:relative; z-index:1; width:min(680px,90vw); text-align:center;
+    padding:40px 0;
+  }
+  .item{opacity:0; animation:settle .9s cubic-bezier(.2,.8,.24,1) forwards}
+  .d1{animation-delay:.15s}.d2{animation-delay:.30s}.d3{animation-delay:.46s}.d4{animation-delay:.62s}.d5{animation-delay:.80s}
+  @keyframes settle{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+
+  /* the "evening out" motif — two bars level off */
+  .scale{display:flex; gap:9px; align-items:flex-end; justify-content:center; height:46px; margin:0 auto 30px}
+  .scale i{width:11px; border-radius:4px 4px 2px 2px; display:block}
+  .scale i:nth-child(1){background:var(--terra); height:16px; animation:evenA 1.6s cubic-bezier(.5,.05,.2,1) .5s both}
+  .scale i:nth-child(2){background:var(--pine);  height:44px; animation:evenB 1.6s cubic-bezier(.5,.05,.2,1) .5s both}
+  @keyframes evenA{0%{height:16px}60%{height:32px}100%{height:30px}}
+  @keyframes evenB{0%{height:44px}60%{height:28px}100%{height:30px}}
+
+  .brand{font-family:'Newsreader',Georgia,serif; font-weight:500; font-size:22px; letter-spacing:.01em; color:var(--ink)}
+  .brand .dot{color:var(--terra)}
+  h1{
+    font-family:'Newsreader',Georgia,serif; font-weight:500;
+    font-size:clamp(40px,9vw,74px); line-height:1.02; letter-spacing:-.015em;
+    margin:20px 0 0; text-wrap:balance;
+  }
+  h1 em{font-style:italic; color:var(--terra)}
+  .sub{
+    font-size:clamp(16px,2.4vw,19px); color:var(--ink-soft); line-height:1.6;
+    max-width:34ch; margin:20px auto 0;
+  }
+  .pill{
+    display:inline-flex; align-items:center; gap:9px; margin-top:34px;
+    font-size:13px; font-weight:600; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--terra-deep); background:var(--paper-card);
+    border:1px solid var(--hair); border-radius:999px; padding:10px 18px;
+    box-shadow:0 1px 0 #fff, 0 10px 24px rgba(74,54,20,.07);
+  }
+  .pill .blip{width:8px;height:8px;border-radius:50%;background:var(--pine);
+    box-shadow:0 0 0 0 rgba(55,117,109,.5); animation:pulse 2.4s ease-out infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(55,117,109,.45)}70%{box-shadow:0 0 0 9px rgba(55,117,109,0)}100%{box-shadow:0 0 0 0 rgba(55,117,109,0)}}
+
+  footer{
+    position:fixed; bottom:22px; left:0; right:0; z-index:1; text-align:center;
+    font-size:12.5px; color:var(--muted); letter-spacing:.02em;
+  }
+  footer a{color:var(--muted); text-decoration:none}
+  @media (prefers-reduced-motion:reduce){
+    .item,.scale i,.pill .blip{animation:none!important; opacity:1!important; transform:none!important}
+  }
+</style>
+</head>
+<body>
+  <main>
+    <div class="scale item d1"><i></i><i></i></div>
+    <div class="brand item d2">Even<span class="dot">.</span></div>
+    <h1 class="item d3">Money, settled <em>weekly</em>.</h1>
+    <p class="sub item d4">A calmer way to keep things fair with the people you share life with — no spreadsheets, no awkward reminders.</p>
+    <div class="item d5"><span class="pill"><span class="blip"></span>Coming soon</span></div>
+  </main>
+  <footer class="item d5">thisiseven.app · © 2026 Even</footer>
+</body>
+</html>
