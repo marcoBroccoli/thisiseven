@@ -47,13 +47,62 @@ func TestExchangeCodeParsesEmail(t *testing.T) {
 	var hits atomic.Int32
 	srv := fakeOAuth(t, &hits, true)
 	defer srv.Close()
-	c := New("id", "secret", srv.URL, "")
-	refresh, email, err := c.ExchangeCode(context.Background(), "code", "http://127.0.0.1/cb", "")
+	c := New("id", "secret", "", srv.URL, "")
+	refresh, email, kind, err := c.ExchangeCode(context.Background(), "code", "http://127.0.0.1/cb", "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if refresh != "rt-1" || email != "house@even.dev" {
-		t.Fatalf("got %q %q", refresh, email)
+	if refresh != "rt-1" || email != "house@even.dev" || kind != "desktop" {
+		t.Fatalf("got %q %q %q", refresh, email, kind)
+	}
+}
+
+// The iOS PKCE path selects the iOS client id and sends no secret.
+func TestExchangeCodeIOSClient(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = r.ParseForm()
+		if r.Form.Get("client_id") != "ios-id" {
+			t.Errorf("client_id = %q, want ios-id", r.Form.Get("client_id"))
+		}
+		if r.Form.Get("client_secret") != "" {
+			t.Errorf("client_secret sent on iOS PKCE exchange")
+		}
+		if r.Form.Get("code_verifier") != "ver-1" {
+			t.Errorf("code_verifier = %q", r.Form.Get("code_verifier"))
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"access_token":"at","refresh_token":"rt-ios","expires_in":3600}`))
+	}))
+	defer srv.Close()
+	c := New("id", "secret", "ios-id", srv.URL, "")
+	refresh, _, kind, err := c.ExchangeCode(context.Background(), "code", "com.googleusercontent.apps.x:/oauth2redirect", "ver-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if refresh != "rt-ios" || kind != "ios" {
+		t.Fatalf("got %q %q", refresh, kind)
+	}
+}
+
+// Refresh with an ios-minted token must use the iOS client id, no secret.
+func TestAccessTokenIOSKind(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = r.ParseForm()
+		if r.Form.Get("client_id") != "ios-id" || r.Form.Get("client_secret") != "" {
+			t.Errorf("wrong client on ios refresh: id=%q secret=%q",
+				r.Form.Get("client_id"), r.Form.Get("client_secret"))
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"access_token":"at-ios","expires_in":3600}`))
+	}))
+	defer srv.Close()
+	c := New("id", "secret", "ios-id", srv.URL, "")
+	tok, err := c.AccessToken(context.Background(), "hh-ios", "rt", "ios")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tok != "at-ios" {
+		t.Fatalf("tok = %q", tok)
 	}
 }
 
@@ -61,9 +110,9 @@ func TestAccessTokenCachesPerHousehold(t *testing.T) {
 	var hits atomic.Int32
 	srv := fakeOAuth(t, &hits, true)
 	defer srv.Close()
-	c := New("id", "secret", srv.URL, "")
+	c := New("id", "secret", "", srv.URL, "")
 	for i := 0; i < 3; i++ {
-		tok, err := c.AccessToken(context.Background(), "hh-1", "rt-1")
+		tok, err := c.AccessToken(context.Background(), "hh-1", "rt-1", "desktop")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -80,19 +129,19 @@ func TestInvalidGrantSurfaces(t *testing.T) {
 	var hits atomic.Int32
 	srv := fakeOAuth(t, &hits, false)
 	defer srv.Close()
-	c := New("id", "secret", srv.URL, "")
-	_, err := c.AccessToken(context.Background(), "hh-1", "rt-dead")
+	c := New("id", "secret", "", srv.URL, "")
+	_, err := c.AccessToken(context.Background(), "hh-1", "rt-dead", "desktop")
 	if err != ErrInvalidGrant {
 		t.Fatalf("err = %v, want ErrInvalidGrant", err)
 	}
 }
 
 func TestNotConfigured(t *testing.T) {
-	c := New("", "", "", "")
+	c := New("", "", "", "", "")
 	if c.Configured() {
 		t.Fatal("empty client should not be configured")
 	}
-	if _, _, err := c.ExchangeCode(context.Background(), "x", "y", ""); err != ErrNotConfigured {
+	if _, _, _, err := c.ExchangeCode(context.Background(), "x", "y", ""); err != ErrNotConfigured {
 		t.Fatalf("err = %v, want ErrNotConfigured", err)
 	}
 }
@@ -119,7 +168,7 @@ func TestGmailListAndMetaAndCalendarInsert(t *testing.T) {
 		}
 	}))
 	defer api.Close()
-	c := New("id", "secret", "", api.URL)
+	c := New("id", "secret", "", "", api.URL)
 
 	ids, err := c.ListHouseholdMessages(context.Background(), "tok", 25)
 	if err != nil || len(ids) != 1 || ids[0] != "m1" {

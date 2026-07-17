@@ -17,7 +17,7 @@ final class EvenCaptureTests: XCTestCase {
         }
 
         let app = XCUIApplication()
-        app.launchArguments = ["--reset-session"]
+        app.launchArguments = ["--reset-session", "--skip-google-prompt"]
         app.launch()
 
         // Sign in as the capture account.

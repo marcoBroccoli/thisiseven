@@ -103,7 +103,7 @@ final class EvenE2ETests: XCTestCase {
 
     private func launchFresh() -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["--reset-session"]
+        app.launchArguments = ["--reset-session", "--skip-google-prompt"]
         app.launch()
         return app
     }

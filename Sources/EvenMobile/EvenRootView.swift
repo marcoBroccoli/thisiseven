@@ -102,6 +102,8 @@ struct MainScaffold: View {
     @Binding var isDark: Bool
     @Environment(\.palette) private var palette
     @Environment(\.scenePhase) private var scenePhase
+    @AppStorage("even-google-prompted") private var googlePrompted = false
+    @State private var showGooglePrompt = false
 
     private var resetSymbol: String {
         if #available(iOS 18.0, *) { return "arrow.trianglehead.clockwise" }
@@ -149,6 +151,19 @@ struct MainScaffold: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 Task { await model.refreshAll() }
+            }
+        }
+        .onChange(of: model.googleStatus?.connected) { _, connected in
+            // One-time onboarding ask, once we know Google isn't connected.
+            if connected == false, !googlePrompted, GoogleConnectConfig.isEnabled,
+               !ProcessInfo.processInfo.arguments.contains("--skip-google-prompt") {
+                showGooglePrompt = true
+            }
+        }
+        .promptCover(isPresented: $showGooglePrompt) {
+            GoogleConnectPrompt(model: model) {
+                googlePrompted = true
+                showGooglePrompt = false
             }
         }
     }
@@ -238,5 +253,19 @@ struct ErrorBanner: View {
             try? await Task.sleep(nanoseconds: 4_000_000_000)
             dismiss()
         }
+    }
+}
+
+
+private extension View {
+    /// fullScreenCover is iOS-only; the mac package build gets a sheet.
+    @ViewBuilder
+    func promptCover<C: View>(isPresented: Binding<Bool>,
+                              @ViewBuilder content: @escaping () -> C) -> some View {
+        #if os(iOS)
+        self.fullScreenCover(isPresented: isPresented, content: content)
+        #else
+        self.sheet(isPresented: isPresented, content: content)
+        #endif
     }
 }

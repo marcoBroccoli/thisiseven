@@ -36,6 +36,11 @@ struct InboxView: View {
                     }
                 }
 
+                if model.googleStatus?.connected == false {
+                    GoogleConnectCard(model: model)
+                        .padding(.top, 14)
+                }
+
                 if model.drafts.isEmpty {
                     emptyState
                 } else {

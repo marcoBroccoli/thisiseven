@@ -16,6 +16,7 @@ services:
       EVEN_GOTRUE_URL: http://gotrue:9999
       GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
       GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
+      GOOGLE_IOS_CLIENT_ID: ${GOOGLE_IOS_CLIENT_ID:-}
     depends_on:
       db:
         condition: service_healthy

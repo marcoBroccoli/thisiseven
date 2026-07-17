@@ -18,6 +18,7 @@ import (
 type googleAccount struct {
 	Email        string
 	RefreshToken string
+	ClientKind   string
 	ConnectedBy  *string
 	CalendarID   string
 	LastSyncAt   *time.Time
@@ -27,9 +28,9 @@ type googleAccount struct {
 func (a *API) googleAccount(ctx context.Context, householdID string) (*googleAccount, error) {
 	g := &googleAccount{}
 	err := a.DB.QueryRow(ctx, `
-		select email, refresh_token, connected_by, calendar_id, last_sync_at, last_sync_count
+		select email, refresh_token, client_kind, connected_by, calendar_id, last_sync_at, last_sync_count
 		from google_accounts where household_id = $1`, householdID).
-		Scan(&g.Email, &g.RefreshToken, &g.ConnectedBy, &g.CalendarID, &g.LastSyncAt, &g.LastSync)
+		Scan(&g.Email, &g.RefreshToken, &g.ClientKind, &g.ConnectedBy, &g.CalendarID, &g.LastSyncAt, &g.LastSync)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +64,7 @@ func (a *API) GoogleConnect(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusBadRequest, "missing_fields", "code and redirect_uri are required")
 		return
 	}
-	refresh, email, err := a.Google.ExchangeCode(r.Context(), in.Code, in.RedirectURI, in.CodeVerifier)
+	refresh, email, clientKind, err := a.Google.ExchangeCode(r.Context(), in.Code, in.RedirectURI, in.CodeVerifier)
 	if err != nil {
 		slog.Error("google connect", "err", err)
 		httpx.Error(w, http.StatusBadGateway, "google_exchange_failed",
@@ -71,14 +72,15 @@ func (a *API) GoogleConnect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_, err = a.DB.Exec(r.Context(), `
-		insert into google_accounts (household_id, email, refresh_token, connected_by)
-		values ($1, $2, $3, $4)
+		insert into google_accounts (household_id, email, refresh_token, client_kind, connected_by)
+		values ($1, $2, $3, $4, $5)
 		on conflict (household_id) do update set
 			email = excluded.email,
 			refresh_token = excluded.refresh_token,
+			client_kind = excluded.client_kind,
 			connected_by = excluded.connected_by,
 			connected_at = now()`,
-		m.HouseholdID, email, refresh, m.MemberID)
+		m.HouseholdID, email, refresh, clientKind, m.MemberID)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "internal", "could not store the connection")
 		return
@@ -160,7 +162,7 @@ func (a *API) syncHousehold(ctx context.Context, householdID string) (*syncResul
 	if err != nil {
 		return nil, err
 	}
-	token, err := a.Google.AccessToken(ctx, householdID, g.RefreshToken)
+	token, err := a.Google.AccessToken(ctx, householdID, g.RefreshToken, g.ClientKind)
 	if errors.Is(err, google.ErrInvalidGrant) {
 		// Dead refresh token: force an explicit reconnect, stop the ticker noise.
 		_, _ = a.DB.Exec(ctx, `delete from google_accounts where household_id = $1`, householdID)
@@ -292,7 +294,7 @@ func (a *API) calendarEventForApproval(ctx context.Context, m *Membership,
 	if err != nil {
 		return "calendar lookup failed"
 	}
-	token, err := a.Google.AccessToken(ctx, m.HouseholdID, g.RefreshToken)
+	token, err := a.Google.AccessToken(ctx, m.HouseholdID, g.RefreshToken, g.ClientKind)
 	if err != nil {
 		slog.Error("calendar token", "err", err)
 		return "Google access expired — reconnect to write calendar events"

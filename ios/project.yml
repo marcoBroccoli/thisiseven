@@ -10,7 +10,8 @@ targets:
   Even:
     type: application
     platform: iOS
-    sources: [EvenApp]
+    sources:
+      - EvenApp
     dependencies:
       - package: HouseholdCommandCenter
         product: EvenMobile
@@ -19,6 +20,11 @@ targets:
       properties:
         UILaunchScreen: {}
         ITSAppUsesNonExemptEncryption: false
+        # Google in-app OAuth callback (reversed iOS client id).
+        CFBundleURLTypes:
+          - CFBundleURLName: google-oauth
+            CFBundleURLSchemes:
+              - com.googleusercontent.apps.733777745150-gb5i361it6sghbc48qlgil58nsojniq7
         # HTTP allowances for the home-server API: localhost (simulator) is
         # covered by NSAllowsLocalNetworking; even-api.home (LAN devices)
         # needs an explicit exception until the API gets real TLS.
@@ -33,6 +39,7 @@ targets:
         DEVELOPMENT_TEAM: C3XSV85364
         CODE_SIGN_STYLE: Automatic
         CODE_SIGN_ENTITLEMENTS: EvenApp/Even.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         TARGETED_DEVICE_FAMILY: "1"
         SUPPORTS_MACCATALYST: NO
   EvenUITests:

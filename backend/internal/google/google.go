@@ -34,6 +34,7 @@ const householdLabel = "HouseholdTodo"
 type Client struct {
 	ClientID     string
 	ClientSecret string
+	IOSClientID  string // in-app PKCE flow; no secret
 	OAuthBase    string // default https://oauth2.googleapis.com
 	APIBase      string // default https://www.googleapis.com
 	HTTP         *http.Client
@@ -47,7 +48,7 @@ type cachedToken struct {
 	expires time.Time
 }
 
-func New(clientID, clientSecret, oauthBase, apiBase string) *Client {
+func New(clientID, clientSecret, iosClientID, oauthBase, apiBase string) *Client {
 	if oauthBase == "" {
 		oauthBase = "https://oauth2.googleapis.com"
 	}
@@ -57,6 +58,7 @@ func New(clientID, clientSecret, oauthBase, apiBase string) *Client {
 	return &Client{
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
+		IOSClientID:  iosClientID,
 		OAuthBase:    oauthBase,
 		APIBase:      apiBase,
 		HTTP:         &http.Client{Timeout: 20 * time.Second},
@@ -64,7 +66,9 @@ func New(clientID, clientSecret, oauthBase, apiBase string) *Client {
 	}
 }
 
-func (c *Client) Configured() bool { return c != nil && c.ClientID != "" && c.ClientSecret != "" }
+func (c *Client) Configured() bool {
+	return c != nil && ((c.ClientID != "" && c.ClientSecret != "") || c.IOSClientID != "")
+}
 
 // ---- OAuth ----
 
@@ -77,35 +81,45 @@ type tokenResponse struct {
 	ErrorDesc    string `json:"error_description"`
 }
 
-// ExchangeCode swaps an authorization code for tokens; returns refresh token
-// and the Google account email (from the id_token claims).
-func (c *Client) ExchangeCode(ctx context.Context, code, redirectURI, codeVerifier string) (refreshToken, email string, err error) {
-	if !c.Configured() {
-		return "", "", ErrNotConfigured
-	}
+// ExchangeCode swaps an authorization code for tokens; returns the refresh
+// token, the Google account email (id_token claims), and which client kind
+// performed the exchange. A present codeVerifier selects the iOS PKCE client
+// (no secret) so any number of app users can connect concurrently.
+func (c *Client) ExchangeCode(ctx context.Context, code, redirectURI, codeVerifier string) (refreshToken, email, clientKind string, err error) {
 	form := url.Values{
-		"grant_type":    {"authorization_code"},
-		"code":          {code},
-		"redirect_uri":  {redirectURI},
-		"client_id":     {c.ClientID},
-		"client_secret": {c.ClientSecret},
+		"grant_type":   {"authorization_code"},
+		"code":         {code},
+		"redirect_uri": {redirectURI},
 	}
-	if codeVerifier != "" {
+	switch {
+	case codeVerifier != "" && c.IOSClientID != "":
+		clientKind = "ios"
+		form.Set("client_id", c.IOSClientID)
 		form.Set("code_verifier", codeVerifier)
+	case c.ClientID != "" && c.ClientSecret != "":
+		clientKind = "desktop"
+		form.Set("client_id", c.ClientID)
+		form.Set("client_secret", c.ClientSecret)
+		if codeVerifier != "" {
+			form.Set("code_verifier", codeVerifier)
+		}
+	default:
+		return "", "", "", ErrNotConfigured
 	}
 	tr, err := c.tokenCall(ctx, form)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 	if tr.RefreshToken == "" {
-		return "", "", fmt.Errorf("google: no refresh token in exchange (use access_type=offline&prompt=consent)")
+		return "", "", "", fmt.Errorf("google: no refresh token in exchange (use access_type=offline&prompt=consent)")
 	}
-	return tr.RefreshToken, emailFromIDToken(tr.IDToken), nil
+	return tr.RefreshToken, emailFromIDToken(tr.IDToken), clientKind, nil
 }
 
 // AccessToken returns a live access token for the household, refreshing and
-// caching (60s early expiry) under a single lock.
-func (c *Client) AccessToken(ctx context.Context, householdID, refreshToken string) (string, error) {
+// caching (60s early expiry) under a single lock. clientKind must match the
+// client that minted the refresh token ("ios" or "desktop").
+func (c *Client) AccessToken(ctx context.Context, householdID, refreshToken, clientKind string) (string, error) {
 	if !c.Configured() {
 		return "", ErrNotConfigured
 	}
@@ -116,12 +130,17 @@ func (c *Client) AccessToken(ctx context.Context, householdID, refreshToken stri
 	}
 	c.mu.Unlock()
 
-	tr, err := c.tokenCall(ctx, url.Values{
+	form := url.Values{
 		"grant_type":    {"refresh_token"},
 		"refresh_token": {refreshToken},
-		"client_id":     {c.ClientID},
-		"client_secret": {c.ClientSecret},
-	})
+	}
+	if clientKind == "ios" && c.IOSClientID != "" {
+		form.Set("client_id", c.IOSClientID)
+	} else {
+		form.Set("client_id", c.ClientID)
+		form.Set("client_secret", c.ClientSecret)
+	}
+	tr, err := c.tokenCall(ctx, form)
 	if err != nil {
 		return "", err
 	}

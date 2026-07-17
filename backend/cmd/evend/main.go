@@ -54,7 +54,7 @@ func main() {
 	app := &api.API{
 		DB: db,
 		Google: google.New(cfg.GoogleClientID, cfg.GoogleClientSecret,
-			cfg.GoogleOAuthBase, cfg.GoogleAPIBase),
+			cfg.GoogleIOSClientID, cfg.GoogleOAuthBase, cfg.GoogleAPIBase),
 	}
 	if app.Google.Configured() {
 		go app.RunGmailPoller(ctx, 30*time.Minute)
