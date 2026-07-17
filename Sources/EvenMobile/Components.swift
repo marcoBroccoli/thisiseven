@@ -57,10 +57,7 @@ struct StampToast: View {
             )
             .overlay(RoundedRectangle(cornerRadius: 8).stroke(palette.ink, lineWidth: 2))
             .frame(maxWidth: 320)
-            .transition(.asymmetric(
-                insertion: .scale(scale: 1.6).combined(with: .opacity),
-                removal: .opacity
-            ))
+            .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 }
 
