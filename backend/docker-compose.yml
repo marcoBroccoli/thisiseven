@@ -1,0 +1,71 @@
+# Even backend — GoTrue (Supabase Auth, self-hosted) + evend API + Postgres.
+#   cp .env.example .env   # fill in secrets
+#   docker compose up -d --build
+# Project name is explicit: kilo's compose already owns "backend" on this host.
+name: evend
+
+services:
+  evend:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8091:8080"   # localhost only — Caddy terminates for LAN
+    environment:
+      EVEN_DATABASE_URL: postgres://even:${EVEN_DB_PASSWORD}@db:5432/even?sslmode=disable
+      EVEN_GOTRUE_JWT_SECRET: ${GOTRUE_JWT_SECRET}
+      EVEN_GOTRUE_URL: http://gotrue:9999
+    depends_on:
+      db:
+        condition: service_healthy
+      gotrue:
+        condition: service_started
+    read_only: true
+
+  gotrue:
+    image: supabase/auth:v2.193.0
+    restart: unless-stopped
+    # No ports: only evend's /auth/* proxy reaches it.
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: "9999"
+      API_EXTERNAL_URL: http://localhost:8091/auth
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://even:${EVEN_DB_PASSWORD}@db:5432/even?search_path=auth&sslmode=disable
+      GOTRUE_DB_NAMESPACE: auth
+      GOTRUE_SITE_URL: https://thisiseven.app
+      GOTRUE_JWT_SECRET: ${GOTRUE_JWT_SECRET}
+      GOTRUE_JWT_EXP: "3600"
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_DISABLE_SIGNUP: "false"
+      # Debug email+password accounts work without SMTP.
+      GOTRUE_MAILER_AUTOCONFIRM: "true"
+      # Native Sign in with Apple (id_token grant) — audience is the app bundle id.
+      GOTRUE_EXTERNAL_APPLE_ENABLED: "true"
+      GOTRUE_EXTERNAL_APPLE_CLIENT_ID: com.umuryavuz.even
+      GOTRUE_EXTERNAL_APPLE_SECRET: unused-native-id-token-flow-only
+      GOTRUE_EXTERNAL_APPLE_REDIRECT_URI: http://localhost:8091/auth/callback
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: even
+      POSTGRES_PASSWORD: ${EVEN_DB_PASSWORD}
+      POSTGRES_DB: even
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U even -d even"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    ports:
+      - "127.0.0.1:5433:5432"   # localhost only — integration tests
+
+volumes:
+  pgdata:

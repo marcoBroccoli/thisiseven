@@ -49,34 +49,34 @@ execution order. AC = acceptance criteria.
   → both IPs; healthz via even-api.home.
 
 ## P2 App plumbing
-- [ ] **EV-30** `EvenCore` target (+ tests target entry in Package.swift):
+- [x] **EV-30** `EvenCore` target (+ tests target entry in Package.swift):
   API models (Codable, snake_case), `EvenAPIClient` (async URLSession, auth
   header injection, error enum), `APIEnvironment` (localhost / even-api.home).
-- [ ] **EV-31** `SupabaseAuthService`: Apple id_token grant, email+password
+- [x] **EV-31** `SupabaseAuthService`: Apple id_token grant, email+password
   (debug), refresh, Keychain persistence (`com.umuryavuz.even.session`).
   AC: unit-testable request factories; tokens survive relaunch.
-- [ ] **EV-32** `SessionStore` (@Observable): signed-out / needs-household /
+- [x] **EV-32** `SessionStore` (@Observable): signed-out / needs-household /
   ready states; bootstrap from Keychain + `GET /v1/me`.
-- [ ] **EV-33** SIWA capability: entitlements file + project.yml update;
+- [x] **EV-33** SIWA capability: entitlements file + project.yml update;
   register bundle id + SIWA via ASC API when shipping (deferred note).
 
 ## P3 App UI (EvenMobile)
-- [ ] **EV-40** Design system: `EvenTheme` (light/dark token sets, member
+- [x] **EV-40** Design system: `EvenTheme` (light/dark token sets, member
   color resolution), bundled Newsreader + SourceSans3 fonts, grain overlay,
   stamp/toast view, pill + chip + check components. Demo seed deleted.
-- [ ] **EV-41** Custom tab bar (4 items, SVG-derived icons, badge count) +
+- [x] **EV-41** Custom tab bar (4 items, SVG-derived icons, badge count) +
   root scaffold + wordmark header + dark toggle (persisted).
-- [ ] **EV-42** Onboarding: welcome, SIWA button (+debug email form), create
+- [x] **EV-42** Onboarding: welcome, SIWA button (+debug email form), create
   vs join household, name entry, invite-code share/entry, waiting/solo state.
-- [ ] **EV-43** Today: beam scale view (rotation math, pans, pebble layout,
+- [~] **EV-43** Today: beam scale view (rotation math, pans, pebble layout,
   pct, captions) + section lists + task row (check animation, heft, owner
   chip) + Quick Add sheet. Wired to summary/tasks API.
-- [ ] **EV-44** Inbox: card list, propose sheet, review bottom sheet
+- [~] **EV-44** Inbox: card list, propose sheet, review bottom sheet
   (title field, owner pills, reminder chips, dismiss/approve), stamp toasts,
   empty state, badge. Wired.
-- [ ] **EV-45** Money: balance card + avatars + coin, settle interaction,
+- [~] **EV-45** Money: balance card + avatars + coin, settle interaction,
   expense list + add sheet. Wired.
-- [ ] **EV-46** Reset: intro, progress header, step 1 bars + biggest carry,
+- [~] **EV-46** Reset: intro, progress header, step 1 bars + biggest carry,
   step 2 appreciation cards, step 3 trades, close-week action, poured-out
   end screen. Wired.
 
