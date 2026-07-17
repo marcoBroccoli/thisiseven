@@ -162,6 +162,10 @@ struct MainScaffold: View {
                 .tabItem { Label("Today", systemImage: "scalemass") }
                 .tag(EvenTab.today)
 
+            screen { CalendarView(model: model) }
+                .tabItem { Label("Calendar", systemImage: "calendar") }
+                .tag(EvenTab.calendar)
+
             screen { InboxView(model: model) }
                 .tabItem { Label("Inbox", systemImage: "tray") }
                 .badge(model.summary?.pendingDraftCount ?? 0)

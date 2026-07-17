@@ -317,4 +317,12 @@ public extension EvenAPIClient {
 
     /// Starts the async scan job; 409 sync_running means one is already live.
     func googleSync() async throws -> GoogleSyncStart { try await post("v1/google/sync") }
+
+    func calendar(from: String, to: String) async throws -> CalendarResponse {
+        try await get("v1/calendar?from=\(from)&to=\(to)")
+    }
+
+    func calendarInfo() async throws -> GoogleCalendarInfo {
+        try await get("v1/google/calendar-info")
+    }
 }

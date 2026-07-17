@@ -226,6 +226,32 @@ public struct GoogleSyncStart: Codable, Sendable {
     public var started: Bool?
 }
 
+/// One dated item on the shared calendar — a pending draft or a task.
+public struct CalendarItem: Codable, Identifiable, Hashable, Sendable {
+    public var kind: Kind
+    public enum Kind: String, Codable, Sendable { case draft, task }
+    public let id: UUID
+    public var title: String
+    public var category: String?
+    public var ownerMemberId: UUID
+    public var amountCents: Int?
+    public var dueOn: String
+    public var done: Bool?
+    public var googleEventUrl: String?
+}
+
+public struct CalendarResponse: Codable, Sendable {
+    public var from: String
+    public var to: String
+    public var items: [CalendarItem]
+}
+
+public struct GoogleCalendarInfo: Codable, Sendable {
+    public var calendarId: String
+    public var shared: Bool
+    public var shareUrl: String?
+}
+
 public struct APIErrorBody: Codable, Sendable {
     public struct Inner: Codable, Sendable {
         public let code: String

@@ -3,7 +3,7 @@ import Observation
 import EvenCore
 
 enum EvenTab: String, CaseIterable {
-    case today, inbox, money, reset
+    case today, calendar, inbox, money, reset
 }
 
 /// Screen-facing store over the evend API. Everything here is real server
@@ -19,6 +19,9 @@ final class AppModel {
     var money: Money?
     var googleStatus: GoogleStatus?
     var gmailSyncing = false
+    var calendarMonthItems: [CalendarItem] = []
+    var calendarUpcoming: [CalendarItem] = []
+    var calendarInfo: GoogleCalendarInfo?
     var reset: ResetSummary?
     var resetStep: Int = 0
     var lastClosedWeekIndex: Int?
@@ -193,6 +196,32 @@ final class AppModel {
         stamp(finalCreated > 0
               ? "GMAIL — \(finalCreated) NEW DRAFT\(finalCreated == 1 ? "" : "S")"
               : "GMAIL — NOTHING NEW")
+    }
+
+    // MARK: Calendar
+
+    private static let dayFormat: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        return f
+    }()
+
+    /// Loads the visible month (±7d) for the grid and the next-7-days agenda.
+    func loadCalendar(month: Date) async {
+        let cal = Foundation.Calendar.current
+        let start = cal.date(from: cal.dateComponents([.year, .month], from: month)) ?? month
+        let end = cal.date(byAdding: DateComponents(month: 1, day: 7), to: start) ?? month
+        let from = Self.dayFormat.string(from: cal.date(byAdding: .day, value: -7, to: start) ?? start)
+        let to = Self.dayFormat.string(from: end)
+        async let monthReq = try? api.calendar(from: from, to: to)
+        async let weekReq = try? api.calendar(
+            from: Self.dayFormat.string(from: Date()),
+            to: Self.dayFormat.string(from: cal.date(byAdding: .day, value: 7, to: Date()) ?? Date()))
+        async let infoReq = try? api.calendarInfo()
+        let (monthResp, weekResp, info) = await (monthReq, weekReq, infoReq)
+        if let monthResp { calendarMonthItems = monthResp.items }
+        if let weekResp { calendarUpcoming = weekResp.items }
+        calendarInfo = info   // nil when not connected / not shared yet
     }
 
     // MARK: Money
