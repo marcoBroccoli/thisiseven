@@ -78,36 +78,24 @@ public struct EvenRootView: View {
 /// pointer appears, base draws), then the wordmark lands.
 struct SplashView: View {
     @Environment(\.palette) private var palette
-    @State private var beamProgress: CGFloat = 0
-    @State private var showTriangle = false
-    @State private var baseProgress: CGFloat = 0
+    @State private var glyphProgress: CGFloat = 0
     @State private var showWordmark = false
 
     var body: some View {
-        VStack(spacing: 16) {
-            ZStack {
-                GlyphBeam()
-                    .trim(from: 0, to: beamProgress)
-                    .stroke(palette.ink, style: StrokeStyle(lineWidth: 2, lineCap: .round))
-                GlyphTriangle()
-                    .stroke(palette.ink, style: StrokeStyle(lineWidth: 1.8, lineJoin: .round))
-                    .opacity(showTriangle ? 1 : 0)
-                GlyphBase()
-                    .trim(from: 0, to: baseProgress)
-                    .stroke(palette.ink, style: StrokeStyle(lineWidth: 1.7, lineCap: .round))
-            }
-            .frame(width: 80, height: 80)
-
+        VStack(spacing: 12) {
+            ScaleGlyph()
+                .trim(from: 0, to: glyphProgress)
+                .stroke(palette.ink, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+                .frame(width: 52, height: 52)
             Text("Even")
-                .font(EvenFont.serif(40, .semibold, italic: true))
+                .font(EvenFont.serif(34, .semibold, italic: true))
                 .foregroundStyle(palette.ink)
-                .landing(showWordmark)
+                .opacity(showWordmark ? 1 : 0)
+                .offset(y: showWordmark ? 0 : 8)
         }
         .onAppear {
-            withAnimation(.easeInOut(duration: 0.5)) { beamProgress = 1 }
-            withAnimation(.easeIn(duration: 0.25).delay(0.4)) { showTriangle = true }
-            withAnimation(.easeInOut(duration: 0.4).delay(0.55)) { baseProgress = 1 }
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.95)) {
+            withAnimation(.easeInOut(duration: 0.65)) { glyphProgress = 1 }
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.45)) {
                 showWordmark = true
             }
         }
