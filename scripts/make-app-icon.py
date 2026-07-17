@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
-"""Even app icons: paper ground, faint grain, the ScaleGlyph mark.
+"""Even app icons: textured paper ground, the ScaleGlyph mark.
 
-Generates the iOS 18 appearance set — light (paper + ink), dark (dark paper
-+ light ink, never plain black), and tinted (grayscale glyph on transparent).
-Glyph proportions mirror the SwiftUI ScaleGlyph shape in EvenRootView.swift.
-Usage: make-app-icon.py [span]   (span = glyph fraction of canvas, default 0.58)
+The background must READ as the app's paper at home-screen size (~60px),
+so grain is multi-octave (coarse blotches, not per-pixel dust) with a
+subtle warm vignette. Generates the iOS 18 appearance set — light (deep
+paper + ink), dark (dark paper + light ink), tinted (grayscale glyph on
+transparent). Glyph proportions mirror ScaleGlyph in EvenRootView.swift.
+Usage: make-app-icon.py [span]   (span = glyph fraction, default 0.58)
 """
 import random
 import sys
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 
 SIZE = 1024
 SPAN = float(sys.argv[1]) if len(sys.argv) > 1 else 0.58
@@ -17,28 +19,70 @@ STROKE = int(48 * SPAN / 0.70)
 OUT_DIR = "ios/EvenApp/Assets.xcassets/AppIcon.appiconset"
 
 VARIANTS = [
-    # (filename, background paper tone or None for transparent, glyph color)
-    ("AppIcon.png", (0xF6, 0xF1, 0xE6), (0x26, 0x20, 0x1A)),
-    ("AppIcon-Dark.png", (0x21, 0x1B, 0x15), (0xED, 0xE5, 0xD6)),
-    ("AppIcon-Tinted.png", None, (0x80, 0x80, 0x80)),
+    # (filename, paper tone or None, glyph color, texture gain — dark bases
+    # need a bigger proportional swing to read at all)
+    ("AppIcon.png", (0xE9, 0xE1, 0xD2), (0x26, 0x20, 0x1A), 1.0),
+    ("AppIcon-Dark.png", (0x21, 0x1B, 0x15), (0xED, 0xE5, 0xD6), 2.4),
+    ("AppIcon-Tinted.png", None, (0x80, 0x80, 0x80), 1.0),
 ]
 
+# Luminance swing of the paper texture (fraction of base) and vignette depth.
+GRAIN_AMP = 0.055
+VIGNETTE = 0.045
 
-def render(paper, ink):
-    mode = "RGB" if paper else "RGBA"
-    ground = paper if paper else (0, 0, 0, 0)
-    img = Image.new(mode, (SIZE, SIZE), ground)
+
+def octave(size, seed):
+    """Random L image at `size`, upscaled smooth — one blotch scale."""
+    rng = random.Random(seed)
+    small = Image.new("L", (size, size))
+    small.putdata([rng.randint(0, 255) for _ in range(size * size)])
+    return small.resize((SIZE, SIZE), Image.BILINEAR)
+
+
+def paper_map():
+    """Combined texture map, 128 = neutral. Coarse octaves dominate so the
+    texture survives downscaling to home-screen size."""
+    o1 = octave(12, 1)    # broad clouding
+    o2 = octave(36, 2)    # mid blotches
+    o3 = octave(110, 3)   # fine tooth
+    mix = Image.blend(Image.blend(o1, o2, 0.42), o3, 0.22)
+    mix = mix.filter(ImageFilter.GaussianBlur(1.2))
+
+    # Radial vignette: corners darker, center untouched.
+    v = 64
+    vig = Image.new("L", (v, v))
+    cx = (v - 1) / 2
+    vig.putdata([
+        int(255 * min(1, (((x - cx) ** 2 + (y - cx) ** 2) ** 0.5 / (cx * 1.35)) ** 2))
+        for y in range(v) for x in range(v)
+    ])
+    vig = vig.resize((SIZE, SIZE), Image.BICUBIC)
+
+    # delta = grain swing minus vignette darkening, re-centered on 128.
+    out = Image.new("L", (SIZE, SIZE))
+    gpx, vpx = mix.load(), vig.load()
+    opx = out.load()
+    for y in range(SIZE):
+        for x in range(SIZE):
+            g = (gpx[x, y] - 128) / 128 * GRAIN_AMP
+            d = 1 + g - (vpx[x, y] / 255) * VIGNETTE
+            opx[x, y] = max(0, min(255, int(128 * d)))
+    return out
+
+
+def render(paper, ink, texture, gain):
+    if paper is None:
+        img = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
+    else:
+        # Apply the texture map to the solid paper via per-channel LUTs.
+        channels = []
+        for c in paper:
+            lut = [max(0, min(255, round(c * (1 + (v / 128 - 1) * gain))))
+                   for v in range(256)]
+            channels.append(texture.point(lut))
+        img = Image.merge("RGB", channels)
+
     draw = ImageDraw.Draw(img)
-
-    # Whisper of grain on the paper variants.
-    if paper:
-        rng = random.Random(7)
-        for _ in range(9000):
-            x, y = rng.randrange(SIZE), rng.randrange(SIZE)
-            g = rng.randint(-9, 9)
-            px = tuple(max(0, min(255, c + g)) for c in paper)
-            draw.point((x, y), fill=px)
-
     box = SIZE * SPAN
     ox = (SIZE - box) / 2
     # The glyph's anchors span y 0.29–0.84 of its box; shift up so the mark
@@ -65,7 +109,8 @@ def render(paper, ink):
     return img
 
 
-for name, paper, ink in VARIANTS:
+texture = paper_map()
+for name, paper, ink, gain in VARIANTS:
     out = f"{OUT_DIR}/{name}"
-    render(paper, ink).save(out)
+    render(paper, ink, texture, gain).save(out)
     print(f"wrote {out} (span {SPAN}, stroke {STROKE})")
