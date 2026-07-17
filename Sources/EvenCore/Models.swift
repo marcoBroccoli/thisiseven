@@ -95,6 +95,7 @@ public struct Draft: Codable, Identifiable, Hashable, Sendable {
     public var sourceFrom: String?
     public var sourcePreview: String?
     public var gmail: Bool?
+    public var gmailMessageId: String?
 
     public var isFromGmail: Bool { gmail ?? false }
 }
@@ -209,12 +210,18 @@ public struct GoogleStatus: Codable, Sendable {
     public var email: String?
     public var lastSyncAt: Date?
     public var lastSyncCount: Int?
+    // Live scan-job state — the app polls these while a sync runs.
+    public var syncRunning: Bool?
+    public var scanned: Int?
+    public var classified: Int?
+    public var created: Int?
+    public var hasMore: Bool?
+
+    public var isSyncing: Bool { syncRunning ?? false }
 }
 
-public struct GoogleSyncResult: Codable, Sendable {
-    public var scanned: Int
-    public var created: Int
-    public var skipped: Int
+public struct GoogleSyncStart: Codable, Sendable {
+    public var started: Bool?
 }
 
 public struct APIErrorBody: Codable, Sendable {

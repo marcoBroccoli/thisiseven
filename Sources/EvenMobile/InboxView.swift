@@ -41,7 +41,13 @@ struct InboxView: View {
                         .padding(.top, 14)
                 }
 
-                if model.drafts.isEmpty {
+                if model.gmailSyncing {
+                    GmailReadingStrip(model: model)
+                        .padding(.top, 14)
+                        .transition(.opacity.combined(with: .scale(scale: 0.97)))
+                }
+
+                if model.drafts.isEmpty && !model.gmailSyncing {
                     emptyState
                 } else {
                     VStack(spacing: 10) {
@@ -50,14 +56,22 @@ struct InboxView: View {
                                 .transition(.opacity.combined(with: .scale(scale: 0.97)))
                         }
                     }
-                    .padding(.top, 14)
+                    .padding(.top, model.gmailSyncing ? 10 : 14)
                     .animation(.spring(response: 0.35, dampingFraction: 0.85), value: model.drafts)
 
-                    FooterAphorism(text: "Nothing becomes shared work until one of you approves it.")
+                    if !model.gmailSyncing, model.googleStatus?.hasMore == true {
+                        ReadMoreMailButton(model: model)
+                            .padding(.top, 12)
+                    }
+
+                    if !model.drafts.isEmpty {
+                        FooterAphorism(text: "Nothing becomes shared work until one of you approves it.")
+                    }
                 }
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 26)
+            .animation(.easeOut(duration: 0.3), value: model.gmailSyncing)
         }
         .refreshable { await model.refreshAll() }
         .overlay(alignment: .bottomTrailing) {
@@ -160,12 +174,12 @@ struct DraftCard: View {
                         .capsLabel(8, tracking: 0.8, weight: .bold)
                         .foregroundStyle(draft.urgency == 3 ? palette.clay : palette.sub)
                 }
-                Text(draft.subject)
+                Text(draft.title.isEmpty ? draft.subject : draft.title)
                     .font(EvenFont.serif(14.5))
                     .foregroundStyle(palette.ink)
                     .multilineTextAlignment(.leading)
-                if let preview = draft.sourcePreview, !preview.isEmpty {
-                    Text(preview)
+                if let line = draft.summary ?? draft.sourcePreview, !line.isEmpty {
+                    Text(line)
                         .font(EvenFont.serif(11.5, italic: true))
                         .foregroundStyle(palette.sub)
                         .lineLimit(2)
@@ -279,6 +293,29 @@ struct DraftReviewSheet: View {
             }
             .disabled(working)
             .padding(.top, 6)
+
+            if draft.isFromGmail {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("FROM THE MAIL PILE").capsLabel(9, tracking: 1.4).foregroundStyle(palette.sub)
+                    Text(draft.subject)
+                        .font(EvenFont.serif(12.5, italic: true))
+                        .foregroundStyle(palette.sub)
+                        .lineLimit(2)
+                    if let preview = draft.sourcePreview, !preview.isEmpty {
+                        Text(preview)
+                            .font(EvenFont.serif(11.5, italic: true))
+                            .foregroundStyle(palette.sub.opacity(0.8))
+                            .lineLimit(3)
+                    }
+                    if let gmailID = draft.gmailMessageId {
+                        OpenInGmailButton(messageID: gmailID)
+                            .padding(.top, 4)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(12)
+                .background(RoundedRectangle(cornerRadius: 12).fill(palette.faint))
+            }
 
             Text("Approval creates one piece of shared work with a reminder. Never before.")
                 .font(EvenFont.serif(11.5, italic: true))
@@ -421,5 +458,120 @@ struct FlowRow: Layout {
             x += size.width + spacing
             rowHeight = max(rowHeight, size.height)
         }
+    }
+}
+
+
+// MARK: - Gmail reading strip (live sync)
+
+/// Shown while the backend scans + classifies mail: three pebbles bounce in
+/// sequence and the caption counts batches as drafts stream in below.
+struct GmailReadingStrip: View {
+    @Bindable var model: AppModel
+    @Environment(\.palette) private var palette
+    @State private var beat = false
+
+    var body: some View {
+        HStack(spacing: 12) {
+            HStack(spacing: 5) {
+                ForEach(0..<3, id: \.self) { i in
+                    Circle()
+                        .fill([palette.clay, palette.teal, palette.sub][i])
+                        .frame(width: 8, height: 8)
+                        .offset(y: beat ? -5 : 2)
+                        .animation(.easeInOut(duration: 0.55)
+                            .repeatForever(autoreverses: true)
+                            .delay(Double(i) * 0.18), value: beat)
+                }
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Reading the mail pile…")
+                    .font(EvenFont.serif(13.5, italic: true))
+                    .foregroundStyle(palette.ink)
+                Text(progressLine)
+                    .capsLabel(8.5, tracking: 1.2)
+                    .foregroundStyle(palette.sub)
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 15)
+        .padding(.vertical, 12)
+        .background(RoundedRectangle(cornerRadius: 13).fill(palette.card))
+        .overlay(RoundedRectangle(cornerRadius: 13)
+            .stroke(palette.line, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])))
+        .onAppear { beat = true }
+        .animation(.easeOut(duration: 0.25), value: progressLine)
+    }
+
+    private var progressLine: String {
+        let s = model.googleStatus
+        let read = s?.classified ?? 0
+        let total = s?.scanned ?? 0
+        if total > 0 {
+            return "\(read) OF \(total) READ · DRAFTS APPEAR AS THEY'RE FOUND"
+        }
+        return "DRAFTS APPEAR AS THEY'RE FOUND"
+    }
+}
+
+/// Quiet dashed affordance: the last scan hit its batch limit — read on.
+struct ReadMoreMailButton: View {
+    @Bindable var model: AppModel
+    @Environment(\.palette) private var palette
+
+    var body: some View {
+        Button {
+            Task { await model.syncGmail() }
+        } label: {
+            Text("READ MORE MAIL")
+                .capsLabel(10, tracking: 1.3)
+                .foregroundStyle(palette.sub)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 13)
+                .overlay(RoundedRectangle(cornerRadius: 13)
+                    .stroke(palette.line, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])))
+        }
+        .buttonStyle(PressScaleStyle(scale: 0.98))
+        .accessibilityIdentifier("read-more-mail")
+    }
+}
+
+// MARK: - Open in Gmail
+
+/// Deep-links to the exact message in the Gmail app, falling back to the web
+/// inbox when the app isn't installed. Open-with-fallback needs no
+/// LSApplicationQueriesSchemes entry.
+struct OpenInGmailButton: View {
+    let messageID: String
+    @Environment(\.palette) private var palette
+
+    var body: some View {
+        Button {
+            open()
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: "envelope")
+                    .font(.system(size: 10, weight: .medium))
+                Text("OPEN IN GMAIL").capsLabel(9, tracking: 1.2)
+            }
+            .foregroundStyle(palette.clay)
+        }
+        .buttonStyle(PressScaleStyle(scale: 0.95))
+        .accessibilityIdentifier("open-in-gmail")
+    }
+
+    private func open() {
+        let web = URL(string: "https://mail.google.com/mail/u/0/#all/\(messageID)")!
+        #if canImport(UIKit) && !os(watchOS)
+        if let app = URL(string: "googlegmail:///cv=\(messageID)") {
+            UIApplication.shared.open(app, options: [:]) { success in
+                if !success {
+                    UIApplication.shared.open(web)
+                }
+            }
+        } else {
+            UIApplication.shared.open(web)
+        }
+        #endif
     }
 }

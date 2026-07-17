@@ -1,6 +1,7 @@
 package api
 
 import (
+	"sync"
 	"context"
 	"crypto/rand"
 	"errors"
@@ -10,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/marcoBroccoli/thisiseven/backend/internal/claude"
 	"github.com/marcoBroccoli/thisiseven/backend/internal/google"
 	"github.com/marcoBroccoli/thisiseven/backend/internal/httpx"
 )
@@ -18,6 +20,10 @@ import (
 type API struct {
 	DB     *pgxpool.Pool
 	Google *google.Client
+	Claude *claude.Client
+
+	syncMu   sync.Mutex
+	syncJobs map[string]*syncJob // household id → latest sync job state
 }
 
 // Membership is the resolved caller: member + household + open week. It is

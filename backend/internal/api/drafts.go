@@ -26,6 +26,7 @@ func scanDraft(row pgx.Row) (DraftJSON, error) {
 		return d, err
 	}
 	d.Gmail = gmailID != nil
+	d.GmailMessageID = gmailID
 	if dueOn != nil {
 		d.DueOn = strPtr(dateStr(*dueOn))
 	}

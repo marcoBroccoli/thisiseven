@@ -162,19 +162,37 @@ final class AppModel {
         }
     }
 
+    /// Kicks the backend scan job and polls it live: drafts stream into the
+    /// inbox batch by batch while the loading state runs.
     func syncGmail() async {
+        guard !gmailSyncing else { return }
         gmailSyncing = true
         defer { gmailSyncing = false }
         do {
-            let result = try await api.googleSync()
-            drafts = (try? await api.pendingDrafts()) ?? drafts
-            googleStatus = try? await api.googleStatus()
-            stamp(result.created > 0
-                  ? "GMAIL — \(result.created) NEW DRAFT\(result.created == 1 ? "" : "S")"
-                  : "GMAIL — NOTHING NEW")
+            _ = try await api.googleSync()
         } catch {
-            surface(error)
+            // A sync already in flight is fine — just join it and poll.
+            if (error as? APIError)?.code != "sync_running" {
+                surface(error)
+                return
+            }
         }
+        var finalCreated = 0
+        for _ in 0..<80 {
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            let status = try? await api.googleStatus()
+            if let fresh = try? await api.pendingDrafts() {
+                drafts = fresh
+            }
+            if let status {
+                googleStatus = status
+                finalCreated = status.created ?? 0
+                if !status.isSyncing { break }
+            }
+        }
+        stamp(finalCreated > 0
+              ? "GMAIL — \(finalCreated) NEW DRAFT\(finalCreated == 1 ? "" : "S")"
+              : "GMAIL — NOTHING NEW")
     }
 
     // MARK: Money

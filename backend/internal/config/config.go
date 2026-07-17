@@ -19,6 +19,12 @@ type Config struct {
 	GoogleClientSecret string
 	GoogleOAuthBase    string // test override; default https://oauth2.googleapis.com
 	GoogleAPIBase      string // test override; default https://www.googleapis.com
+
+	// Claude classification of scanned Gmail (Even-voice rewrite + actionable
+	// gate). Empty key falls back to the heuristic extractor.
+	AnthropicKey  string
+	ClaudeAPIBase string // test override; default https://api.anthropic.com
+	ClaudeModel   string // default claude-haiku-4-5-20251001
 }
 
 func Load() (*Config, error) {
@@ -31,6 +37,9 @@ func Load() (*Config, error) {
 		GoogleClientSecret: os.Getenv("GOOGLE_OAUTH_CLIENT_SECRET"),
 		GoogleOAuthBase:    os.Getenv("GOOGLE_OAUTH_BASE"),
 		GoogleAPIBase:      os.Getenv("GOOGLE_API_BASE"),
+		AnthropicKey:       os.Getenv("ANTHROPIC_API_KEY"),
+		ClaudeAPIBase:      os.Getenv("CLAUDE_API_BASE"),
+		ClaudeModel:        os.Getenv("CLAUDE_MODEL"),
 	}
 	if c.DatabaseURL == "" {
 		return nil, fmt.Errorf("EVEN_DATABASE_URL is required")

@@ -315,5 +315,6 @@ public extension EvenAPIClient {
 
     func googleStatus() async throws -> GoogleStatus { try await get("v1/google/status") }
 
-    func googleSync() async throws -> GoogleSyncResult { try await post("v1/google/sync") }
+    /// Starts the async scan job; 409 sync_running means one is already live.
+    func googleSync() async throws -> GoogleSyncStart { try await post("v1/google/sync") }
 }

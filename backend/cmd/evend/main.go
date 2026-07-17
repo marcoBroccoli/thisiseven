@@ -17,6 +17,7 @@ import (
 
 	"github.com/marcoBroccoli/thisiseven/backend/internal/api"
 	"github.com/marcoBroccoli/thisiseven/backend/internal/auth"
+	"github.com/marcoBroccoli/thisiseven/backend/internal/claude"
 	"github.com/marcoBroccoli/thisiseven/backend/internal/config"
 	"github.com/marcoBroccoli/thisiseven/backend/internal/google"
 )
@@ -55,6 +56,12 @@ func main() {
 		DB: db,
 		Google: google.New(cfg.GoogleClientID, cfg.GoogleClientSecret,
 			cfg.GoogleIOSClientID, cfg.GoogleOAuthBase, cfg.GoogleAPIBase),
+		Claude: claude.New(cfg.AnthropicKey, cfg.ClaudeAPIBase, cfg.ClaudeModel),
+	}
+	if app.Claude.Configured() {
+		slog.Info("claude classifier on")
+	} else {
+		slog.Warn("claude classifier off — heuristic fallback")
 	}
 	if app.Google.Configured() {
 		go app.RunGmailPoller(ctx, 30*time.Minute)

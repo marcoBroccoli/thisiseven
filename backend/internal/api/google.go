@@ -10,6 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/marcoBroccoli/thisiseven/backend/internal/claude"
 	"github.com/marcoBroccoli/thisiseven/backend/internal/google"
 	"github.com/marcoBroccoli/thisiseven/backend/internal/httpx"
 )
@@ -109,6 +110,12 @@ func (a *API) GoogleStatus(w http.ResponseWriter, r *http.Request) {
 	if g.LastSyncAt != nil {
 		out["last_sync_at"] = g.LastSyncAt.UTC().Format(time.RFC3339)
 	}
+	job := a.jobSnapshot(m.HouseholdID)
+	out["sync_running"] = job.Running
+	out["scanned"] = job.Scanned
+	out["classified"] = job.Classified
+	out["created"] = job.Created
+	out["has_more"] = job.HasMore
 	httpx.JSON(w, http.StatusOK, out)
 }
 
@@ -125,122 +132,316 @@ func (a *API) GoogleDisconnect(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, http.StatusOK, map[string]any{"connected": false})
 }
 
-// POST /v1/google/sync — manual "scan now".
+// POST /v1/google/sync — start (or join) an async scan-and-classify job.
+// The app polls GET /v1/google/status + /v1/drafts while it runs, so the
+// inbox fills batch by batch.
 func (a *API) GoogleSync(w http.ResponseWriter, r *http.Request) {
 	m := membership(r)
 	if !a.googleReady(w) {
 		return
 	}
-	res, err := a.syncHousehold(r.Context(), m.HouseholdID)
-	if errors.Is(err, pgx.ErrNoRows) {
+	if _, err := a.googleAccount(r.Context(), m.HouseholdID); errors.Is(err, pgx.ErrNoRows) {
 		httpx.Error(w, http.StatusConflict, "not_connected", "connect the household Google account first")
 		return
-	}
-	if errors.Is(err, google.ErrInvalidGrant) {
-		httpx.Error(w, http.StatusConflict, "reconnect_required",
-			"Google access expired — reconnect the household account")
+	} else if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "internal", "account lookup failed")
 		return
 	}
+	if !a.claimSync(m.HouseholdID) {
+		httpx.Error(w, http.StatusConflict, "sync_running", "a scan is already in progress")
+		return
+	}
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
+		defer cancel()
+		a.runSync(ctx, m.HouseholdID)
+	}()
+	httpx.JSON(w, http.StatusAccepted, map[string]any{"started": true})
+}
+
+// syncJob is the in-memory progress of one household's scan. Counters are
+// updated after every classification batch so status polling sees the inbox
+// grow live.
+type syncJob struct {
+	Running    bool
+	Scanned    int
+	Classified int
+	Created    int
+	HasMore    bool
+	Err        string
+}
+
+func (a *API) jobSnapshot(householdID string) syncJob {
+	a.syncMu.Lock()
+	defer a.syncMu.Unlock()
+	if j, ok := a.syncJobs[householdID]; ok {
+		return *j
+	}
+	return syncJob{}
+}
+
+// claimSync flips the household into a running job; false when one is live.
+func (a *API) claimSync(householdID string) bool {
+	a.syncMu.Lock()
+	defer a.syncMu.Unlock()
+	if a.syncJobs == nil {
+		a.syncJobs = map[string]*syncJob{}
+	}
+	if j, ok := a.syncJobs[householdID]; ok && j.Running {
+		return false
+	}
+	a.syncJobs[householdID] = &syncJob{Running: true}
+	return true
+}
+
+func (a *API) updateJob(householdID string, mut func(*syncJob)) {
+	a.syncMu.Lock()
+	defer a.syncMu.Unlock()
+	if j, ok := a.syncJobs[householdID]; ok {
+		mut(j)
+	}
+}
+
+const (
+	syncListWindow = 100 // ids listed from Gmail per run
+	syncTakePerRun = 25  // emails fetched + classified per run ("read more" continues)
+	classifyBatch  = 10  // emails per Claude call
+)
+
+// runSync executes one claimed scan job end to end. Callers must have
+// claimSync'd first.
+func (a *API) runSync(ctx context.Context, householdID string) {
+	err := a.runSyncInner(ctx, householdID)
+	a.updateJob(householdID, func(j *syncJob) {
+		j.Running = false
+		if err != nil {
+			j.Err = err.Error()
+		}
+	})
 	if err != nil {
-		slog.Error("google sync", "err", err)
-		httpx.Error(w, http.StatusBadGateway, "google_sync_failed", "Gmail could not be scanned")
-		return
+		slog.Error("google sync", "household", householdID, "err", err)
 	}
-	httpx.JSON(w, http.StatusOK, res)
 }
 
-type syncResult struct {
-	Scanned int `json:"scanned"`
-	Created int `json:"created"`
-	Skipped int `json:"skipped"`
-}
-
-// syncHousehold scans Gmail into pending drafts. Used by the manual endpoint
-// and the background ticker.
-func (a *API) syncHousehold(ctx context.Context, householdID string) (*syncResult, error) {
+func (a *API) runSyncInner(ctx context.Context, householdID string) error {
 	g, err := a.googleAccount(ctx, householdID)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	token, err := a.Google.AccessToken(ctx, householdID, g.RefreshToken, g.ClientKind)
 	if errors.Is(err, google.ErrInvalidGrant) {
-		// Dead refresh token: force an explicit reconnect, stop the ticker noise.
 		_, _ = a.DB.Exec(ctx, `delete from google_accounts where household_id = $1`, householdID)
 		a.Google.Forget(householdID)
-		return nil, err
+		return err
 	}
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	ids, err := a.Google.ListHouseholdMessages(ctx, token, 25)
+	ids, err := a.Google.ListHouseholdMessages(ctx, token, syncListWindow)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	// Default owner: the member who connected the account, else any member.
+	// Drop everything already classified or already a draft.
+	seen := map[string]bool{}
+	rows, err := a.DB.Query(ctx, `
+		select gmail_message_id from processed_emails where household_id = $1
+		union
+		select gmail_message_id from drafts where household_id = $1 and gmail_message_id is not null`,
+		householdID)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var id string
+		if rows.Scan(&id) == nil {
+			seen[id] = true
+		}
+	}
+	rows.Close()
+
+	var unprocessed []string
+	for _, id := range ids {
+		if !seen[id] {
+			unprocessed = append(unprocessed, id)
+		}
+	}
+	take := unprocessed
+	if len(take) > syncTakePerRun {
+		take = take[:syncTakePerRun]
+	}
+	hasMore := len(unprocessed) > len(take)
+	a.updateJob(householdID, func(j *syncJob) {
+		j.Scanned = len(take)
+		j.HasMore = hasMore
+	})
+
+	// Default owner: whoever connected, else the household's first member.
 	owner := ""
 	if g.ConnectedBy != nil {
 		owner = *g.ConnectedBy
 	} else if err := a.DB.QueryRow(ctx, `
 		select id from members where household_id = $1 order by created_at limit 1`,
 		householdID).Scan(&owner); err != nil {
-		return nil, err
+		return err
 	}
 
-	res := &syncResult{Scanned: len(ids)}
+	created := 0
+	for i := 0; i < len(take); i += classifyBatch {
+		end := i + classifyBatch
+		if end > len(take) {
+			end = len(take)
+		}
+		n, err := a.classifyAndInsert(ctx, householdID, owner, token, take[i:end])
+		if err != nil {
+			return err
+		}
+		created += n
+		a.updateJob(householdID, func(j *syncJob) {
+			j.Classified = end
+			j.Created = created
+		})
+	}
+
+	_, err = a.DB.Exec(ctx, `
+		update google_accounts set last_sync_at = now(), last_sync_count = $1
+		where household_id = $2`, created, householdID)
+	return err
+}
+
+// classifyAndInsert fetches one batch's metadata, runs the Claude classifier
+// (heuristic fallback), inserts actionable drafts, and records every verdict
+// in processed_emails so nothing is ever re-classified.
+func (a *API) classifyAndInsert(ctx context.Context, householdID, owner, token string, ids []string) (created int, err error) {
+	type meta struct {
+		id  string
+		msg *google.Message
+	}
+	var metas []meta
 	for _, id := range ids {
-		var exists bool
-		if err := a.DB.QueryRow(ctx, `
-			select exists(select 1 from drafts where household_id = $1 and gmail_message_id = $2)`,
-			householdID, id).Scan(&exists); err != nil {
-			return nil, err
-		}
-		if exists {
-			res.Skipped++
-			continue
-		}
 		msg, err := a.Google.MessageMeta(ctx, token, id)
 		if err != nil {
-			return nil, err
+			return created, err
 		}
 		if strings.TrimSpace(msg.Subject) == "" {
-			res.Skipped++
+			if _, err := a.DB.Exec(ctx, `
+				insert into processed_emails (household_id, gmail_message_id, actionable)
+				values ($1, $2, false) on conflict do nothing`, householdID, id); err != nil {
+				return created, err
+			}
 			continue
 		}
-		ex := google.Extract(msg.Subject, msg.Snippet, msg.From, time.Now().In(Amsterdam))
-		reminder := "1_day"
-		if ex.DueOn != nil {
-			reminder = "3_days"
+		metas = append(metas, meta{id, msg})
+	}
+	if len(metas) == 0 {
+		return created, nil
+	}
+
+	today := time.Now().In(Amsterdam).Format("2006-01-02")
+	verdicts := map[string]claude.Verdict{}
+	if a.Claude.Configured() {
+		inputs := make([]claude.EmailInput, 0, len(metas))
+		for _, m := range metas {
+			inputs = append(inputs, claude.EmailInput{
+				ID: m.id, From: m.msg.From, Subject: m.msg.Subject,
+				Snippet: m.msg.Snippet, Date: m.msg.Date.Format("2006-01-02"),
+			})
+		}
+		out, err := a.Claude.Classify(ctx, inputs, today)
+		if err != nil {
+			slog.Error("claude classify — falling back to heuristics", "err", err)
+		} else {
+			for _, v := range out {
+				verdicts[v.ID] = v
+			}
+		}
+	}
+
+	for _, m := range metas {
+		v, classified := verdicts[m.id]
+		if !classified {
+			// Heuristic fallback: everything becomes a draft, raw wording.
+			ex := google.Extract(m.msg.Subject, m.msg.Snippet, m.msg.From, time.Now().In(Amsterdam))
+			v = claude.Verdict{
+				ID: m.id, Actionable: true,
+				Title: ex.Title, Urgency: ex.Urgency, AmountCents: ex.AmountCents,
+			}
+			if ex.DueOn != nil {
+				d := ex.DueOn.Format("2006-01-02")
+				v.DueOn = &d
+			}
+		}
+		if err := a.insertVerdict(ctx, householdID, owner, m.id, m.msg, v); err != nil {
+			return created, err
+		}
+		if v.Actionable {
+			created++
+		}
+	}
+	return created, nil
+}
+
+func (a *API) insertVerdict(ctx context.Context, householdID, owner, gmailID string, msg *google.Message, v claude.Verdict) error {
+	tx, err := a.DB.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	if _, err := tx.Exec(ctx, `
+		insert into processed_emails (household_id, gmail_message_id, actionable)
+		values ($1, $2, $3) on conflict do nothing`, householdID, gmailID, v.Actionable); err != nil {
+		return err
+	}
+	if v.Actionable {
+		title := strings.TrimSpace(v.Title)
+		if title == "" {
+			title = msg.Subject
 		}
 		var summary *string
-		if msg.Snippet != "" {
-			// Truncate by runes — a byte slice can split a multi-byte
-			// UTF-8 character and Postgres rejects the invalid tail.
-			s := msg.Snippet
-			if r := []rune(s); len(r) > 240 {
-				s = string(r[:240])
-			}
+		if s := strings.TrimSpace(v.Summary); s != "" {
 			summary = &s
 		}
-		_, err = a.DB.Exec(ctx, `
+		var dueOn *time.Time
+		if v.DueOn != nil {
+			if d, err := time.Parse("2006-01-02", *v.DueOn); err == nil {
+				dueOn = &d
+			}
+		}
+		urgency := v.Urgency
+		if urgency < 1 || urgency > 3 {
+			urgency = 1
+		}
+		var amount *int64
+		if v.AmountCents != nil && *v.AmountCents > 0 {
+			amount = v.AmountCents
+		}
+		reminder := "1_day"
+		if dueOn != nil {
+			reminder = "3_days"
+		}
+		preview := msg.Snippet
+		if r := []rune(preview); len(r) > 240 {
+			preview = string(r[:240])
+		}
+		var previewPtr *string
+		if preview != "" {
+			previewPtr = &preview
+		}
+		if _, err := tx.Exec(ctx, `
 			insert into drafts (household_id, from_label, subject, summary, urgency,
 				title, owner_member_id, amount_cents, due_on, reminder, created_by,
 				gmail_message_id, source_from, source_preview)
-			values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $7, $11, $12, $4)
+			values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $7, $11, $12, $13)
 			on conflict do nothing`,
 			householdID, google.SenderDisplay(msg.From), msg.Subject, summary,
-			ex.Urgency, ex.Title, owner, ex.AmountCents, ex.DueOn, reminder,
-			id, msg.From)
-		if err != nil {
-			return nil, err
+			urgency, title, owner, amount, dueOn, reminder,
+			gmailID, msg.From, previewPtr); err != nil {
+			return err
 		}
-		res.Created++
 	}
-	_, err = a.DB.Exec(ctx, `
-		update google_accounts set last_sync_at = now(), last_sync_count = $1
-		where household_id = $2`, res.Created, householdID)
-	return res, err
+	return tx.Commit(ctx)
 }
 
 // RunGmailPoller re-scans every connected household on the interval until ctx
@@ -267,13 +468,15 @@ func (a *API) RunGmailPoller(ctx context.Context, every time.Duration) {
 			}
 			rows.Close()
 			for _, id := range households {
-				syncCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
-				if res, err := a.syncHousehold(syncCtx, id); err != nil {
-					slog.Error("gmail poller sync", "household", id, "err", err)
-				} else if res.Created > 0 {
-					slog.Info("gmail poller", "household", id, "created", res.Created, "scanned", res.Scanned)
+				if !a.claimSync(id) {
+					continue
 				}
+				syncCtx, cancel := context.WithTimeout(ctx, 4*time.Minute)
+				a.runSync(syncCtx, id)
 				cancel()
+				if job := a.jobSnapshot(id); job.Created > 0 {
+					slog.Info("gmail poller", "household", id, "created", job.Created, "scanned", job.Scanned)
+				}
 			}
 		}
 	}
