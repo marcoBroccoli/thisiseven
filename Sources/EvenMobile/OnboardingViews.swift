@@ -30,68 +30,97 @@ struct WelcomeView: View {
     @State private var working = false
     @State private var showDebugAuth = false
 
+    // Launch choreography: glyph draws itself, then the wordmark, tagline
+    // and options land in turn — settle, don't fade.
+    @State private var glyphProgress: CGFloat = 0
+    @State private var glyphBobbing = false
+    @State private var showTitle = false
+    @State private var showTagline = false
+    @State private var showOptions = false
+
     var body: some View {
         VStack(spacing: 0) {
             Spacer()
 
             ScaleGlyph()
+                .trim(from: 0, to: glyphProgress)
                 .stroke(palette.ink, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
                 .frame(width: 44, height: 44)
+                .offset(y: glyphBobbing ? -3 : 0)
+                .animation(glyphBobbing
+                           ? .easeInOut(duration: 2).repeatForever(autoreverses: true)
+                           : .default,
+                           value: glyphBobbing)
 
             Text("Even")
                 .font(EvenFont.serif(40, .semibold, italic: true))
                 .foregroundStyle(palette.ink)
                 .padding(.top, 10)
+                .landing(showTitle)
 
             Text("The house, weighed honestly.")
                 .font(EvenFont.serif(15, italic: true))
                 .foregroundStyle(palette.sub)
                 .padding(.top, 6)
+                .landing(showTagline)
 
             Spacer()
 
-            if let errorText {
-                Text(errorText)
-                    .font(EvenFont.serif(13, italic: true))
-                    .foregroundStyle(palette.clay)
-                    .multilineTextAlignment(.center)
-                    .padding(.bottom, 12)
-            }
+            Group {
+                if let errorText {
+                    Text(errorText)
+                        .font(EvenFont.serif(13, italic: true))
+                        .foregroundStyle(palette.clay)
+                        .multilineTextAlignment(.center)
+                        .padding(.bottom, 12)
+                }
 
-            SignInWithAppleButton(.signIn) { request in
-                rawNonce = Self.randomNonce()
-                request.requestedScopes = [.fullName, .email]
-                request.nonce = Self.sha256(rawNonce)
-            } onCompletion: { result in
-                handleApple(result)
-            }
-            .signInWithAppleButtonStyle(.black)
-            .frame(height: 50)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-            .disabled(working)
+                SignInWithAppleButton(.signIn) { request in
+                    rawNonce = Self.randomNonce()
+                    request.requestedScopes = [.fullName, .email]
+                    request.nonce = Self.sha256(rawNonce)
+                } onCompletion: { result in
+                    handleApple(result)
+                }
+                .signInWithAppleButtonStyle(.black)
+                .frame(height: 50)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .disabled(working)
 
-            #if DEBUG
-            Button {
-                showDebugAuth = true
-            } label: {
-                Text("DEV — EMAIL SIGN-IN")
-                    .capsLabel(9, tracking: 1.4)
+                #if DEBUG
+                Button {
+                    showDebugAuth = true
+                } label: {
+                    Text("DEV — EMAIL SIGN-IN")
+                        .capsLabel(9, tracking: 1.4)
+                        .foregroundStyle(palette.sub)
+                        .padding(.top, 14)
+                }
+                .sheet(isPresented: $showDebugAuth) {
+                    DebugAuthSheet(session: session)
+                }
+                #endif
+
+                Text("Two people, one household. Your data stays on your own server.")
+                    .font(EvenFont.serif(11.5, italic: true))
                     .foregroundStyle(palette.sub)
-                    .padding(.top, 14)
+                    .multilineTextAlignment(.center)
+                    .padding(.top, 18)
+                    .padding(.bottom, 30)
             }
-            .sheet(isPresented: $showDebugAuth) {
-                DebugAuthSheet(session: session)
-            }
-            #endif
-
-            Text("Two people, one household. Your data stays on your own server.")
-                .font(EvenFont.serif(11.5, italic: true))
-                .foregroundStyle(palette.sub)
-                .multilineTextAlignment(.center)
-                .padding(.top, 18)
-                .padding(.bottom, 30)
+            .landing(showOptions)
         }
         .padding(.horizontal, 34)
+        .onAppear { choreograph() }
+    }
+
+    private func choreograph() {
+        guard glyphProgress == 0 else { return }
+        withAnimation(.easeInOut(duration: 0.9)) { glyphProgress = 1 }
+        withAnimation(.spring(response: 0.55, dampingFraction: 0.8).delay(0.75)) { showTitle = true }
+        withAnimation(.spring(response: 0.55, dampingFraction: 0.8).delay(1.05)) { showTagline = true }
+        withAnimation(.spring(response: 0.6, dampingFraction: 0.85).delay(1.4)) { showOptions = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.1) { glyphBobbing = true }
     }
 
     private func handleApple(_ result: Result<ASAuthorization, Error>) {
@@ -187,6 +216,13 @@ struct DebugAuthSheet: View {
     }
 }
 #endif
+
+private extension View {
+    /// The design's fadeUp: rise 8pt and appear.
+    func landing(_ shown: Bool) -> some View {
+        self.opacity(shown ? 1 : 0).offset(y: shown ? 0 : 8)
+    }
+}
 
 // MARK: - Household setup
 
