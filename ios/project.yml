@@ -1,0 +1,25 @@
+name: Even
+options:
+  bundleIdPrefix: com.umuryavuz
+  deploymentTarget:
+    iOS: "17.0"
+packages:
+  HouseholdCommandCenter:
+    path: ..
+targets:
+  Even:
+    type: application
+    platform: iOS
+    sources: [EvenApp]
+    dependencies:
+      - package: HouseholdCommandCenter
+        product: EvenMobile
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.umuryavuz.even
+        DEVELOPMENT_TEAM: C3XSV85364
+        CODE_SIGN_STYLE: Automatic
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTS_MACCATALYST: NO

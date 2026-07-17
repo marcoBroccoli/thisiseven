@@ -4,3 +4,5 @@
 DerivedData/
 *.xcuserdata/
 .DS_Store
+web/coming-soon/.wrangler/
+ios/Even.xcodeproj/xcuserdata/
