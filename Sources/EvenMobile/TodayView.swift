@@ -21,7 +21,9 @@ struct TodayView: View {
                         .frame(height: 240)
                         .padding(.top, 2)
 
-                    Text(summary.caption)
+                    Text(model.partner == nil
+                         ? "All yours so far. Even starts mattering at two."
+                         : summary.caption)
                         .font(EvenFont.serif(13.5, italic: true))
                         .foregroundStyle(palette.sub)
                         .padding(.top, 2)
@@ -90,35 +92,55 @@ struct TodayView: View {
     }
 }
 
-/// Solo state: surface the invite code until the partner joins.
+/// 09 · "Your partner isn't in yet" card — the code stays on Today.
 struct InviteBanner: View {
     let household: Household
     @Environment(\.palette) private var palette
 
     var body: some View {
-        HStack(spacing: 10) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("WAITING FOR YOUR PARTNER")
-                    .capsLabel(8.5, tracking: 1.4)
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 8) {
+                Text("YOUR PARTNER ISN'T IN YET")
+                    .capsLabel(9, tracking: 1.6)
                     .foregroundStyle(palette.sub)
-                Text("Invite code: \(household.inviteCode)")
-                    .accessibilityIdentifier("invite-code-label")
-                    .font(EvenFont.serif(15, .medium))
+                Spacer()
+                Circle().fill(palette.teal.opacity(0.5)).frame(width: 7, height: 7)
+            }
+
+            HStack(alignment: .center, spacing: 12) {
+                Text(household.inviteCode)
+                    .font(EvenFont.serif(25, .medium))
+                    .kerning(5.5)
                     .foregroundStyle(palette.ink)
                     .textSelection(.enabled)
+                    .accessibilityLabel("Invite code: \(household.inviteCode)")
+                    .accessibilityIdentifier("invite-code-label")
+                Spacer()
+                ShareLink(item: "Join our household on Even — invite code \(household.inviteCode)") {
+                    HStack(spacing: 7) {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 12, weight: .medium))
+                        Text("Share")
+                            .font(EvenFont.serif(14))
+                    }
+                    .foregroundStyle(palette.bg)
+                    .padding(.horizontal, 16)
+                    .frame(height: 38)
+                    .background(RoundedRectangle(cornerRadius: 9).fill(palette.ink))
+                }
+                .buttonStyle(PressScaleStyle(scale: 0.96))
             }
-            Spacer()
-            ShareLink(item: "Join our household on Even — invite code \(household.inviteCode)") {
-                Image(systemName: "square.and.arrow.up")
-                    .font(.system(size: 15, weight: .light))
-                    .foregroundStyle(palette.sub)
-            }
+            .padding(.top, 8)
+
+            Text("The code retires the moment they join.")
+                .font(EvenFont.serif(12, italic: true))
+                .foregroundStyle(palette.sub)
+                .padding(.top, 7)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 11)
-        .background(RoundedRectangle(cornerRadius: 13).fill(palette.card))
-        .overlay(RoundedRectangle(cornerRadius: 13)
-            .stroke(palette.line, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])))
+        .padding(.horizontal, 17)
+        .padding(.vertical, 15)
+        .background(RoundedRectangle(cornerRadius: 16).fill(palette.card))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(palette.line, lineWidth: 1))
     }
 }
 
@@ -216,7 +238,8 @@ struct BeamScaleView: View {
                             counterRotation: -rotation)
                         .offset(x: -148, y: 36)
                     PanView(pebbles: pebbles(for: model.partner?.id), color: partnerColor,
-                            name: model.partner?.displayName ?? "—",
+                            name: model.partner?.displayName ?? "— ?",
+                            ghost: model.partner == nil,
                             counterRotation: -rotation)
                         .offset(x: 148, y: 36)
 
@@ -232,7 +255,8 @@ struct BeamScaleView: View {
                         .monospacedDigit()
                         .contentTransition(.numericText())
                         .animation(.spring(response: 0.6, dampingFraction: 0.8), value: summary.percentPartner)
-                        .foregroundStyle(partnerColor)
+                        .foregroundStyle(model.partner == nil ? AnyShapeStyle(palette.sub.opacity(0.6))
+                                                              : AnyShapeStyle(partnerColor))
                         .offset(x: 128, y: -26)
                 }
                 .rotationEffect(.degrees(rotation))
@@ -255,12 +279,14 @@ struct PanView: View {
     let pebbles: [Pebble]
     let color: Color
     let name: String
+    var ghost = false
     let counterRotation: Double
 
     var body: some View {
         ZStack {
             PanShape()
-                .stroke(palette.ink, style: StrokeStyle(lineWidth: 1.4, lineCap: .round))
+                .stroke(palette.ink, style: StrokeStyle(lineWidth: 1.4, lineCap: .round,
+                                                        dash: ghost ? [3, 5] : []))
                 .frame(width: 96, height: 58)
                 .offset(y: 2)
 
@@ -270,10 +296,11 @@ struct PanView: View {
 
             Text(name.uppercased())
                 .capsLabel(8.5, tracking: 1.7)
-                .foregroundStyle(color)
+                .foregroundStyle(ghost ? AnyShapeStyle(palette.sub) : AnyShapeStyle(color))
                 .offset(y: 24)
         }
         .frame(width: 96, height: 70)
+        .opacity(ghost ? 0.45 : 1)
         .rotationEffect(.degrees(counterRotation), anchor: .top)
         .animation(.spring(response: 1.1, dampingFraction: 0.55), value: counterRotation)
     }

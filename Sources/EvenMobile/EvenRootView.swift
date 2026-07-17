@@ -74,30 +74,73 @@ public struct EvenRootView: View {
 
 // MARK: - Splash
 
-/// Branded boot screen: the scale glyph draws itself, the wordmark lands.
+/// 01 · Splash — the glyph assembles element by element (beam draws,
+/// pointer appears, base draws), then the wordmark lands.
 struct SplashView: View {
     @Environment(\.palette) private var palette
-    @State private var glyphProgress: CGFloat = 0
+    @State private var beamProgress: CGFloat = 0
+    @State private var showTriangle = false
+    @State private var baseProgress: CGFloat = 0
     @State private var showWordmark = false
 
     var body: some View {
-        VStack(spacing: 12) {
-            ScaleGlyph()
-                .trim(from: 0, to: glyphProgress)
-                .stroke(palette.ink, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
-                .frame(width: 52, height: 52)
+        VStack(spacing: 16) {
+            ZStack {
+                GlyphBeam()
+                    .trim(from: 0, to: beamProgress)
+                    .stroke(palette.ink, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                GlyphTriangle()
+                    .stroke(palette.ink, style: StrokeStyle(lineWidth: 1.8, lineJoin: .round))
+                    .opacity(showTriangle ? 1 : 0)
+                GlyphBase()
+                    .trim(from: 0, to: baseProgress)
+                    .stroke(palette.ink, style: StrokeStyle(lineWidth: 1.7, lineCap: .round))
+            }
+            .frame(width: 80, height: 80)
+
             Text("Even")
-                .font(EvenFont.serif(34, .semibold, italic: true))
+                .font(EvenFont.serif(40, .semibold, italic: true))
                 .foregroundStyle(palette.ink)
-                .opacity(showWordmark ? 1 : 0)
-                .offset(y: showWordmark ? 0 : 8)
+                .landing(showWordmark)
         }
         .onAppear {
-            withAnimation(.easeInOut(duration: 0.65)) { glyphProgress = 1 }
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.45)) {
+            withAnimation(.easeInOut(duration: 0.5)) { beamProgress = 1 }
+            withAnimation(.easeIn(duration: 0.25).delay(0.4)) { showTriangle = true }
+            withAnimation(.easeInOut(duration: 0.4).delay(0.55)) { baseProgress = 1 }
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.95)) {
                 showWordmark = true
             }
         }
+    }
+}
+
+/// The glyph split into its three strokes so the splash can draw them in turn.
+struct GlyphBeam: Shape {
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: 0.09 * rect.width, y: 0.42 * rect.height))
+        p.addLine(to: CGPoint(x: 0.91 * rect.width, y: 0.29 * rect.height))
+        return p
+    }
+}
+
+struct GlyphTriangle: Shape {
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: 0.5 * rect.width, y: 0.4 * rect.height))
+        p.addLine(to: CGPoint(x: 0.66 * rect.width, y: 0.66 * rect.height))
+        p.addLine(to: CGPoint(x: 0.34 * rect.width, y: 0.66 * rect.height))
+        p.closeSubpath()
+        return p
+    }
+}
+
+struct GlyphBase: Shape {
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: 0.28 * rect.width, y: 0.84 * rect.height))
+        p.addLine(to: CGPoint(x: 0.72 * rect.width, y: 0.84 * rect.height))
+        return p
     }
 }
 
@@ -109,7 +152,16 @@ struct MainScaffold: View {
     @Environment(\.palette) private var palette
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage("even-google-prompted") private var googlePrompted = false
-    @State private var showGooglePrompt = false
+    @AppStorage("even-seen-invite-reveal") private var seenInviteReveal = false
+    @AppStorage("even-notif-prompted") private var notifPrompted = false
+    @State private var currentExtra: OnboardingExtra?
+
+    enum OnboardingExtra: Identifiable {
+        case inviteReveal, google, notifications
+        var id: Int {
+            switch self { case .inviteReveal: 0; case .google: 1; case .notifications: 2 }
+        }
+    }
 
     private var resetSymbol: String {
         if #available(iOS 18.0, *) { return "arrow.trianglehead.clockwise" }
@@ -159,18 +211,50 @@ struct MainScaffold: View {
                 Task { await model.refreshAll() }
             }
         }
-        .onChange(of: model.googleStatus?.connected) { _, connected in
-            // One-time onboarding ask, once we know Google isn't connected.
-            if connected == false, !googlePrompted, GoogleConnectConfig.isEnabled,
-               !ProcessInfo.processInfo.arguments.contains("--skip-google-prompt") {
-                showGooglePrompt = true
-            }
+        .onChange(of: model.googleStatus?.connected) { _, _ in advanceExtras() }
+        .onChange(of: model.household?.members.count) { _, _ in advanceExtras() }
+        .promptCover(isPresented: Binding(get: { currentExtra != nil },
+                                          set: { if !$0 { currentExtra = nil } })) {
+            extraView
         }
-        .promptCover(isPresented: $showGooglePrompt) {
+    }
+
+    /// Post-setup onboarding pages (design 06 → 08 → 10), each shown once,
+    /// all suppressed for the UI test suites.
+    private func advanceExtras() {
+        guard currentExtra == nil, !skipOnboardingExtras else { return }
+        if !seenInviteReveal, model.household?.partner == nil, model.household != nil {
+            currentExtra = .inviteReveal
+        } else if !googlePrompted, GoogleConnectConfig.isEnabled,
+                  model.googleStatus?.connected == false {
+            currentExtra = .google
+        } else if !notifPrompted, model.googleStatus != nil {
+            currentExtra = .notifications
+        }
+    }
+
+    @ViewBuilder
+    private var extraView: some View {
+        switch currentExtra {
+        case .inviteReveal:
+            InviteRevealView(model: model) {
+                seenInviteReveal = true
+                currentExtra = nil
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { advanceExtras() }
+            }
+        case .google:
             GoogleConnectPrompt(model: model) {
                 googlePrompted = true
-                showGooglePrompt = false
+                currentExtra = nil
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { advanceExtras() }
             }
+        case .notifications:
+            NotificationsPromptView {
+                notifPrompted = true
+                currentExtra = nil
+            }
+        case nil:
+            EmptyView()
         }
     }
 

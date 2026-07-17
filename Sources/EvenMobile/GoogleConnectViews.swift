@@ -78,8 +78,8 @@ extension GoogleConnector: ASWebAuthenticationPresentationContextProviding {
 
 // MARK: - Onboarding step (full-screen, once, skippable)
 
-/// Shown once after the household exists, before daily use — the design's
-/// voice, two choices, never blocks.
+/// 08 · Connect Google — the design's optional step: three icon rows, a
+/// Google-marked button, skippable.
 struct GoogleConnectPrompt: View {
     @Bindable var model: AppModel
     let done: () -> Void
@@ -88,29 +88,34 @@ struct GoogleConnectPrompt: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            OnboardingStepper(step: 2, label: "GOOGLE")
-                .padding(.top, 24)
-
-            Text("ONE LAST THING — OPTIONAL")
+            Text("OPTIONAL · YOU CAN DO THIS ANY TIME")
                 .capsLabel(10, tracking: 1.8)
                 .foregroundStyle(palette.sub)
-                .padding(.top, 18)
+                .padding(.top, 46)
 
-            Text("Let Even read\nthe mail pile")
-                .font(EvenFont.serif(32, .medium))
+            Text("Let Gmail do\nthe noticing.")
+                .font(EvenFont.serif(34, .medium))
                 .foregroundStyle(palette.ink)
+                .lineSpacing(2)
                 .padding(.top, 10)
 
-            Text("Even reads bills and appointments from your Gmail and turns them into drafts for the approval inbox. When you approve one, it lands on your calendar with a reminder.")
-                .font(EvenFont.serif(15))
-                .foregroundStyle(palette.ink)
-                .lineSpacing(4)
-                .padding(.top, 14)
-
-            Text("Read-only on mail. Nothing is shared, nothing is sent. It stays on your own server.")
-                .font(EvenFont.serif(13, italic: true))
+            Text("Read-only. Even never sends, moves, or deletes mail.")
+                .font(EvenFont.serif(14, italic: true))
                 .foregroundStyle(palette.sub)
                 .padding(.top, 12)
+
+            VStack(spacing: 18) {
+                promiseRow(icon: "magnifyingglass",
+                           title: "It scans for bills and appointments",
+                           body: "Utility bills, dentist reminders, school emails — spotted so neither of you has to be the one who notices.")
+                promiseRow(icon: "tray",
+                           title: "Everything lands as a draft",
+                           body: "Into the shared Approval Inbox. Your partner approves before anything becomes a task.")
+                promiseRow(icon: "calendar",
+                           title: "Approved drafts hit the calendar",
+                           body: "One event, one reminder. Never without a yes from one of you.")
+            }
+            .padding(.top, 30)
 
             if let errorText = connector.errorText {
                 Text(errorText)
@@ -121,18 +126,86 @@ struct GoogleConnectPrompt: View {
 
             Spacer()
 
-            PrimaryButton(title: connector.working ? "Connecting…" : "Connect Google",
-                          enabled: !connector.working) {
+            Button {
                 Task {
                     if await connector.connect(model: model) { done() }
                 }
+            } label: {
+                HStack(spacing: 10) {
+                    GoogleGMark()
+                        .frame(width: 18, height: 18)
+                    Text(connector.working ? "Connecting…" : "Connect Google")
+                        .font(EvenFont.sans(15.5, .semibold))
+                }
+                .foregroundStyle(palette.ink)
+                .frame(maxWidth: .infinity)
+                .frame(height: 52)
+                .background(RoundedRectangle(cornerRadius: 12).fill(palette.card))
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(palette.line, lineWidth: 1.5))
             }
-            GhostButton(title: "Later — it also lives in the Inbox") { done() }
-                .padding(.top, 10)
-                .padding(.bottom, 24)
+            .buttonStyle(PressScaleStyle())
+            .disabled(connector.working)
+
+            HStack {
+                Spacer()
+                Button(action: done) {
+                    Text("SKIP FOR NOW")
+                        .capsLabel(10, tracking: 1.4)
+                        .foregroundStyle(palette.sub)
+                        .underline()
+                }
+                Spacer()
+            }
+            .padding(.top, 14)
+            .padding(.bottom, 30)
         }
         .padding(.horizontal, 28)
         .background(palette.bg.ignoresSafeArea())
+    }
+
+    private func promiseRow(icon: String, title: String, body: String) -> some View {
+        HStack(alignment: .top, spacing: 14) {
+            Image(systemName: icon)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(palette.ink)
+                .frame(width: 34, height: 34)
+                .background(Circle().fill(palette.faint))
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(EvenFont.serif(16, .medium))
+                    .foregroundStyle(palette.ink)
+                Text(body)
+                    .font(EvenFont.serif(13.5))
+                    .foregroundStyle(Color(hex: 0x6E6353))
+                    .lineSpacing(3)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
+/// The four-color Google G, drawn as trimmed arcs — close enough at 18pt.
+struct GoogleGMark: View {
+    var body: some View {
+        ZStack {
+            arc(0.03, 0.31, Color(hex: 0xEA4335))   // red — top left
+            arc(0.56, 0.81, Color(hex: 0xFBBC05))   // yellow — bottom left
+            arc(0.31, 0.56, Color(hex: 0x34A853))   // green — bottom right
+            arc(0.81, 0.95, Color(hex: 0x4285F4))   // blue — top right
+            Rectangle()
+                .fill(Color(hex: 0x4285F4))
+                .frame(width: 8, height: 3.2)
+                .offset(x: 3.2, y: 0)
+        }
+        .frame(width: 18, height: 18)
+    }
+
+    private func arc(_ from: CGFloat, _ to: CGFloat, _ color: Color) -> some View {
+        Circle()
+            .trim(from: from, to: to)
+            .stroke(color, style: StrokeStyle(lineWidth: 3.2))
+            .rotationEffect(.degrees(180))
+            .padding(1.6)
     }
 }
 

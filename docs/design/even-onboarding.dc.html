@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<title>Even — Onboarding</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..700&family=Source+Sans+3:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#E9E1D2; -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; }
+  a { color:#A0522D; text-decoration:underline; text-underline-offset:2px; }
+  a:hover { color:#7A3A1D; }
+  *::-webkit-scrollbar { width:0; height:0; }
+  [data-grain] { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E"); }
+  @keyframes spFade { 0% { opacity:0; } 4% { opacity:1; } 90% { opacity:1; } 100% { opacity:0; } }
+  @keyframes spBeam { 0% { stroke-dashoffset:14; } 22% { stroke-dashoffset:0; } 100% { stroke-dashoffset:0; } }
+  @keyframes spTri { 0%, 18% { opacity:0; } 34% { opacity:1; } 100% { opacity:1; } }
+  @keyframes spBase { 0%, 28% { stroke-dashoffset:8; opacity:0; } 29% { opacity:1; } 46% { stroke-dashoffset:0; } 100% { stroke-dashoffset:0; opacity:1; } }
+  @keyframes spWord { 0%, 48% { opacity:0; transform:translateY(10px); } 64% { opacity:1; transform:translateY(0); } 100% { opacity:1; transform:translateY(0); } }
+</style>
+</helmet>
+<div style="--ada:{{hueA}}; --umut:{{hueU}}; min-height:100vh; box-sizing:border-box; display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:center; gap:52px; padding:56px 40px 80px; font-family:'Newsreader',Georgia,serif; color:#2A231B;">
+
+  <div style="width:290px; max-width:92vw; display:flex; flex-direction:column; gap:14px; padding-top:120px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">EVEN · ONBOARDING · iPHONE 402×874</div>
+    <div style="font-size:31px; line-height:1.14; font-weight:500; letter-spacing:-.01em;">The way in.</div>
+    <div style="font-size:15px; line-height:1.55; color:#6E6353;">Ten screens from App Store to a working household: splash, one sign-in, a three-page how-it-works, create or join, Gmail, and exactly two nudges. Same pebbles, same beam.</div>
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.06em; color:#8B7E6B; line-height:1.6;">READS LEFT TO RIGHT, IN FLOW ORDER.<br>THE APP ITSELF → <a href="Even Play.dc.html">EVEN PLAY</a></div>
+  </div>
+
+  <div style="flex:none; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">01 · SPLASH — LOOPS THROUGH ENTRANCE</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+      <div data-screen-label="Splash" style="height:100%; box-sizing:border-box; display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden; background:#F6F1E6; color:#26201A; font-family:'Newsreader',Georgia,serif;">
+        <div data-grain style="position:absolute; inset:0; z-index:50; opacity:.055; pointer-events:none; mix-blend-mode:multiply;"></div>
+        <div style="display:flex; flex-direction:column; align-items:center; animation:spFade 4s ease-in-out infinite;">
+          <svg width="80" height="80" viewBox="0 0 16 16">
+            <line x1="1.5" y1="6.8" x2="14.5" y2="4.6" stroke="#26201A" stroke-width="1.4" stroke-linecap="round" style="stroke-dasharray:14; animation:spBeam 4s ease infinite;"></line>
+            <path d="M8 6.4 L10.6 10.6 H5.4 Z" fill="none" stroke="#26201A" stroke-width="1.3" stroke-linejoin="round" style="animation:spTri 4s ease infinite;"></path>
+            <line x1="4.5" y1="13.4" x2="11.5" y2="13.4" stroke="#26201A" stroke-width="1.2" stroke-linecap="round" style="stroke-dasharray:8; animation:spBase 4s ease infinite;"></line>
+          </svg>
+          <div style="margin-top:16px; font-size:40px; font-style:italic; font-weight:600; letter-spacing:-.01em; animation:spWord 4s ease infinite;">Even</div>
+        </div>
+      </div>
+    </x-import>
+    <div style="display:flex; gap:14px; margin-top:6px;">
+      <div style="display:flex; flex-direction:column; gap:8px; align-items:center;">
+        <div style="width:96px; height:200px; border-radius:22px; border:1px solid rgba(38,32,26,.16); background:#F6F1E6; display:flex; align-items:center; justify-content:center;">
+          <svg width="34" height="34" viewBox="0 0 16 16"><line x1="1.5" y1="6.8" x2="14.5" y2="4.6" stroke="#26201A" stroke-width="1.4" stroke-linecap="round" style="stroke-dasharray:14; stroke-dashoffset:6;"></line></svg>
+        </div>
+        <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:600; letter-spacing:.14em; color:#8B7E6B;">0.0s · BEAM DRAWS</div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px; align-items:center;">
+        <div style="width:96px; height:200px; border-radius:22px; border:1px solid rgba(38,32,26,.16); background:#F6F1E6; display:flex; align-items:center; justify-content:center;">
+          <svg width="34" height="34" viewBox="0 0 16 16"><line x1="1.5" y1="6.8" x2="14.5" y2="4.6" stroke="#26201A" stroke-width="1.4" stroke-linecap="round"></line><path d="M8 6.4 L10.6 10.6 H5.4 Z" fill="none" stroke="#26201A" stroke-width="1.3" stroke-linejoin="round"></path><line x1="4.5" y1="13.4" x2="11.5" y2="13.4" stroke="#26201A" stroke-width="1.2" stroke-linecap="round"></line></svg>
+        </div>
+        <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:600; letter-spacing:.14em; color:#8B7E6B;">1.2s · SCALE SETTLES</div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px; align-items:center;">
+        <div style="width:96px; height:200px; border-radius:22px; border:1px solid rgba(38,32,26,.16); background:#F6F1E6; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;">
+          <svg width="34" height="34" viewBox="0 0 16 16"><line x1="1.5" y1="6.8" x2="14.5" y2="4.6" stroke="#26201A" stroke-width="1.4" stroke-linecap="round"></line><path d="M8 6.4 L10.6 10.6 H5.4 Z" fill="none" stroke="#26201A" stroke-width="1.3" stroke-linejoin="round"></path><line x1="4.5" y1="13.4" x2="11.5" y2="13.4" stroke="#26201A" stroke-width="1.2" stroke-linecap="round"></line></svg>
+          <div style="font-size:16px; font-style:italic; font-weight:600; color:#26201A; font-family:'Newsreader',Georgia,serif;">Even</div>
+        </div>
+        <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:600; letter-spacing:.14em; color:#8B7E6B;">2.4s · WORDMARK</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="flex:none; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">02 · WELCOME / SIGN IN</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+      <div data-screen-label="Welcome" style="height:100%; box-sizing:border-box; display:flex; flex-direction:column; position:relative; overflow:hidden; background:#F6F1E6; color:#26201A; font-family:'Newsreader',Georgia,serif; padding:64px 28px 40px;">
+        <div data-grain style="position:absolute; inset:0; z-index:50; opacity:.055; pointer-events:none; mix-blend-mode:multiply;"></div>
+        <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
+          <svg width="58" height="58" viewBox="0 0 16 16"><line x1="1.5" y1="6.8" x2="14.5" y2="4.6" stroke="#26201A" stroke-width="1.4" stroke-linecap="round"></line><path d="M8 6.4 L10.6 10.6 H5.4 Z" fill="none" stroke="#26201A" stroke-width="1.3" stroke-linejoin="round"></path><line x1="4.5" y1="13.4" x2="11.5" y2="13.4" stroke="#26201A" stroke-width="1.2" stroke-linecap="round"></line></svg>
+          <div style="margin-top:14px; font-size:46px; font-style:italic; font-weight:600; letter-spacing:-.01em;">Even</div>
+          <div style="margin-top:12px; font-size:17px; line-height:1.5; color:#6E6353; max-width:250px;">One house, two people, kept even.</div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:14px;">
+          <button style="width:100%; height:52px; border-radius:12px; border:none; background:#000; color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:9px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:16px; font-weight:600;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="#fff"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.56-1.702"></path></svg>
+            <span>Sign in with Apple</span>
+          </button>
+          <div style="text-align:center; font-style:italic; font-size:12.5px; color:#8A7D69;">Only the two of you ever see what's inside. No ads, no tracking.</div>
+        </div>
+      </div>
+    </x-import>
+  </div>
+
+  <div style="flex:none; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">03 · HOW IT WORKS — 1 OF 3</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+      <div data-screen-label="How it works 1" style="height:100%; box-sizing:border-box; display:flex; flex-direction:column; position:relative; overflow:hidden; background:#F6F1E6; color:#26201A; font-family:'Newsreader',Georgia,serif; padding:64px 28px 36px;">
+        <div data-grain style="position:absolute; inset:0; z-index:50; opacity:.055; pointer-events:none; mix-blend-mode:multiply;"></div>
+        <div style="display:flex; align-items:center;">
+          <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9.5px; font-weight:600; letter-spacing:.18em; color:#8A7D69;">HOW EVEN WORKS</span>
+          <span style="flex:1;"></span>
+          <button style="border:none; background:transparent; padding:4px 0; cursor:pointer; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.14em; color:#8A7D69; text-decoration:underline; text-underline-offset:3px;">SKIP</button>
+        </div>
+        <div style="flex:1; display:flex; align-items:center; justify-content:center;">
+          <svg width="252" height="168" viewBox="0 0 240 160">
+            <line x1="22" y1="80" x2="218" y2="56" stroke="#26201A" stroke-width="2.4" stroke-linecap="round"></line>
+            <circle cx="120" cy="68" r="3.2" fill="#26201A"></circle>
+            <line x1="120" y1="68" x2="120" y2="132" stroke="#26201A" stroke-width="2"></line>
+            <line x1="94" y1="132" x2="146" y2="132" stroke="#26201A" stroke-width="2" stroke-linecap="round"></line>
+            <path d="M26 80 L10 114 M26 80 L42 114" stroke="#26201A" stroke-width="1.2" opacity=".55" fill="none"></path>
+            <path d="M4 114 Q26 130 48 114" stroke="#26201A" stroke-width="2.2" fill="none" stroke-linecap="round"></path>
+            <circle cx="19" cy="110" r="3.6" fill="var(--ada,#A6552F)"></circle><circle cx="27" cy="109" r="4.2" fill="var(--ada,#A6552F)"></circle><circle cx="35" cy="111" r="3" fill="var(--ada,#A6552F)"></circle><circle cx="23" cy="103" r="3" fill="var(--ada,#A6552F)"></circle><circle cx="31" cy="102" r="2.6" fill="var(--ada,#A6552F)"></circle>
+            <path d="M214 56 L198 90 M214 56 L230 90" stroke="#26201A" stroke-width="1.2" opacity=".55" fill="none"></path>
+            <path d="M192 90 Q214 106 236 90" stroke="#26201A" stroke-width="2.2" fill="none" stroke-linecap="round"></path>
+            <circle cx="209" cy="86" r="3" fill="var(--umut,#37756D)"></circle><circle cx="217" cy="85" r="3.4" fill="var(--umut,#37756D)"></circle><circle cx="224" cy="87" r="2.6" fill="var(--umut,#37756D)"></circle>
+          </svg>
+        </div>
+        <div style="min-height:210px;">
+          <h1 style="margin:0; font-size:30px; line-height:1.12; font-weight:500; letter-spacing:-.015em;">Work you can weigh.</h1>
+          <div style="margin-top:10px; font-size:15.5px; line-height:1.55; color:#6E6353;">Every finished task drops a pebble in your pan — heavier chores, heavier pebbles. The beam shows the week's balance at a glance, so nobody has to keep score out loud.</div>
+        </div>
+        <div style="display:flex; justify-content:center; gap:6px; margin:14px 0 16px;">
+          <span style="width:18px; height:6px; border-radius:99px; background:#26201A;"></span>
+          <span style="width:6px; height:6px; border-radius:99px; background:rgba(38,32,26,.2);"></span>
+          <span style="width:6px; height:6px; border-radius:99px; background:rgba(38,32,26,.2);"></span>
+        </div>
+        <button style="width:100%; height:50px; border-radius:10px; border:none; background:#26201A; color:#F6F1E6; cursor:pointer; font-family:'Newsreader',Georgia,serif; font-size:16px; font-weight:500;">Next</button>
+      </div>
+    </x-import>
+  </div>
+
+  <div style="flex:none; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">03 · HOW IT WORKS — 2 OF 3</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+      <div data-screen-label="How it works 2" style="height:100%; box-sizing:border-box; display:flex; flex-direction:column; position:relative; overflow:hidden; background:#F6F1E6; color:#26201A; font-family:'Newsreader',Georgia,serif; padding:64px 28px 36px;">
+        <div data-grain style="position:absolute; inset:0; z-index:50; opacity:.055; pointer-events:none; mix-blend-mode:multiply;"></div>
+        <div style="display:flex; align-items:center;">
+          <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9.5px; font-weight:600; letter-spacing:.18em; color:#8A7D69;">HOW EVEN WORKS</span>
+          <span style="flex:1;"></span>
+          <button style="border:none; background:transparent; padding:4px 0; cursor:pointer; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.14em; color:#8A7D69; text-decoration:underline; text-underline-offset:3px;">SKIP</button>
+        </div>
+        <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:9px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <svg width="34" height="26" viewBox="0 0 34 26"><rect x="1" y="1" width="32" height="24" rx="5" fill="none" stroke="#26201A" stroke-width="1.5"></rect><path d="M2 3 L17 14 L32 3" fill="none" stroke="#26201A" stroke-width="1.5" stroke-linejoin="round"></path></svg>
+            <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:600; letter-spacing:.16em; color:#8A7D69;">GMAIL · READ-ONLY</span>
+          </div>
+          <svg width="2" height="20" viewBox="0 0 2 20"><line x1="1" y1="0" x2="1" y2="20" stroke="#8A7D69" stroke-width="1.5" stroke-dasharray="3 4"></line></svg>
+          <div style="width:210px; border:1.5px solid rgba(38,32,26,.16); border-radius:13px; padding:11px 14px; background:#FBF7EE;">
+            <div style="display:flex; align-items:baseline; gap:8px;">
+              <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:700; letter-spacing:.08em;">CITY OF UTRECHT</span>
+              <span style="flex:1;"></span>
+              <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:8px; font-weight:700; letter-spacing:.08em; color:var(--ada,#A6552F);">DRAFT</span>
+            </div>
+            <div style="margin-top:3px; font-size:14.5px;">Water bill — €84, due Friday</div>
+            <div style="margin-top:4px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:600; letter-spacing:.06em; color:#8A7D69;">NEEDS YOUR PARTNER'S OK</div>
+          </div>
+          <svg width="2" height="20" viewBox="0 0 2 20"><line x1="1" y1="0" x2="1" y2="20" stroke="#8A7D69" stroke-width="1.5" stroke-dasharray="3 4"></line></svg>
+          <div style="border:2px solid #26201A; border-radius:7px; padding:8px 15px; transform:rotate(-2deg); font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:700; letter-spacing:.14em;">APPROVED → TASK + CALENDAR</div>
+        </div>
+        <div style="min-height:210px;">
+          <h1 style="margin:0; font-size:30px; line-height:1.12; font-weight:500; letter-spacing:-.015em;">Drafts, not demands.</h1>
+          <div style="margin-top:10px; font-size:15.5px; line-height:1.55; color:#6E6353;">Bills and appointments in your Gmail become drafts in a shared inbox. A draft turns into a task or calendar event only after your partner has looked at it and approved.</div>
+        </div>
+        <div style="display:flex; justify-content:center; gap:6px; margin:14px 0 16px;">
+          <span style="width:6px; height:6px; border-radius:99px; background:rgba(38,32,26,.2);"></span>
+          <span style="width:18px; height:6px; border-radius:99px; background:#26201A;"></span>
+          <span style="width:6px; height:6px; border-radius:99px; background:rgba(38,32,26,.2);"></span>
+        </div>
+        <button style="width:100%; height:50px; border-radius:10px; border:none; background:#26201A; color:#F6F1E6; cursor:pointer; font-family:'Newsreader',Georgia,serif; font-size:16px; font-weight:500;">Next</button>
+      </div>
+    </x-import>
+  </div>
+
+  <div style="flex:none; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">03 · HOW IT WORKS — 3 OF 3</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+      <div data-screen-label="How it works 3" style="height:100%; box-sizing:border-box; display:flex; flex-direction:column; position:relative; overflow:hidden; background:#F6F1E6; color:#26201A; font-family:'Newsreader',Georgia,serif; padding:64px 28px 36px;">
+        <div data-grain style="position:absolute; inset:0; z-index:50; opacity:.055; pointer-events:none; mix-blend-mode:multiply;"></div>
+        <div style="display:flex; align-items:center;">
+          <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9.5px; font-weight:600; letter-spacing:.18em; color:#8A7D69;">HOW EVEN WORKS</span>
+          <span style="flex:1;"></span>
+          <button style="border:none; background:transparent; padding:4px 0; cursor:pointer; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.14em; color:#8A7D69; text-decoration:underline; text-underline-offset:3px;">SKIP</button>
+        </div>
+        <div style="flex:1; display:flex; align-items:center; justify-content:center;">
+          <div style="position:relative; width:210px; height:110px;">
+            <div style="position:absolute; left:0; right:0; top:26px; height:2px; border-radius:1px; background:#26201A;"></div>
+            <div style="position:absolute; left:-2px; top:21px; width:9px; height:9px; border-radius:99px; background:var(--ada,#A6552F);"></div>
+            <div style="position:absolute; right:-2px; top:21px; width:9px; height:9px; border-radius:99px; background:var(--umut,#37756D);"></div>
+            <svg width="16" height="11" viewBox="0 0 20 13" style="position:absolute; left:50%; top:29px; transform:translateX(-50%);"><path d="M10 1.2 L18.6 12 H1.4 Z" fill="none" stroke="#26201A" stroke-width="1.5" stroke-linejoin="round"></path></svg>
+            <span style="position:absolute; left:24px; top:56px; width:6px; height:6px; border-radius:99px; background:var(--ada,#A6552F); opacity:.4;"></span>
+            <span style="position:absolute; left:44px; top:70px; width:8px; height:8px; border-radius:99px; background:var(--ada,#A6552F); opacity:.25;"></span>
+            <span style="position:absolute; left:32px; top:86px; width:5px; height:5px; border-radius:99px; background:var(--ada,#A6552F); opacity:.18;"></span>
+            <span style="position:absolute; right:28px; top:60px; width:7px; height:7px; border-radius:99px; background:var(--umut,#37756D); opacity:.35;"></span>
+            <span style="position:absolute; right:50px; top:74px; width:5px; height:5px; border-radius:99px; background:var(--umut,#37756D); opacity:.25;"></span>
+            <span style="position:absolute; right:36px; top:88px; width:6px; height:6px; border-radius:99px; background:var(--umut,#37756D); opacity:.16;"></span>
+            <span style="position:absolute; left:50%; top:100px; transform:translateX(-50%); font-family:'Source Sans 3',system-ui,sans-serif; font-size:8px; font-weight:600; letter-spacing:.28em; color:#8A7D69;">SUNDAY · 6 PM</span>
+          </div>
+        </div>
+        <div style="min-height:210px;">
+          <h1 style="margin:0; font-size:30px; line-height:1.12; font-weight:500; letter-spacing:-.015em;">Sunday, pour the pans.</h1>
+          <div style="margin-top:10px; font-size:15.5px; line-height:1.55; color:#6E6353;">Once a week, ten minutes together: look at the balance honestly, say one kind thing each, trade what isn't working. Then the pans empty and Monday starts level.</div>
+        </div>
+        <div style="display:flex; justify-content:center; gap:6px; margin:14px 0 16px;">
+          <span style="width:6px; height:6px; border-radius:99px; background:rgba(38,32,26,.2);"></span>
+          <span style="width:6px; height:6px; border-radius:99px; background:rgba(38,32,26,.2);"></span>
+          <span style="width:18px; height:6px; border-radius:99px; background:#26201A;"></span>
+        </div>
+        <button style="width:100%; height:50px; border-radius:10px; border:none; background:#26201A; color:#F6F1E6; cursor:pointer; font-family:'Newsreader',Georgia,serif; font-size:16px; font-weight:500;">Get started</button>
+      </div>
+    </x-import>
+  </div>
+
+  <div style="flex:none; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">04 · PATH CHOICE</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+      <div data-screen-label="Path choice" style="height:100%; box-sizing:border-box; display:flex; flex-direction:column; position:relative; overflow:hidden; background:#F6F1E6; color:#26201A; font-family:'Newsreader',Georgia,serif; padding:64px 28px 40px;">
+        <div data-grain style="position:absolute; inset:0; z-index:50; opacity:.055; pointer-events:none; mix-blend-mode:multiply;"></div>
+        <div style="padding-top:22px;">
+          <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.18em; color:#8A7D69;">SIGNED IN · ADA</div>
+          <h1 style="margin:10px 0 0; font-size:34px; line-height:1.08; font-weight:500; letter-spacing:-.02em;">Set up your<br>household.</h1>
+          <div style="margin-top:12px; font-style:italic; font-size:14px; color:#8A7D69;">An Even household holds exactly two people.</div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:12px; margin-top:28px;">
+          <button style="text-align:left; width:100%; border:1.5px solid rgba(38,32,26,.16); background:#FBF7EE; border-radius:16px; padding:18px 18px; cursor:pointer; font-family:'Newsreader',Georgia,serif; color:#26201A; display:flex; align-items:center; gap:14px;">
+            <div style="flex:1; min-width:0;">
+              <div style="font-size:19px; font-weight:500;">Start a new household</div>
+              <div style="margin-top:4px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:11px; font-weight:600; letter-spacing:.03em; color:#8A7D69;">YOU'LL GET A CODE TO HAND YOUR PARTNER</div>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#26201A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h10M9 4l4 4-4 4"></path></svg>
+          </button>
+          <button style="text-align:left; width:100%; border:1.5px solid rgba(38,32,26,.16); background:transparent; border-radius:16px; padding:18px 18px; cursor:pointer; font-family:'Newsreader',Georgia,serif; color:#26201A; display:flex; align-items:center; gap:14px;">
+            <div style="flex:1; min-width:0;">
+              <div style="font-size:19px; font-weight:500;">Join with a code</div>
+              <div style="margin-top:4px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:11px; font-weight:600; letter-spacing:.03em; color:#8A7D69;">YOUR PARTNER GAVE YOU SIX CHARACTERS</div>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#26201A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h10M9 4l4 4-4 4"></path></svg>
+          </button>
+        </div>
+        <div style="flex:1;"></div>
+        <div style="text-align:center;">
+          <button style="border:none; background:transparent; padding:6px; cursor:pointer; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.14em; color:#8A7D69; text-decoration:underline; text-underline-offset:3px;">SIGN OUT</button>
+        </div>
+      </div>
+    </x-import>
+  </div>
+
+  <div style="flex:none; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">05 · CREATE HOUSEHOLD</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+      <div data-screen-label="Create household" style="height:100%; box-sizing:border-box; display:flex; flex-direction:column; position:relative; overflow:hidden; background:#F6F1E6; color:#26201A; font-family:'Newsreader',Georgia,serif; padding:64px 28px 40px;">
+        <div data-grain style="position:absolute; inset:0; z-index:50; opacity:.055; pointer-events:none; mix-blend-mode:multiply;"></div>
+        <button style="align-self:flex-start; border:none; background:transparent; padding:4px 0; cursor:pointer; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.12em; color:#8A7D69;">← BACK</button>
+        <h1 style="margin:18px 0 0; font-size:34px; line-height:1.08; font-weight:500; letter-spacing:-.02em;">Name your<br>household.</h1>
+        <div style="margin-top:12px; font-style:italic; font-size:14px; color:#8A7D69;">Both of these can change later.</div>
+        <div style="margin-top:34px;">
+          <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9.5px; font-weight:600; letter-spacing:.18em; color:#8A7D69;">HOUSEHOLD NAME</div>
+          <div style="margin-top:6px; padding:6px 0 10px; border-bottom:1.5px solid rgba(38,32,26,.16); font-size:22px;">The Attic</div>
+        </div>
+        <div style="margin-top:26px;">
+          <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9.5px; font-weight:600; letter-spacing:.18em; color:#8A7D69;">YOUR NAME</div>
+          <div style="margin-top:6px; padding:6px 0 10px; border-bottom:1.5px solid rgba(38,32,26,.16); font-size:22px;">Ada</div>
+          <div style="margin-top:10px; font-style:italic; font-size:12.5px; color:#8A7D69;">This is the name on your pan of the scale — what your partner sees on tasks and pebbles.</div>
+        </div>
+        <div style="flex:1;"></div>
+        <button style="width:100%; height:50px; border-radius:10px; border:none; background:#26201A; color:#F6F1E6; cursor:pointer; font-family:'Newsreader',Georgia,serif; font-size:16px; font-weight:500;">Create household</button>
+      </div>
+    </x-import>
+  </div>
+
+  <div style="flex:none; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">06 · INVITE CODE REVEAL</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+      <div data-screen-label="Invite code" style="height:100%; box-sizing:border-box; display:flex; flex-direction:column; position:relative; overflow:hidden; background:#F6F1E6; color:#26201A; font-family:'Newsreader',Georgia,serif; padding:64px 28px 40px;">
+        <div data-grain style="position:absolute; inset:0; z-index:50; opacity:.055; pointer-events:none; mix-blend-mode:multiply;"></div>
+        <div style="padding-top:22px;">
+          <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.18em; color:#8A7D69;">THE ATTIC · CREATED</div>
+          <h1 style="margin:10px 0 0; font-size:34px; line-height:1.08; font-weight:500; letter-spacing:-.02em;">Now, your<br>partner.</h1>
+          <div style="margin-top:12px; font-style:italic; font-size:14px; color:#8A7D69;">One code. It works exactly once.</div>
+        </div>
+        <div style="display:flex; justify-content:center; gap:8px; margin-top:32px;">
+          <sc-for list="{{codeChars}}" as="ch" hint-placeholder-count="6">
+            <div style="width:44px; height:58px; border:1.5px solid rgba(38,32,26,.2); border-radius:11px; background:#FBF7EE; display:flex; align-items:center; justify-content:center; font-size:27px; font-weight:500;">{{ch}}</div>
+          </sc-for>
+        </div>
+        <button style="margin-top:24px; width:100%; height:50px; border-radius:10px; border:none; background:#26201A; color:#F6F1E6; cursor:pointer; font-family:'Newsreader',Georgia,serif; font-size:16px; font-weight:500; display:flex; align-items:center; justify-content:center; gap:9px;">
+          <svg width="15" height="17" viewBox="0 0 15 17" fill="none" stroke="#F6F1E6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 1v10M4 4l3.5-3L11 4"></path><path d="M2.5 8H2a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1h-.5"></path></svg>
+          <span>Share the code</span>
+        </button>
+        <div style="margin-top:20px; background:rgba(38,32,26,.055); border-radius:13px; padding:14px 16px;">
+          <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:600; letter-spacing:.16em; color:#8A7D69;">WHAT YOUR PARTNER DOES NEXT</div>
+          <div style="margin-top:6px; font-style:italic; font-size:14px; line-height:1.5;">They install Even, choose "Join with a code", and type this in. The moment they land, the code retires — a household holds exactly two.</div>
+        </div>
+        <div style="flex:1;"></div>
+        <div style="text-align:center;">
+          <button style="border:none; background:transparent; padding:6px; cursor:pointer; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.14em; color:#8A7D69; text-decoration:underline; text-underline-offset:3px;">CONTINUE — THE CODE STAYS ON TODAY</button>
+        </div>
+      </div>
+    </x-import>
+  </div>
+
+  <div style="flex:none; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">07 · JOIN HOUSEHOLD</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+      <div data-screen-label="Join household" style="height:100%; box-sizing:border-box; display:flex; flex-direction:column; position:relative; overflow:hidden; background:#F6F1E6; color:#26201A; font-family:'Newsreader',Georgia,serif; padding:64px 28px 40px;">
+        <div data-grain style="position:absolute; inset:0; z-index:50; opacity:.055; pointer-events:none; mix-blend-mode:multiply;"></div>
+        <button style="align-self:flex-start; border:none; background:transparent; padding:4px 0; cursor:pointer; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.12em; color:#8A7D69;">← BACK</button>
+        <h1 style="margin:18px 0 0; font-size:34px; line-height:1.08; font-weight:500; letter-spacing:-.02em;">Enter the<br>code.</h1>
+        <div style="margin-top:12px; font-style:italic; font-size:14px; color:#8A7D69;">Six characters, from your partner.</div>
+        <div style="display:flex; justify-content:center; gap:8px; margin-top:30px;">
+          <sc-for list="{{codeChars}}" as="ch" hint-placeholder-count="6">
+            <div style="width:44px; height:58px; border:1.5px solid rgba(38,32,26,.2); border-radius:11px; background:#FBF7EE; display:flex; align-items:center; justify-content:center; font-size:27px; font-weight:500;">{{ch}}</div>
+          </sc-for>
+        </div>
+        <div style="margin-top:30px;">
+          <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9.5px; font-weight:600; letter-spacing:.18em; color:#8A7D69;">YOUR NAME</div>
+          <div style="margin-top:6px; padding:6px 0 10px; border-bottom:1.5px solid rgba(38,32,26,.16); font-size:22px;">Umut</div>
+        </div>
+        <div style="flex:1;"></div>
+        <button style="width:100%; height:50px; border-radius:10px; border:none; background:#26201A; color:#F6F1E6; cursor:pointer; font-family:'Newsreader',Georgia,serif; font-size:16px; font-weight:500;">Join household</button>
+      </div>
+    </x-import>
+  </div>
+
+  <div style="flex:none; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">07 · JOIN — ERROR STATE</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+      <div data-screen-label="Join error" style="height:100%; box-sizing:border-box; display:flex; flex-direction:column; position:relative; overflow:hidden; background:#F6F1E6; color:#26201A; font-family:'Newsreader',Georgia,serif; padding:64px 28px 40px;">
+        <div data-grain style="position:absolute; inset:0; z-index:50; opacity:.055; pointer-events:none; mix-blend-mode:multiply;"></div>
+        <button style="align-self:flex-start; border:none; background:transparent; padding:4px 0; cursor:pointer; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.12em; color:#8A7D69;">← BACK</button>
+        <h1 style="margin:18px 0 0; font-size:34px; line-height:1.08; font-weight:500; letter-spacing:-.02em;">Enter the<br>code.</h1>
+        <div style="margin-top:12px; font-style:italic; font-size:14px; color:#8A7D69;">Six characters, from your partner.</div>
+        <div style="display:flex; justify-content:center; gap:8px; margin-top:30px;">
+          <sc-for list="{{codeErr}}" as="ch" hint-placeholder-count="6">
+            <div style="width:44px; height:58px; border:1.5px solid var(--ada,#A6552F); border-radius:11px; background:#FBF7EE; display:flex; align-items:center; justify-content:center; font-size:27px; font-weight:500; color:var(--ada,#A6552F);">{{ch}}</div>
+          </sc-for>
+        </div>
+        <div style="margin-top:14px; text-align:center; font-style:italic; font-size:13.5px; line-height:1.5; color:var(--ada,#A6552F);">That code doesn't match an open household — or it's already been used. Check it with your partner; codes retire once both of you are in.</div>
+        <div style="margin-top:24px;">
+          <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9.5px; font-weight:600; letter-spacing:.18em; color:#8A7D69;">YOUR NAME</div>
+          <div style="margin-top:6px; padding:6px 0 10px; border-bottom:1.5px solid rgba(38,32,26,.16); font-size:22px;">Umut</div>
+        </div>
+        <div style="flex:1;"></div>
+        <button style="width:100%; height:50px; border-radius:10px; border:1px solid rgba(38,32,26,.16); background:transparent; color:#8A7D69; cursor:pointer; font-family:'Newsreader',Georgia,serif; font-size:16px; font-weight:500;">Try again</button>
+      </div>
+    </x-import>
+  </div>
+
+  <div style="flex:none; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">08 · CONNECT GOOGLE — OPTIONAL</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+      <div data-screen-label="Connect Google" style="height:100%; box-sizing:border-box; display:flex; flex-direction:column; position:relative; overflow:hidden; background:#F6F1E6; color:#26201A; font-family:'Newsreader',Georgia,serif; padding:64px 28px 40px;">
+        <div data-grain style="position:absolute; inset:0; z-index:50; opacity:.055; pointer-events:none; mix-blend-mode:multiply;"></div>
+        <div style="padding-top:22px;">
+          <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.18em; color:#8A7D69;">OPTIONAL · YOU CAN DO THIS ANY TIME</div>
+          <h1 style="margin:10px 0 0; font-size:34px; line-height:1.08; font-weight:500; letter-spacing:-.02em;">Let Gmail do<br>the noticing.</h1>
+          <div style="margin-top:12px; font-style:italic; font-size:14px; color:#8A7D69;">Read-only. Even never sends, moves, or deletes mail.</div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:18px; margin-top:30px;">
+          <div style="display:flex; gap:14px; align-items:flex-start;">
+            <div style="flex:none; width:34px; height:34px; border-radius:999px; background:rgba(38,32,26,.055); display:flex; align-items:center; justify-content:center;">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#26201A" stroke-width="1.4" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"></circle><path d="M10.5 10.5 14 14"></path></svg>
+            </div>
+            <div style="flex:1;">
+              <div style="font-size:16px; font-weight:500;">It scans for bills and appointments</div>
+              <div style="margin-top:3px; font-size:13.5px; line-height:1.5; color:#6E6353;">Utility bills, dentist reminders, school emails — spotted so neither of you has to be the one who notices.</div>
+            </div>
+          </div>
+          <div style="display:flex; gap:14px; align-items:flex-start;">
+            <div style="flex:none; width:34px; height:34px; border-radius:999px; background:rgba(38,32,26,.055); display:flex; align-items:center; justify-content:center;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#26201A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13.5 8 5.5h8l4 8"></path><path d="M4 13.5h4.5l1.5 2.5h4l1.5-2.5H20V17a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17Z"></path></svg>
+            </div>
+            <div style="flex:1;">
+              <div style="font-size:16px; font-weight:500;">Everything lands as a draft</div>
+              <div style="margin-top:3px; font-size:13.5px; line-height:1.5; color:#6E6353;">Into the shared Approval Inbox. Your partner approves before anything becomes a task.</div>
+            </div>
+          </div>
+          <div style="display:flex; gap:14px; align-items:flex-start;">
+            <div style="flex:none; width:34px; height:34px; border-radius:999px; background:rgba(38,32,26,.055); display:flex; align-items:center; justify-content:center;">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#26201A" stroke-width="1.4" stroke-linecap="round"><rect x="1.5" y="2.5" width="13" height="12" rx="2"></rect><path d="M1.5 6h13M5 1v3M11 1v3"></path></svg>
+            </div>
+            <div style="flex:1;">
+              <div style="font-size:16px; font-weight:500;">Approved drafts hit the calendar</div>
+              <div style="margin-top:3px; font-size:13.5px; line-height:1.5; color:#6E6353;">One event, one reminder. Never without a yes from one of you.</div>
+            </div>
+          </div>
+        </div>
+        <div style="flex:1;"></div>
+        <button style="width:100%; height:52px; border-radius:12px; border:1.5px solid rgba(38,32,26,.16); background:#FBF7EE; color:#26201A; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:15.5px; font-weight:600;">
+          <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"></path><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09C3.26 21.3 7.31 24 12 24z"></path><path fill="#FBBC05" d="M5.27 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.98-3.09z"></path><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.98 3.09c.95-2.85 3.6-4.96 6.73-4.96z"></path></svg>
+          <span>Connect Google</span>
+        </button>
+        <div style="text-align:center; margin-top:14px;">
+          <button style="border:none; background:transparent; padding:6px; cursor:pointer; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.14em; color:#8A7D69; text-decoration:underline; text-underline-offset:3px;">SKIP FOR NOW</button>
+        </div>
+      </div>
+    </x-import>
+  </div>
+
+  <div style="flex:none; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">09 · WAITING FOR PARTNER — TODAY, SOLO</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+      <div data-screen-label="Waiting for partner" style="height:100%; box-sizing:border-box; display:flex; flex-direction:column; position:relative; overflow:hidden; background:#F6F1E6; color:#26201A; font-family:'Newsreader',Georgia,serif;">
+        <div data-grain style="position:absolute; inset:0; z-index:50; opacity:.055; pointer-events:none; mix-blend-mode:multiply;"></div>
+        <div style="padding:64px 20px 4px; display:flex; align-items:center; gap:7px;">
+          <svg width="15" height="15" viewBox="0 0 16 16"><line x1="1.5" y1="6.8" x2="14.5" y2="4.6" stroke="#26201A" stroke-width="1.6" stroke-linecap="round"></line><path d="M8 6.4 L10.6 10.6 H5.4 Z" fill="none" stroke="#26201A" stroke-width="1.5" stroke-linejoin="round"></path><line x1="4.5" y1="13.4" x2="11.5" y2="13.4" stroke="#26201A" stroke-width="1.4" stroke-linecap="round"></line></svg>
+          <span style="font-size:18px; font-style:italic; font-weight:600;">Even</span>
+        </div>
+        <div style="flex:1; overflow:hidden; padding:0 20px;">
+          <div style="position:relative; height:228px; margin:2px -6px 0;">
+            <div style="position:absolute; left:50%; top:196px; width:120px; height:2px; border-radius:1px; background:#26201A; transform:translateX(-50%);"></div>
+            <div style="position:absolute; left:50%; top:64px; width:2px; height:132px; background:#26201A; transform:translateX(-50%);"></div>
+            <div style="position:absolute; left:50%; top:186px; transform:translateX(-50%); font-family:'Source Sans 3',system-ui,sans-serif; font-size:7.5px; font-weight:600; letter-spacing:.3em; color:#8A7D69; background:#F6F1E6; padding:0 6px; z-index:3;">WK 1</div>
+            <div style="position:absolute; left:50%; top:64px; width:300px; height:0; transform:translateX(-50%) rotate(-7deg); z-index:2;">
+              <div style="position:absolute; left:0; right:0; top:-1.5px; height:3px; border-radius:2px; background:#26201A;"></div>
+              <div style="position:absolute; left:50%; top:-4px; width:8px; height:8px; border-radius:99px; background:#26201A; transform:translateX(-50%);"></div>
+              <div style="position:absolute; left:-2px; top:44px; width:0; height:0; transform:rotate(7deg);">
+                <div style="position:absolute; left:-2px; top:-46px; width:4px; height:4px; border-radius:99px; background:#26201A;"></div>
+                <svg width="96" height="58" viewBox="0 0 96 58" style="position:absolute; left:-48px; top:-45px;">
+                  <path d="M48 2 L12 46 M48 2 L84 46" stroke="#26201A" stroke-width="1.3" fill="none" opacity=".55"></path>
+                  <path d="M6 46 Q48 66 90 46" stroke="#26201A" stroke-width="2.2" fill="none" stroke-linecap="round"></path>
+                </svg>
+                <div style="position:absolute; left:-39px; top:-26px; width:78px; height:26px; display:flex; flex-wrap:wrap-reverse; align-content:flex-end; justify-content:center; align-items:flex-end; gap:1.5px;">
+                  <span style="width:9px; height:9px; border-radius:99px; background:var(--ada,#A6552F);"></span>
+                  <span style="width:7px; height:7px; border-radius:99px; background:var(--ada,#A6552F); opacity:.9;"></span>
+                  <span style="width:8px; height:8px; border-radius:99px; background:var(--ada,#A6552F);"></span>
+                  <span style="width:6px; height:6px; border-radius:99px; background:var(--ada,#A6552F); opacity:.85;"></span>
+                  <span style="width:8px; height:8px; border-radius:99px; background:var(--ada,#A6552F); opacity:.95;"></span>
+                </div>
+                <div style="position:absolute; left:-39px; top:16px; width:78px; text-align:center; font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:600; letter-spacing:.2em; color:var(--ada,#A6552F);">ADA</div>
+              </div>
+              <div style="position:absolute; right:-2px; top:44px; width:0; height:0; transform:rotate(7deg); opacity:.45;">
+                <div style="position:absolute; left:-2px; top:-46px; width:4px; height:4px; border-radius:99px; background:#26201A;"></div>
+                <svg width="96" height="58" viewBox="0 0 96 58" style="position:absolute; left:-48px; top:-45px;">
+                  <path d="M48 2 L12 46 M48 2 L84 46" stroke="#26201A" stroke-width="1.3" fill="none" opacity=".55" stroke-dasharray="3 4"></path>
+                  <path d="M6 46 Q48 66 90 46" stroke="#26201A" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-dasharray="3 5"></path>
+                </svg>
+                <div style="position:absolute; left:-39px; top:16px; width:78px; text-align:center; font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:600; letter-spacing:.2em; color:#8A7D69;">— ?</div>
+              </div>
+              <div style="position:absolute; left:6px; bottom:14px;">
+                <div style="font-size:34px; line-height:.9; font-weight:500; color:var(--ada,#A6552F); font-variant-numeric:tabular-nums;">100</div>
+              </div>
+              <div style="position:absolute; right:6px; bottom:14px; text-align:right;">
+                <div style="font-size:34px; line-height:.9; font-weight:500; color:#8A7D69; opacity:.6; font-variant-numeric:tabular-nums;">0</div>
+              </div>
+            </div>
+          </div>
+          <div style="text-align:center; font-style:italic; font-size:13.5px; color:#8A7D69; margin-top:2px;">All yours so far. Even starts mattering at two.</div>
+          <div style="margin-top:18px; background:#FBF7EE; border:1px solid rgba(38,32,26,.14); border-radius:16px; padding:15px 17px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:600; letter-spacing:.16em; color:#8A7D69;">YOUR PARTNER ISN'T IN YET</span>
+              <span style="flex:1;"></span>
+              <span style="width:7px; height:7px; border-radius:99px; background:var(--umut,#37756D); opacity:.5;"></span>
+            </div>
+            <div style="margin-top:8px; display:flex; align-items:center; gap:12px;">
+              <div style="font-size:25px; font-weight:500; letter-spacing:.22em;">{{code}}</div>
+              <span style="flex:1;"></span>
+              <button style="height:38px; padding:0 16px; border-radius:9px; border:none; background:#26201A; color:#F6F1E6; cursor:pointer; font-family:'Newsreader',Georgia,serif; font-size:14px; display:flex; align-items:center; gap:7px;">
+                <svg width="12" height="14" viewBox="0 0 15 17" fill="none" stroke="#F6F1E6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 1v10M4 4l3.5-3L11 4"></path><path d="M2.5 8H2a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1h-.5"></path></svg>
+                <span>Share</span>
+              </button>
+            </div>
+            <div style="margin-top:7px; font-style:italic; font-size:12px; color:#8A7D69;">The code retires the moment they join.</div>
+          </div>
+          <div style="margin-top:18px;">
+            <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9.5px; font-weight:600; letter-spacing:.15em; color:#8A7D69;">TODAY</div>
+            <div style="display:flex; gap:10px; align-items:center; padding:11px 0; border-bottom:1px solid rgba(38,32,26,.055);">
+              <span style="flex:none; width:27px; height:27px; border-radius:999px; border:1.5px solid rgba(38,32,26,.25);"></span>
+              <div style="flex:1; min-width:0;">
+                <div style="font-size:15px; line-height:1.3;">Water the balcony plants</div>
+                <div style="margin-top:2px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:600; letter-spacing:.06em; color:#8A7D69;">EVERY 3 DAYS · LIGHT</div>
+              </div>
+              <span style="flex:none; width:20px; height:20px; border-radius:999px; background:var(--ada,#A6552F); color:#FBF7EE; display:flex; align-items:center; justify-content:center; font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:700;">A</span>
+            </div>
+            <div style="display:flex; gap:10px; align-items:center; padding:11px 0; border-bottom:1px solid rgba(38,32,26,.055);">
+              <span style="flex:none; width:27px; height:27px; border-radius:999px; border:1.5px solid rgba(38,32,26,.25);"></span>
+              <div style="flex:1; min-width:0;">
+                <div style="font-size:15px; line-height:1.3;">Call the landlord about the boiler</div>
+                <div style="margin-top:2px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:600; letter-spacing:.06em; color:#8A7D69;">TODAY · HEAVY</div>
+              </div>
+              <span style="flex:none; width:20px; height:20px; border-radius:999px; background:var(--ada,#A6552F); color:#FBF7EE; display:flex; align-items:center; justify-content:center; font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:700;">A</span>
+            </div>
+          </div>
+        </div>
+        <div style="flex:none; display:flex; border-top:1px solid rgba(38,32,26,.14); background:#F6F1E6; padding:8px 4px 26px;">
+          <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; padding:6px 0; color:#26201A;">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3.5 11.2 20.5 8.4"></path><path d="M12 10.4 14.4 14.4 H9.6 Z" stroke-linejoin="round"></path><path d="M7.5 17.5h9"></path></svg>
+            <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:600; letter-spacing:.1em;">TODAY</span>
+          </div>
+          <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; padding:6px 0; color:#8A7D69;">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13.5 8 5.5h8l4 8"></path><path d="M4 13.5h4.5l1.5 2.5h4l1.5-2.5H20V17a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17Z"></path></svg>
+            <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:600; letter-spacing:.1em;">INBOX · 0</span>
+          </div>
+          <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; padding:6px 0; color:#8A7D69;">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="12" r="5.4"></circle><circle cx="15" cy="12" r="5.4"></circle></svg>
+            <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:600; letter-spacing:.1em;">MONEY</span>
+          </div>
+          <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; padding:6px 0; color:#8A7D69;">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"></path><path d="M19.8 3.5v3.6h-3.6"></path></svg>
+            <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:600; letter-spacing:.1em;">RESET</span>
+          </div>
+        </div>
+      </div>
+    </x-import>
+  </div>
+
+  <div style="flex:none; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">10 · NOTIFICATIONS ASK</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+      <div data-screen-label="Notifications ask" style="height:100%; box-sizing:border-box; display:flex; flex-direction:column; position:relative; overflow:hidden; background:#F6F1E6; color:#26201A; font-family:'Newsreader',Georgia,serif; padding:64px 28px 40px;">
+        <div data-grain style="position:absolute; inset:0; z-index:50; opacity:.055; pointer-events:none; mix-blend-mode:multiply;"></div>
+        <div style="padding-top:22px;">
+          <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.18em; color:#8A7D69;">BEFORE iOS ASKS</div>
+          <h1 style="margin:10px 0 0; font-size:34px; line-height:1.08; font-weight:500; letter-spacing:-.02em;">Two nudges.<br>That's all.</h1>
+          <div style="margin-top:12px; font-style:italic; font-size:14px; color:#8A7D69;">Even is quiet by design.</div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:14px; margin-top:30px;">
+          <div style="border:1.5px solid rgba(38,32,26,.16); background:#FBF7EE; border-radius:16px; padding:15px 17px; display:flex; gap:14px; align-items:flex-start;">
+            <div style="flex:none; width:34px; height:34px; border-radius:999px; background:rgba(38,32,26,.055); display:flex; align-items:center; justify-content:center;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#26201A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"></path><path d="M19.8 3.5v3.6h-3.6"></path></svg>
+            </div>
+            <div style="flex:1;">
+              <div style="font-size:16px; font-weight:500;">Sunday, 6:00 PM</div>
+              <div style="margin-top:3px; font-size:13.5px; line-height:1.5; color:#6E6353;">One reminder for the weekly reset. Move it or mute it whenever you like.</div>
+            </div>
+          </div>
+          <div style="border:1.5px solid rgba(38,32,26,.16); background:#FBF7EE; border-radius:16px; padding:15px 17px; display:flex; gap:14px; align-items:flex-start;">
+            <div style="flex:none; width:34px; height:34px; border-radius:999px; background:rgba(38,32,26,.055); display:flex; align-items:center; justify-content:center;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#26201A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13.5 8 5.5h8l4 8"></path><path d="M4 13.5h4.5l1.5 2.5h4l1.5-2.5H20V17a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17Z"></path></svg>
+            </div>
+            <div style="flex:1;">
+              <div style="font-size:16px; font-weight:500;">A draft needs you</div>
+              <div style="margin-top:3px; font-size:13.5px; line-height:1.5; color:#6E6353;">One ping when your partner sends something for your approval.</div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:18px; text-align:center; font-style:italic; font-size:13px; color:#8A7D69;">No streaks, no re-engagement, no guilt.</div>
+        <div style="flex:1;"></div>
+        <button style="width:100%; height:50px; border-radius:10px; border:none; background:#26201A; color:#F6F1E6; cursor:pointer; font-family:'Newsreader',Georgia,serif; font-size:16px; font-weight:500;">Turn them on</button>
+        <div style="margin-top:6px; text-align:center; font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:600; letter-spacing:.1em; color:#B8AC99;">iOS WILL CONFIRM NEXT</div>
+        <div style="text-align:center; margin-top:10px;">
+          <button style="border:none; background:transparent; padding:6px; cursor:pointer; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.14em; color:#8A7D69; text-decoration:underline; text-underline-offset:3px;">NOT NOW</button>
+        </div>
+      </div>
+    </x-import>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;duotone&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;Clay &amp; Teal&quot;, &quot;Plum &amp; Olive&quot;, &quot;Rust &amp; Indigo&quot;], &quot;default&quot;: &quot;Clay &amp; Teal&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Look&quot; },
+  &quot;inviteCode&quot;: { &quot;editor&quot;: &quot;text&quot;, &quot;default&quot;: &quot;KV38QT&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Content&quot; }
+}">
+class Component extends DCLogic {
+  renderVals() {
+    const PAL = {
+      'Clay & Teal':   { la: 'oklch(0.54 0.105 40)',  lu: 'oklch(0.54 0.075 200)' },
+      'Plum & Olive':  { la: 'oklch(0.54 0.09 340)',  lu: 'oklch(0.54 0.08 120)' },
+      'Rust & Indigo': { la: 'oklch(0.54 0.11 55)',   lu: 'oklch(0.54 0.09 275)' }
+    };
+    const p = PAL[this.props.duotone] || PAL['Clay & Teal'];
+    const raw = (this.props.inviteCode ?? 'KV38QT').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6).padEnd(6, 'X');
+    const codeChars = raw.split('');
+    const codeErr = codeChars.slice(0, 5).concat([codeChars[5] === 'X' ? 'K' : 'X']);
+    return { hueA: p.la, hueU: p.lu, code: raw, codeChars, codeErr };
+  }
+}
+</script>
+</body>
+</html>

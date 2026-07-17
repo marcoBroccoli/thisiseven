@@ -111,22 +111,33 @@ final class EvenE2ETests: XCTestCase {
     private func signUp(_ app: XCUIApplication, email: String) {
         tap(app.buttons["dev-email-signin"])
         typeInto(app.textFields["auth-email"], email, app: app)
-        let password = app.secureTextFields.firstMatch
+        let password = app.textFields["auth-password"]
         XCTAssertTrue(password.waitForExistence(timeout: 8))
         password.tap()
         password.typeText(pass)
         tapExpecting(app.buttons["Sign up"], reveals: app.buttons["Start our household"],
                      attempts: 3, revealTimeout: 6)
+        dismissSavePassword()
+    }
+
+    /// iOS offers to save the typed password; the sheet eats every tap
+    /// underneath it — swat it from the springboard when it shows up.
+    private func dismissSavePassword() {
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        if springboard.buttons["Not Now"].waitForExistence(timeout: 3) {
+            springboard.buttons["Not Now"].tap()
+        }
     }
 
     private func signIn(_ app: XCUIApplication, email: String) {
         tap(app.buttons["dev-email-signin"])
         typeInto(app.textFields["auth-email"], email, app: app)
-        let password = app.secureTextFields.firstMatch
+        let password = app.textFields["auth-password"]
         XCTAssertTrue(password.waitForExistence(timeout: 8))
         password.tap()
         password.typeText(pass)
         tap(app.buttons["Sign in"])
+        dismissSavePassword()
     }
 
     private func addTask(_ app: XCUIApplication, title: String) {
