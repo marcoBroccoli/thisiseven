@@ -19,11 +19,17 @@ func scanDraft(row pgx.Row) (DraftJSON, error) {
 	var d DraftJSON
 	var dueOn *time.Time
 	var gmailID *string
+	var category *string
 	err := row.Scan(&d.ID, &d.FromLabel, &d.Subject, &d.Summary, &d.Urgency,
 		&d.Title, &d.OwnerMemberID, &d.AmountCents, &dueOn, &d.Reminder,
-		&d.Status, &d.CreatedByMemberID, &gmailID, &d.SourceFrom, &d.SourcePreview)
+		&d.Status, &d.CreatedByMemberID, &gmailID, &d.SourceFrom, &d.SourcePreview,
+		&category)
 	if err != nil {
 		return d, err
+	}
+	d.Category = "other"
+	if category != nil && *category != "" {
+		d.Category = *category
 	}
 	d.Gmail = gmailID != nil
 	d.GmailMessageID = gmailID
@@ -35,7 +41,7 @@ func scanDraft(row pgx.Row) (DraftJSON, error) {
 
 const draftCols = `id, from_label, subject, summary, urgency, title,
 	owner_member_id, amount_cents, due_on, reminder, status, created_by,
-	gmail_message_id, source_from, source_preview`
+	gmail_message_id, source_from, source_preview, category`
 
 func (a *API) fetchDraft(ctx context.Context, m *Membership, id string) (DraftJSON, error) {
 	return scanDraft(a.DB.QueryRow(ctx, `
@@ -148,14 +154,20 @@ func (a *API) CreateDraft(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	category := "other"
+	if in.AmountCents != nil {
+		category = "bills"
+	} else if dueOn != nil {
+		category = "appointments"
+	}
 	var id string
 	err := a.DB.QueryRow(r.Context(), `
 		insert into drafts (household_id, from_label, subject, summary, urgency,
-			title, owner_member_id, amount_cents, due_on, reminder, created_by)
-		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) returning id`,
+			title, owner_member_id, amount_cents, due_on, reminder, created_by, category)
+		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) returning id`,
 		m.HouseholdID, strings.TrimSpace(*in.FromLabel), strings.TrimSpace(*in.Subject),
 		in.Summary, *in.Urgency, title, owner, in.AmountCents, dueOn, reminder,
-		m.MemberID).Scan(&id)
+		m.MemberID, category).Scan(&id)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "internal", "could not create draft")
 		return

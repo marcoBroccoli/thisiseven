@@ -8,6 +8,8 @@ struct InboxView: View {
     @Bindable var model: AppModel
     @Environment(\.palette) private var palette
     @State private var reviewing: Draft?
+    /// Collapsed category keys — in-memory only, resets each launch.
+    @State private var collapsed: Set<String> = []
     @State private var proposing = false
 
     var body: some View {
@@ -50,14 +52,21 @@ struct InboxView: View {
                 if model.drafts.isEmpty && !model.gmailSyncing {
                     emptyState
                 } else {
-                    VStack(spacing: 10) {
-                        ForEach(model.drafts) { draft in
-                            DraftCard(model: model, draft: draft) { reviewing = draft }
-                                .transition(.opacity.combined(with: .scale(scale: 0.97)))
+                    VStack(spacing: 0) {
+                        ForEach(DraftCategory.ordered, id: \.key) { cat in
+                            let items = model.drafts.filter { $0.categoryKey == cat.key }
+                            if !items.isEmpty {
+                                DraftCategorySection(model: model, category: cat,
+                                                     drafts: items,
+                                                     collapsed: collapsedBinding(cat.key)) {
+                                    reviewing = $0
+                                }
+                            }
                         }
                     }
                     .padding(.top, model.gmailSyncing ? 10 : 14)
                     .animation(.spring(response: 0.35, dampingFraction: 0.85), value: model.drafts)
+                    .animation(.spring(response: 0.35, dampingFraction: 0.85), value: collapsed)
 
                     if !model.gmailSyncing, model.googleStatus?.hasMore == true {
                         ReadMoreMailButton(model: model)
@@ -95,6 +104,13 @@ struct InboxView: View {
         .sheet(isPresented: $proposing) {
             ProposeDraftSheet(model: model)
         }
+    }
+
+    private func collapsedBinding(_ key: String) -> Binding<Bool> {
+        Binding(get: { collapsed.contains(key) },
+                set: { isOn in
+                    if isOn { collapsed.insert(key) } else { collapsed.remove(key) }
+                })
     }
 
     private var kicker: String {
@@ -573,5 +589,67 @@ struct OpenInGmailButton: View {
             UIApplication.shared.open(web)
         }
         #endif
+    }
+}
+
+
+// MARK: - Inbox categories
+
+struct DraftCategory {
+    let key: String
+    let label: String
+
+    /// Section order per Umur: money first, paperwork last.
+    static let ordered: [DraftCategory] = [
+        .init(key: "bills", label: "BILLS"),
+        .init(key: "appointments", label: "APPOINTMENTS"),
+        .init(key: "subscriptions", label: "SUBSCRIPTIONS"),
+        .init(key: "admin", label: "THE ADMIN"),
+        .init(key: "other", label: "EVERYTHING ELSE"),
+    ]
+}
+
+/// One collapsible category of drafts: caps header with count + chevron,
+/// cards fold away with a spring.
+struct DraftCategorySection: View {
+    @Bindable var model: AppModel
+    let category: DraftCategory
+    let drafts: [Draft]
+    @Binding var collapsed: Bool
+    let open: (Draft) -> Void
+    @Environment(\.palette) private var palette
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                collapsed.toggle()
+            } label: {
+                HStack(spacing: 6) {
+                    Text("\(category.label) · \(drafts.count)")
+                        .capsLabel(9.5, tracking: 1.4)
+                        .foregroundStyle(palette.sub)
+                    Spacer()
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(palette.sub)
+                        .rotationEffect(.degrees(collapsed ? -90 : 0))
+                }
+                .padding(.vertical, 10)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(PressScaleStyle(scale: 0.98))
+            .accessibilityIdentifier("inbox-section-\(category.key)")
+
+            if !collapsed {
+                VStack(spacing: 10) {
+                    ForEach(drafts) { draft in
+                        DraftCard(model: model, draft: draft) { open(draft) }
+                            .transition(.opacity.combined(with: .scale(scale: 0.97)))
+                    }
+                }
+                .padding(.bottom, 8)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
     }
 }

@@ -39,7 +39,7 @@ func TestClassifyParsesVerdicts(t *testing.T) {
 	verdicts, err := c.Classify(context.Background(), []EmailInput{
 		{ID: "m1", From: "Vattenfall <x@v.nl>", Subject: "Your July energy bill", Snippet: "€112.40 due"},
 		{ID: "m2", From: "News <n@x.com>", Subject: "Weekly digest"},
-	}, "2026-07-17")
+	}, nil, "2026-07-17")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ func TestClassifyRetriesOn500(t *testing.T) {
 	defer srv.Close()
 
 	c := New("k", srv.URL, "")
-	if _, err := c.Classify(context.Background(), []EmailInput{{ID: "x"}}, "2026-07-17"); err != nil {
+	if _, err := c.Classify(context.Background(), []EmailInput{{ID: "x"}}, nil, "2026-07-17"); err != nil {
 		t.Fatal(err)
 	}
 	if calls.Load() != 2 {
@@ -91,7 +91,7 @@ func TestClassifyDoesNotRetryOn400(t *testing.T) {
 	defer srv.Close()
 
 	c := New("k", srv.URL, "")
-	if _, err := c.Classify(context.Background(), []EmailInput{{ID: "x"}}, "2026-07-17"); err == nil {
+	if _, err := c.Classify(context.Background(), []EmailInput{{ID: "x"}}, nil, "2026-07-17"); err == nil {
 		t.Fatal("want error")
 	}
 	if calls.Load() != 1 {
@@ -103,5 +103,106 @@ func TestUnconfigured(t *testing.T) {
 	c := New("", "", "")
 	if c.Configured() {
 		t.Fatal("empty key should not be configured")
+	}
+}
+
+func TestClassifyDedupeWithinBatch(t *testing.T) {
+	var gotBody map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		w.Write([]byte(fakeResponse(t, `{"verdicts":[
+			{"id":"new","actionable":true,"title":"Fix the failed Anthropic payment","summary":"Card declined, retry","amount_cents":null,"due_on":null,"urgency":3,"duplicate_of":null,"category":"bills"},
+			{"id":"old","actionable":false,"title":"","summary":"","amount_cents":null,"due_on":null,"urgency":1,"duplicate_of":"new","category":"other"},
+			{"id":"ex","actionable":false,"title":"","summary":"","amount_cents":null,"due_on":null,"urgency":1,"duplicate_of":"existing","category":"other"}
+		]}`)))
+	}))
+	defer srv.Close()
+
+	c := New("k", srv.URL, "")
+	verdicts, err := c.Classify(context.Background(), []EmailInput{
+		{ID: "new", Subject: "Payment failed"}, {ID: "old", Subject: "Payment failed reminder"},
+		{ID: "ex", Subject: "ICS statement"},
+	}, []string{"Review your ICS card statement"}, "2026-07-17")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if verdicts[0].DuplicateOf != nil || !verdicts[0].Actionable || verdicts[0].Category != "bills" {
+		t.Errorf("kept verdict = %+v", verdicts[0])
+	}
+	if verdicts[1].DuplicateOf == nil || *verdicts[1].DuplicateOf != "new" {
+		t.Errorf("dupe verdict = %+v", verdicts[1])
+	}
+	if verdicts[2].DuplicateOf == nil || *verdicts[2].DuplicateOf != "existing" {
+		t.Errorf("existing-dupe verdict = %+v", verdicts[2])
+	}
+	// existing_pending context must reach the model.
+	var payload struct {
+		ExistingPending []string `json:"existing_pending"`
+	}
+	msgs := gotBody["messages"].([]any)
+	content := msgs[0].(map[string]any)["content"].(string)
+	_ = json.Unmarshal([]byte(content), &payload)
+	if len(payload.ExistingPending) != 1 {
+		t.Errorf("existing_pending not sent: %+v", payload)
+	}
+}
+
+func TestClassifyRetriesEchoedSubject(t *testing.T) {
+	var calls atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := calls.Add(1)
+		var body map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		content := body["messages"].([]any)[0].(map[string]any)["content"].(string)
+		if n == 1 {
+			// Echoes the raw subject → must trigger a corrective pass.
+			w.Write([]byte(fakeResponse(t, `{"verdicts":[
+				{"id":"m1","actionable":true,"title":"Billing Problem","summary":"","amount_cents":null,"due_on":null,"urgency":2,"duplicate_of":null,"category":"bills"}
+			]}`)))
+			return
+		}
+		var payload struct {
+			Feedback string `json:"feedback"`
+		}
+		_ = json.Unmarshal([]byte(content), &payload)
+		if payload.Feedback == "" {
+			t.Errorf("retry call missing feedback")
+		}
+		w.Write([]byte(fakeResponse(t, `{"verdicts":[
+			{"id":"m1","actionable":true,"title":"Sort out the Alpha Vantage billing problem","summary":"Card on file was declined","amount_cents":null,"due_on":null,"urgency":2,"duplicate_of":null,"category":"bills"}
+		]}`)))
+	}))
+	defer srv.Close()
+
+	c := New("k", srv.URL, "")
+	verdicts, err := c.Classify(context.Background(), []EmailInput{
+		{ID: "m1", Subject: "Billing Problem"},
+	}, nil, "2026-07-17")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if calls.Load() != 2 {
+		t.Fatalf("calls = %d, want 2 (echo retry)", calls.Load())
+	}
+	if verdicts[0].Title != "Sort out the Alpha Vantage billing problem" {
+		t.Errorf("title not corrected: %q", verdicts[0].Title)
+	}
+}
+
+func TestEchoesSubject(t *testing.T) {
+	cases := []struct {
+		title, subject string
+		want           bool
+	}{
+		{"Billing Problem", "Billing Problem", true},
+		{"billing problem!", "Billing Problem", true},
+		{"Re: Billing Problem", "Billing Problem", true},
+		{"Pay the Vattenfall energy bill", "Your July energy bill is ready", false},
+		{"", "Subject", false},
+	}
+	for _, c := range cases {
+		if got := EchoesSubject(c.title, c.subject); got != c.want {
+			t.Errorf("EchoesSubject(%q, %q) = %v, want %v", c.title, c.subject, got, c.want)
+		}
 	}
 }

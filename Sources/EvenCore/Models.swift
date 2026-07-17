@@ -96,8 +96,10 @@ public struct Draft: Codable, Identifiable, Hashable, Sendable {
     public var sourcePreview: String?
     public var gmail: Bool?
     public var gmailMessageId: String?
+    public var category: String?
 
     public var isFromGmail: Bool { gmail ?? false }
+    public var categoryKey: String { category ?? "other" }
 }
 
 public struct Expense: Codable, Identifiable, Hashable, Sendable {

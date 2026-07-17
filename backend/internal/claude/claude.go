@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -53,25 +54,37 @@ type EmailInput struct {
 // Verdict is the classifier's output for one email. Title and Summary are
 // REWRITTEN in Even's voice — never the raw subject/snippet.
 type Verdict struct {
-	ID          string `json:"id"`
-	Actionable  bool   `json:"actionable"`
-	Title       string `json:"title"`
-	Summary     string `json:"summary"`
-	AmountCents *int64 `json:"amount_cents"`
+	ID          string  `json:"id"`
+	Actionable  bool    `json:"actionable"`
+	Title       string  `json:"title"`
+	Summary     string  `json:"summary"`
+	AmountCents *int64  `json:"amount_cents"`
 	DueOn       *string `json:"due_on"`
-	Urgency     int    `json:"urgency"`
+	Urgency     int     `json:"urgency"`
+	// DuplicateOf marks a non-actionable dupe: the id of the batch email it
+	// repeats, or "existing" when it matches a pending draft already in the
+	// inbox.
+	DuplicateOf *string `json:"duplicate_of"`
+	// Category groups the inbox: bills, appointments, subscriptions, admin, other.
+	Category string `json:"category"`
 }
 
-const systemPrompt = `You classify emails for "Even", a two-person household app. An email is ACTIONABLE only when it needs the couple to do something concrete for the household: a bill or invoice to pay, an appointment to confirm or attend, a renewal or contract decision, a delivery needing action, an official/government/admin letter, a repair or maintenance task. NOT actionable: newsletters, marketing and promotions, receipts or confirmations of already-completed payments, shipping notifications needing nothing, social or personal correspondence, product updates, security notices needing nothing.
+const systemPrompt = `You classify emails for "Even", a two-person household app. An email is ACTIONABLE only when the couple genuinely must act on it for the household: a bill or invoice to pay, an appointment to confirm or attend, a renewal or contract decision, a delivery needing action, an official/government/admin letter, a repair or maintenance task. Hold a high bar — when in doubt, it is NOT actionable. NOT actionable: newsletters, marketing and promotions, receipts or confirmations of already-completed payments, shipping notifications needing nothing, social or personal correspondence, product updates, security notices needing nothing, and anything merely informational.
+
+Deduplicate ruthlessly:
+- If several emails in this batch are about the SAME underlying action (e.g. repeated payment-failure reminders from one vendor), only the NEWEST is actionable; every older one gets actionable=false and "duplicate_of" set to the id of the email you kept.
+- The input includes "existing_pending": tasks already waiting in the couple's inbox. If an email is about the same underlying action as one of those, set actionable=false and "duplicate_of": "existing".
+- Otherwise "duplicate_of" is null.
 
 For each actionable email, rewrite it in Even's product voice — warm, plain, imperative household language, no corporate phrasing, no shouting:
-- "title": a short imperative task a partner reads at a glance, e.g. "Pay the Vattenfall energy bill" or "Confirm the dentist appointment". Never the raw subject line.
+- "title": a short imperative task a partner reads at a glance, e.g. "Pay the Vattenfall energy bill" or "Confirm the dentist appointment". NEVER the raw subject line, not even lightly edited — always rewrite from scratch as an instruction.
 - "summary": one short line of the key facts, e.g. "July invoice, €112.40, due Jul 25" or "Cleaning on Tuesday at 16:30". Never the raw snippet.
 - "amount_cents": the amount in euro cents if a specific amount is to be paid, else null.
 - "due_on": the due/appointment date as YYYY-MM-DD if one is stated or clearly implied, else null. Resolve relative dates against the provided today's date.
 - "urgency": 3 = overdue, final notice, or due within 3 days; 2 = due within ~2 weeks or needs a reply; 1 = informational deadline further out.
+- "category": exactly one of "bills" (money owed, failed or upcoming payments), "appointments" (things to confirm or attend), "subscriptions" (renewals, price changes, plan decisions), "admin" (official letters, paperwork, home upkeep), "other".
 
-For non-actionable emails set actionable=false, title and summary to "", amount_cents and due_on to null, urgency to 1. Return one verdict per input email, same "id", same order.`
+For non-actionable emails set actionable=false, title and summary to "", amount_cents and due_on to null, urgency to 1, category to "other". Return one verdict per input email, same "id", same order.`
 
 var outputSchema = map[string]any{
 	"type": "object",
@@ -88,8 +101,10 @@ var outputSchema = map[string]any{
 					"amount_cents": map[string]any{"type": []string{"integer", "null"}},
 					"due_on":       map[string]any{"type": []string{"string", "null"}},
 					"urgency":      map[string]any{"type": "integer", "enum": []int{1, 2, 3}},
+					"duplicate_of": map[string]any{"type": []string{"string", "null"}},
+					"category":     map[string]any{"type": "string", "enum": []string{"bills", "appointments", "subscriptions", "admin", "other"}},
 				},
-				"required":             []string{"id", "actionable", "title", "summary", "amount_cents", "due_on", "urgency"},
+				"required":             []string{"id", "actionable", "title", "summary", "amount_cents", "due_on", "urgency", "duplicate_of", "category"},
 				"additionalProperties": false,
 			},
 		},
@@ -98,13 +113,89 @@ var outputSchema = map[string]any{
 	"additionalProperties": false,
 }
 
-// Classify runs one batch of emails through the model. today is YYYY-MM-DD in
-// the household's timezone.
-func (c *Client) Classify(ctx context.Context, emails []EmailInput, today string) ([]Verdict, error) {
+// Classify runs one batch of emails through the model. existingPending is the
+// household's current pending draft titles (dedupe context); today is
+// YYYY-MM-DD in the household's timezone. Verdicts whose title echoes the raw
+// subject are retried once with feedback before being returned as-is (the
+// caller applies a heuristic fix for any survivor).
+func (c *Client) Classify(ctx context.Context, emails []EmailInput, existingPending []string, today string) ([]Verdict, error) {
+	verdicts, err := c.classifyOnce(ctx, emails, existingPending, today, "")
+	if err != nil {
+		return nil, err
+	}
+
+	// One corrective pass for titles that echo the raw subject.
+	subjects := map[string]string{}
+	for _, e := range emails {
+		subjects[e.ID] = e.Subject
+	}
+	var offenders []EmailInput
+	for _, v := range verdicts {
+		if v.Actionable && EchoesSubject(v.Title, subjects[v.ID]) {
+			for _, e := range emails {
+				if e.ID == v.ID {
+					offenders = append(offenders, e)
+				}
+			}
+		}
+	}
+	if len(offenders) > 0 {
+		feedback := "Your previous titles for these emails echoed the raw subject line. Rewrite each title from scratch as a short imperative household instruction that does NOT reuse the subject's wording."
+		if fixed, err := c.classifyOnce(ctx, offenders, existingPending, today, feedback); err == nil {
+			byID := map[string]Verdict{}
+			for _, v := range fixed {
+				byID[v.ID] = v
+			}
+			for i, v := range verdicts {
+				if f, ok := byID[v.ID]; ok && v.Actionable {
+					verdicts[i].Title = f.Title
+					verdicts[i].Summary = f.Summary
+				}
+			}
+		}
+	}
+	return verdicts, nil
+}
+
+// EchoesSubject reports whether a title is essentially the raw subject.
+func EchoesSubject(title, subject string) bool {
+	norm := func(s string) string {
+		var b []rune
+		for _, r := range s {
+			switch {
+			case r >= 'A' && r <= 'Z':
+				b = append(b, r+('a'-'A'))
+			case (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9'):
+				b = append(b, r)
+			}
+		}
+		return string(b)
+	}
+	t, s := norm(title), norm(subject)
+	if t == "" || s == "" {
+		return false
+	}
+	if t == s {
+		return true
+	}
+	// Near-echo: one contains the other and lengths are close.
+	shorter, longer := t, s
+	if len(shorter) > len(longer) {
+		shorter, longer = longer, shorter
+	}
+	return len(shorter) >= 10 && strings.Contains(longer, shorter) &&
+		float64(len(shorter))/float64(len(longer)) > 0.75
+}
+
+func (c *Client) classifyOnce(ctx context.Context, emails []EmailInput, existingPending []string, today, feedback string) ([]Verdict, error) {
 	if !c.Configured() {
 		return nil, fmt.Errorf("claude: not configured")
 	}
-	userPayload, _ := json.Marshal(map[string]any{"today": today, "emails": emails})
+	payload := map[string]any{"today": today, "existing_pending": existingPending, "emails": emails}
+	if feedback != "" {
+		payload["feedback"] = feedback
+	}
+	userPayload, _ := json.Marshal(payload)
 	body := map[string]any{
 		"model":      c.model,
 		"max_tokens": 4096,

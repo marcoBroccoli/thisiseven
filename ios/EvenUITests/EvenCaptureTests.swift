@@ -26,7 +26,8 @@ final class EvenCaptureTests: XCTestCase {
         XCTAssertTrue(email.waitForExistence(timeout: 8))
         email.tap()
         email.typeText("capture-umur@even.dev")
-        let password = app.secureTextFields.firstMatch
+        let password = app.textFields["auth-password"]
+        XCTAssertTrue(password.waitForExistence(timeout: 8))
         password.tap()
         password.typeText("capture-pass1")
         app.buttons["Sign in"].tap()
@@ -39,7 +40,7 @@ final class EvenCaptureTests: XCTestCase {
         if springboard.buttons["Not Now"].waitForExistence(timeout: 3) {
             springboard.buttons["Not Now"].tap()
         }
-        app.buttons["tab-today"].tap()
+        go(app, "Today")
         sleep(1)
 
         snap(app, "01-today-light")

@@ -77,6 +77,7 @@ type DraftJSON struct {
 	SourcePreview     *string `json:"source_preview,omitempty"`
 	Gmail             bool    `json:"gmail"`
 	GmailMessageID    *string `json:"gmail_message_id,omitempty"`
+	Category          string  `json:"category"`
 }
 
 type FeedItemJSON struct {

@@ -339,6 +339,23 @@ func (a *API) classifyAndInsert(ctx context.Context, householdID, owner, token s
 	}
 
 	today := time.Now().In(Amsterdam).Format("2006-01-02")
+
+	// Existing pending titles give the classifier dedupe context.
+	var pending []string
+	rows, err := a.DB.Query(ctx, `
+		select title from drafts where household_id = $1 and status = 'pending'
+		order by created_at desc limit 50`, householdID)
+	if err != nil {
+		return created, err
+	}
+	for rows.Next() {
+		var t string
+		if rows.Scan(&t) == nil {
+			pending = append(pending, t)
+		}
+	}
+	rows.Close()
+
 	verdicts := map[string]claude.Verdict{}
 	if a.Claude.Configured() {
 		inputs := make([]claude.EmailInput, 0, len(metas))
@@ -348,7 +365,7 @@ func (a *API) classifyAndInsert(ctx context.Context, householdID, owner, token s
 				Snippet: m.msg.Snippet, Date: m.msg.Date.Format("2006-01-02"),
 			})
 		}
-		out, err := a.Claude.Classify(ctx, inputs, today)
+		out, err := a.Claude.Classify(ctx, inputs, pending, today)
 		if err != nil {
 			slog.Error("claude classify — falling back to heuristics", "err", err)
 		} else {
@@ -372,10 +389,15 @@ func (a *API) classifyAndInsert(ctx context.Context, householdID, owner, token s
 				v.DueOn = &d
 			}
 		}
+		// A title that survived the corrective pass still echoing the raw
+		// subject gets a plain verb prefix rather than raw wording.
+		if classified && v.Actionable && claude.EchoesSubject(v.Title, m.msg.Subject) {
+			v.Title = "Sort out: " + strings.TrimSpace(m.msg.Subject)
+		}
 		if err := a.insertVerdict(ctx, householdID, owner, m.id, m.msg, v); err != nil {
 			return created, err
 		}
-		if v.Actionable {
+		if v.Actionable && v.DuplicateOf == nil {
 			created++
 		}
 	}
@@ -389,12 +411,18 @@ func (a *API) insertVerdict(ctx context.Context, householdID, owner, gmailID str
 	}
 	defer tx.Rollback(ctx)
 
+	actionable := v.Actionable && v.DuplicateOf == nil
+	var note *string
+	if v.DuplicateOf != nil {
+		n := "dup_of:" + *v.DuplicateOf
+		note = &n
+	}
 	if _, err := tx.Exec(ctx, `
-		insert into processed_emails (household_id, gmail_message_id, actionable)
-		values ($1, $2, $3) on conflict do nothing`, householdID, gmailID, v.Actionable); err != nil {
+		insert into processed_emails (household_id, gmail_message_id, actionable, note)
+		values ($1, $2, $3, $4) on conflict do nothing`, householdID, gmailID, actionable, note); err != nil {
 		return err
 	}
-	if v.Actionable {
+	if actionable {
 		title := strings.TrimSpace(v.Title)
 		if title == "" {
 			title = msg.Subject
@@ -429,15 +457,21 @@ func (a *API) insertVerdict(ctx context.Context, householdID, owner, gmailID str
 		if preview != "" {
 			previewPtr = &preview
 		}
+		category := v.Category
+		switch category {
+		case "bills", "appointments", "subscriptions", "admin", "other":
+		default:
+			category = "other"
+		}
 		if _, err := tx.Exec(ctx, `
 			insert into drafts (household_id, from_label, subject, summary, urgency,
 				title, owner_member_id, amount_cents, due_on, reminder, created_by,
-				gmail_message_id, source_from, source_preview)
-			values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $7, $11, $12, $13)
+				gmail_message_id, source_from, source_preview, category)
+			values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $7, $11, $12, $13, $14)
 			on conflict do nothing`,
 			householdID, google.SenderDisplay(msg.From), msg.Subject, summary,
 			urgency, title, owner, amount, dueOn, reminder,
-			gmailID, msg.From, previewPtr); err != nil {
+			gmailID, msg.From, previewPtr, category); err != nil {
 			return err
 		}
 	}
