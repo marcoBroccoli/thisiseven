@@ -193,6 +193,7 @@ struct EvenTabBar: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(PressScaleStyle(scale: 0.9))
+        .accessibilityIdentifier("tab-\(tab.rawValue)")
     }
 }
 

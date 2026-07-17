@@ -11,13 +11,24 @@ type Config struct {
 	DatabaseURL  string
 	JWTSecret    []byte // GoTrue's HS256 secret — evend only verifies
 	GoTrueURL    string // internal URL the /auth/* proxy forwards to
+
+	// Google integration (Gmail discovery + Calendar writes). Empty client
+	// id/secret disables the feature (its endpoints answer 409).
+	GoogleClientID     string
+	GoogleClientSecret string
+	GoogleOAuthBase    string // test override; default https://oauth2.googleapis.com
+	GoogleAPIBase      string // test override; default https://www.googleapis.com
 }
 
 func Load() (*Config, error) {
 	c := &Config{
-		Addr:        getenv("EVEN_ADDR", ":8080"),
-		DatabaseURL: os.Getenv("EVEN_DATABASE_URL"),
-		GoTrueURL:   getenv("EVEN_GOTRUE_URL", "http://gotrue:9999"),
+		Addr:               getenv("EVEN_ADDR", ":8080"),
+		DatabaseURL:        os.Getenv("EVEN_DATABASE_URL"),
+		GoTrueURL:          getenv("EVEN_GOTRUE_URL", "http://gotrue:9999"),
+		GoogleClientID:     os.Getenv("GOOGLE_OAUTH_CLIENT_ID"),
+		GoogleClientSecret: os.Getenv("GOOGLE_OAUTH_CLIENT_SECRET"),
+		GoogleOAuthBase:    os.Getenv("GOOGLE_OAUTH_BASE"),
+		GoogleAPIBase:      os.Getenv("GOOGLE_API_BASE"),
 	}
 	if c.DatabaseURL == "" {
 		return nil, fmt.Errorf("EVEN_DATABASE_URL is required")

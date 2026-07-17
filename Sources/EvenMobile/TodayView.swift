@@ -49,6 +49,7 @@ struct TodayView: View {
                     .background(Circle().fill(palette.ink).shadow(color: .black.opacity(0.16), radius: 10, y: 5))
             }
             .buttonStyle(PressScaleStyle(scale: 0.9))
+            .accessibilityIdentifier("fab-add-task")
             .padding(.trailing, 20)
             .padding(.bottom, 16)
         }
@@ -99,6 +100,7 @@ struct InviteBanner: View {
                     .capsLabel(8.5, tracking: 1.4)
                     .foregroundStyle(palette.sub)
                 Text("Invite code: \(household.inviteCode)")
+                    .accessibilityIdentifier("invite-code-label")
                     .font(EvenFont.serif(15, .medium))
                     .foregroundStyle(palette.ink)
                     .textSelection(.enabled)
@@ -130,7 +132,8 @@ struct TaskRow: View {
         let ownerColor = owner.map { palette.member($0.color) } ?? palette.sub
 
         HStack(spacing: 10) {
-            CheckCircle(done: task.done, color: ownerColor) {
+            CheckCircle(done: task.done, color: ownerColor,
+                        identifier: "check-\(task.title)") {
                 Task { await model.toggle(task) }
             }
 
@@ -153,6 +156,11 @@ struct TaskRow: View {
         .overlay(alignment: .bottom) { palette.faint.frame(height: 1) }
         .animation(.easeOut(duration: 0.2), value: task.done)
         .contextMenu {
+            if let urlString = task.googleEventUrl, let url = URL(string: urlString) {
+                Link(destination: url) {
+                    Label("Open calendar event", systemImage: "calendar")
+                }
+            }
             Button(role: .destructive) {
                 Task {
                     try? await model.api.deleteTask(id: task.id)
@@ -198,15 +206,17 @@ struct BeamScaleView: View {
                 ZStack {
                     Capsule().fill(palette.ink).frame(width: 300, height: 3)
                     Circle().fill(palette.ink).frame(width: 8, height: 8)
+                    Circle().fill(palette.ink).frame(width: 4, height: 4).offset(x: -148)
+                    Circle().fill(palette.ink).frame(width: 4, height: 4).offset(x: 148)
 
                     PanView(pebbles: pebbles(for: model.me?.id), color: meColor,
                             name: model.me?.displayName ?? "You",
                             counterRotation: -rotation)
-                        .offset(x: -150, y: 44)
+                        .offset(x: -148, y: 36)
                     PanView(pebbles: pebbles(for: model.partner?.id), color: partnerColor,
                             name: model.partner?.displayName ?? "—",
                             counterRotation: -rotation)
-                        .offset(x: 150, y: 44)
+                        .offset(x: 148, y: 36)
 
                     Text("\(summary.percentMe)")
                         .font(EvenFont.serif(34, .medium))
@@ -246,7 +256,7 @@ struct PanView: View {
             PanShape()
                 .stroke(palette.ink, style: StrokeStyle(lineWidth: 1.4, lineCap: .round))
                 .frame(width: 96, height: 58)
-                .offset(y: 6)
+                .offset(y: 2)
 
             PebblePile(pebbles: pebbles, color: color)
                 .frame(width: 78, height: 30)
@@ -267,10 +277,10 @@ struct PanShape: Shape {
     func path(in rect: CGRect) -> Path {
         var p = Path()
         let w = rect.width, h = rect.height
-        // strings
-        p.move(to: CGPoint(x: 0.5 * w, y: 0.03 * h))
+        // strings — apex at the very top so the pan hangs off the beam end
+        p.move(to: CGPoint(x: 0.5 * w, y: 0))
         p.addLine(to: CGPoint(x: 0.125 * w, y: 0.79 * h))
-        p.move(to: CGPoint(x: 0.5 * w, y: 0.03 * h))
+        p.move(to: CGPoint(x: 0.5 * w, y: 0))
         p.addLine(to: CGPoint(x: 0.875 * w, y: 0.79 * h))
         // dish
         p.move(to: CGPoint(x: 0.06 * w, y: 0.79 * h))
@@ -365,7 +375,7 @@ struct QuickAddSheet: View {
 
     var body: some View {
         SheetChrome(title: "NEW WORK — GOES ON THE SCALE") {
-            UnderlineField(placeholder: "What needs doing?", text: $title)
+            UnderlineField(placeholder: "What needs doing?", text: $title, id: "task-title")
 
             optionRow("SECTION") {
                 SelectPill(label: "CHORE", selected: section == .chore) { section = .chore }
@@ -423,6 +433,7 @@ struct QuickAddSheet: View {
                     if ok { dismiss() }
                 }
             }
+            .accessibilityIdentifier("task-save")
             .padding(.top, 4)
         }
         .onAppear { ownerId = model.me?.id }

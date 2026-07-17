@@ -18,6 +18,7 @@ import (
 	"github.com/marcoBroccoli/thisiseven/backend/internal/api"
 	"github.com/marcoBroccoli/thisiseven/backend/internal/auth"
 	"github.com/marcoBroccoli/thisiseven/backend/internal/config"
+	"github.com/marcoBroccoli/thisiseven/backend/internal/google"
 )
 
 //go:embed migrations/*.sql
@@ -50,7 +51,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	handler := api.Router(&api.API{DB: db}, auth.NewVerifier(cfg.JWTSecret), cfg.GoTrueURL)
+	app := &api.API{
+		DB: db,
+		Google: google.New(cfg.GoogleClientID, cfg.GoogleClientSecret,
+			cfg.GoogleOAuthBase, cfg.GoogleAPIBase),
+	}
+	if app.Google.Configured() {
+		go app.RunGmailPoller(ctx, 30*time.Minute)
+		slog.Info("gmail poller on", "every", "30m")
+	}
+	handler := api.Router(app, auth.NewVerifier(cfg.JWTSecret), cfg.GoTrueURL)
 
 	server := &http.Server{
 		Addr:              cfg.Addr,

@@ -96,7 +96,25 @@ execution order. AC = acceptance criteria.
 - [ ] **EV-63** Screenshots (4 tabs × light/dark) → `docs/screenshots/`,
   README + CLAUDE.md updated, final commit.
 
+## P6 Google integration (promoted to MVP core by Umur, 2026-07-17)
+- [x] **EV-70** evend google module: OAuth token store (google_accounts),
+  connect/status/disconnect endpoints, google-authorize.sh loopback flow.
+- [x] **EV-71** Gmail discovery sync: HouseholdTodo label or discovery
+  query, heuristic extraction (title/amount/due/urgency, 0.60 confidence
+  gate), dedupe by gmail_message_id, 30-min background ticker + manual
+  /v1/google/sync.
+- [x] **EV-72** Approve → Google Calendar all-day event with the draft's
+  reminder offset; event id/url on the task; calendar failure never aborts
+  the approve.
+- [x] **EV-73** One-time consent for the household account via browser
+  automation; refresh token stored server-side.
+- [x] **EV-74** App: Inbox shows GMAIL DISCOVERY header + sync affordance +
+  connected status; approved tasks link out to the calendar event.
+- [x] **EV-75** E2E: send a bill-like email to the household account,
+  sync, see the draft, approve, verify the event lands in Google Calendar.
+
 ## Post-MVP parking lot
-Gmail discovery import · Google Calendar event writes · push notifications ·
-public API via Cloudflare tunnel (api.thisiseven.app) · TestFlight (needs
-explicit approval) · Android · uneven splits · week history browser.
+Push notifications · public API via Cloudflare tunnel (api.thisiseven.app) ·
+TestFlight (needs explicit approval) · Android · uneven splits · week
+history browser · calendar retry/external-change reconciliation (mac
+prototype has it; port later).

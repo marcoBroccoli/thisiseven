@@ -8,15 +8,28 @@
 
 /* Begin PBXBuildFile section */
 		13170EB5F01F31BEFBA32669 /* EvenApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A95A43EE2CE1E45F9972E3E5 /* EvenApp.swift */; };
+		821468CA8DC9C28DA7DFF161 /* EvenE2ETests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0AAF5AFC5B42AA346D03E33 /* EvenE2ETests.swift */; };
 		D9A79A3430AED369FE1207BE /* EvenMobile in Frameworks */ = {isa = PBXBuildFile; productRef = C1DC674DFF5C0654B3196823 /* EvenMobile */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		AE24C435B4DB1D86687A5664 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 02664969AF66D3EC327AFD67 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 5F980592C3BF0FBD9861ECC8;
+			remoteInfo = Even;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		39DA8231A84CF0BBDCAFC8C5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		42223694485ED1E379B25DCB /* Even.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Even.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		737DB88BD2FE01869083C344 /* thisiseven */ = {isa = PBXFileReference; lastKnownFileType = folder; name = thisiseven; path = ..; sourceTree = SOURCE_ROOT; };
 		A95A43EE2CE1E45F9972E3E5 /* EvenApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvenApp.swift; sourceTree = "<group>"; };
+		AEA39CF6AF81E4C3FFCDD70C /* EvenUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = EvenUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E3446E7667BA618A453D43C4 /* Even.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Even.entitlements; sourceTree = "<group>"; };
+		F0AAF5AFC5B42AA346D03E33 /* EvenE2ETests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvenE2ETests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -31,6 +44,14 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		43AC4B346ED2F5989C6B07E1 /* EvenUITests */ = {
+			isa = PBXGroup;
+			children = (
+				F0AAF5AFC5B42AA346D03E33 /* EvenE2ETests.swift */,
+			);
+			path = EvenUITests;
+			sourceTree = "<group>";
+		};
 		600707A17DA28F23972E90F5 /* Packages */ = {
 			isa = PBXGroup;
 			children = (
@@ -53,6 +74,7 @@
 			isa = PBXGroup;
 			children = (
 				42223694485ED1E379B25DCB /* Even.app */,
+				AEA39CF6AF81E4C3FFCDD70C /* EvenUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -61,6 +83,7 @@
 			isa = PBXGroup;
 			children = (
 				633EF34419996FEE49CB3FA1 /* EvenApp */,
+				43AC4B346ED2F5989C6B07E1 /* EvenUITests */,
 				600707A17DA28F23972E90F5 /* Packages */,
 				DD9A6E7905D52CC377512774 /* Products */,
 			);
@@ -69,6 +92,24 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		48A344419D70185C515AC65F /* EvenUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A658404AAC45D8DE4404DDE5 /* Build configuration list for PBXNativeTarget "EvenUITests" */;
+			buildPhases = (
+				21DDA32A34ACD08E0FBC6291 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				985BAB66F7116FB4450CEE72 /* PBXTargetDependency */,
+			);
+			name = EvenUITests;
+			packageProductDependencies = (
+			);
+			productName = EvenUITests;
+			productReference = AEA39CF6AF81E4C3FFCDD70C /* EvenUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 		5F980592C3BF0FBD9861ECC8 /* Even */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 285D29D9BE56C29E5984F782 /* Build configuration list for PBXNativeTarget "Even" */;
@@ -97,6 +138,11 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					48A344419D70185C515AC65F = {
+						DevelopmentTeam = C3XSV85364;
+						ProvisioningStyle = Automatic;
+						TestTargetID = 5F980592C3BF0FBD9861ECC8;
+					};
 					5F980592C3BF0FBD9861ECC8 = {
 						DevelopmentTeam = C3XSV85364;
 						ProvisioningStyle = Automatic;
@@ -121,11 +167,20 @@
 			projectRoot = "";
 			targets = (
 				5F980592C3BF0FBD9861ECC8 /* Even */,
+				48A344419D70185C515AC65F /* EvenUITests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXSourcesBuildPhase section */
+		21DDA32A34ACD08E0FBC6291 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				821468CA8DC9C28DA7DFF161 /* EvenE2ETests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		DCC248B77B1109D89C07F3C6 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -135,6 +190,14 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		985BAB66F7116FB4450CEE72 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 5F980592C3BF0FBD9861ECC8 /* Even */;
+			targetProxy = AE24C435B4DB1D86687A5664 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		5AF8859DE91232BEE9E82414 /* Release */ = {
@@ -176,6 +239,25 @@
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
+		};
+		C2E1159335C1FB7575387E21 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = C3XSV85364;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.umuryavuz.even.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Even;
+			};
+			name = Release;
 		};
 		C51CF89F1999C567CE2BDDD9 /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -232,6 +314,25 @@
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
+		};
+		CFEF8E53D6CBA9D80C38F7CE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = C3XSV85364;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.umuryavuz.even.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Even;
+			};
+			name = Debug;
 		};
 		DEAD7EFE63ADD9CB3E23E0EE /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -304,6 +405,15 @@
 			buildConfigurations = (
 				5DD5C87AA8E13F21BF37AB9C /* Debug */,
 				5AF8859DE91232BEE9E82414 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		A658404AAC45D8DE4404DDE5 /* Build configuration list for PBXNativeTarget "EvenUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CFEF8E53D6CBA9D80C38F7CE /* Debug */,
+				C2E1159335C1FB7575387E21 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

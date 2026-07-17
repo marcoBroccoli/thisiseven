@@ -17,6 +17,8 @@ final class AppModel {
     var summary: Summary?
     var drafts: [Draft] = []
     var money: Money?
+    var googleStatus: GoogleStatus?
+    var gmailSyncing = false
     var reset: ResetSummary?
     var resetStep: Int = 0
 
@@ -47,10 +49,12 @@ final class AppModel {
         async let s = try? api.summary()
         async let d = try? api.pendingDrafts()
         async let m = try? api.money()
-        let (summary, drafts, money) = await (s, d, m)
+        async let g = try? api.googleStatus()
+        let (summary, drafts, money, google) = await (s, d, m, g)
         if let summary { self.summary = summary }
         if let drafts { self.drafts = drafts }
         if let money { self.money = money }
+        if let google { self.googleStatus = google }
         if summary == nil && drafts == nil && money == nil {
             errorMessage = "Can't reach the house server."
         }
@@ -152,6 +156,21 @@ final class AppModel {
             _ = try await api.dismissDraft(id: draft.id)
             drafts.removeAll { $0.id == draft.id }
             stamp("DISMISSED — IGNORED")
+        } catch {
+            surface(error)
+        }
+    }
+
+    func syncGmail() async {
+        gmailSyncing = true
+        defer { gmailSyncing = false }
+        do {
+            let result = try await api.googleSync()
+            drafts = (try? await api.pendingDrafts()) ?? drafts
+            googleStatus = try? await api.googleStatus()
+            stamp(result.created > 0
+                  ? "GMAIL — \(result.created) NEW DRAFT\(result.created == 1 ? "" : "S")"
+                  : "GMAIL — NOTHING NEW")
         } catch {
             surface(error)
         }

@@ -59,6 +59,7 @@ public struct HouseholdTask: Codable, Identifiable, Hashable, Sendable {
     public var done: Bool
     public var doneByMemberId: UUID?
     public var metaLine: String
+    public var googleEventUrl: String?
 }
 
 public enum DraftReminder: String, Codable, CaseIterable, Sendable {
@@ -91,6 +92,11 @@ public struct Draft: Codable, Identifiable, Hashable, Sendable {
     public var reminder: DraftReminder
     public var status: DraftStatus
     public var createdByMemberId: UUID
+    public var sourceFrom: String?
+    public var sourcePreview: String?
+    public var gmail: Bool?
+
+    public var isFromGmail: Bool { gmail ?? false }
 }
 
 public struct Expense: Codable, Identifiable, Hashable, Sendable {
@@ -196,6 +202,19 @@ public struct ResetSummary: Codable, Sendable {
 public struct WeekCloseResponse: Codable, Sendable {
     public var closedWeek: Week
     public var newWeek: Week
+}
+
+public struct GoogleStatus: Codable, Sendable {
+    public var connected: Bool
+    public var email: String?
+    public var lastSyncAt: Date?
+    public var lastSyncCount: Int?
+}
+
+public struct GoogleSyncResult: Codable, Sendable {
+    public var scanned: Int
+    public var created: Int
+    public var skipped: Int
 }
 
 public struct APIErrorBody: Codable, Sendable {

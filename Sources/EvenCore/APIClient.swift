@@ -110,7 +110,12 @@ public final class EvenAPIClient: @unchecked Sendable {
     private func request<T: Decodable, B: Encodable>(_ method: String,
                                                      _ path: String,
                                                      body: B?) async throws -> T {
-        var req = URLRequest(url: environment.baseURL.appendingPathComponent(path))
+        // Not appendingPathComponent: paths may carry query strings, and
+        // appendingPathComponent percent-escapes the "?" (breaking routes).
+        guard let url = URL(string: path, relativeTo: environment.baseURL) else {
+            throw APIError.http(status: 0, code: "bad_path", message: "Bad request path.")
+        }
+        var req = URLRequest(url: url)
         req.httpMethod = method
         req.timeoutInterval = 15
         if let body {
@@ -306,4 +311,8 @@ public extension EvenAPIClient {
     func closeWeek() async throws -> WeekCloseResponse {
         try await post("v1/week/close")
     }
+
+    func googleStatus() async throws -> GoogleStatus { try await get("v1/google/status") }
+
+    func googleSync() async throws -> GoogleSyncResult { try await post("v1/google/sync") }
 }

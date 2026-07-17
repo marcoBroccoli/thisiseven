@@ -83,6 +83,12 @@ public final class SessionStore: @unchecked Sendable {
     // MARK: Boot
 
     public func bootstrap() async {
+        #if DEBUG
+        // UI-test hook: start signed out so E2E runs are repeatable.
+        if CommandLine.arguments.contains("--reset-session") {
+            storage.clear()
+        }
+        #endif
         guard let stored = storage.load() else {
             phase = .signedOut
             return

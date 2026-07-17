@@ -23,7 +23,7 @@ func scanTask(row pgx.Row) (TaskJSON, error) {
 	var dueOn *time.Time
 	var origin, doneBy *string
 	err := row.Scan(&t.ID, &t.Title, &t.Section, &t.OwnerMemberID, &t.Weight,
-		&t.Recurrence, &dueOn, &origin, &doneBy)
+		&t.Recurrence, &dueOn, &origin, &t.GoogleEventURL, &doneBy)
 	if err != nil {
 		return t, err
 	}
@@ -37,7 +37,7 @@ func scanTask(row pgx.Row) (TaskJSON, error) {
 }
 
 const taskCols = `t.id, t.title, t.section, t.owner_member_id, t.weight,
-	t.recurrence, t.due_on, t.origin_label, c.member_id`
+	t.recurrence, t.due_on, t.origin_label, t.google_event_url, c.member_id`
 
 func (a *API) fetchTask(ctx context.Context, m *Membership, taskID string) (TaskJSON, error) {
 	return scanTask(a.DB.QueryRow(ctx, `
@@ -81,7 +81,7 @@ func (in *taskInput) validate(w http.ResponseWriter, m *Membership, forCreate bo
 		httpx.Error(w, http.StatusBadRequest, "bad_recurrence", "unknown recurrence")
 		return nil, false
 	}
-	if in.OwnerMemberID != nil && *in.OwnerMemberID != m.MemberID && *in.OwnerMemberID != m.PartnerID {
+	if in.OwnerMemberID != nil && !strings.EqualFold(*in.OwnerMemberID, m.MemberID) && !strings.EqualFold(*in.OwnerMemberID, m.PartnerID) {
 		httpx.Error(w, http.StatusNotFound, "not_found", "owner is not in this household")
 		return nil, false
 	}

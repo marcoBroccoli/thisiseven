@@ -99,6 +99,7 @@ struct WelcomeView: View {
                 .sheet(isPresented: $showDebugAuth) {
                     DebugAuthSheet(session: session)
                 }
+                .accessibilityIdentifier("dev-email-signin")
                 #endif
 
                 Text("Two people, one household. Your data stays on your own server.")
@@ -172,10 +173,11 @@ struct DebugAuthSheet: View {
 
     var body: some View {
         SheetChrome(title: "DEV EMAIL SIGN-IN — DEBUG ONLY") {
-            UnderlineField(placeholder: "email@example.com", text: $email, serifSize: 15)
+            UnderlineField(placeholder: "email@example.com", text: $email, serifSize: 15, id: "auth-email")
             SecureField("password", text: $password)
                 .font(EvenFont.serif(15))
                 .textFieldStyle(.plain)
+                .accessibilityIdentifier("auth-password")
             Rectangle().fill(palette.line).frame(height: 1.5)
 
             if let errorText {
@@ -186,9 +188,11 @@ struct DebugAuthSheet: View {
 
             HStack(spacing: 8) {
                 GhostButton(title: "Sign up") { authenticate(signUp: true) }
+                    .accessibilityIdentifier("auth-signup")
                 PrimaryButton(title: working ? "…" : "Sign in", enabled: !working) {
                     authenticate(signUp: false)
                 }
+                .accessibilityIdentifier("auth-signin")
             }
         }
         #if os(iOS)
@@ -273,15 +277,17 @@ struct HouseholdSetupView: View {
     private var pickButtons: some View {
         VStack(spacing: 12) {
             PrimaryButton(title: "Start our household") { mode = .create }
+                .accessibilityIdentifier("mode-create")
             GhostButton(title: "I have an invite code") { mode = .join }
+                .accessibilityIdentifier("mode-join")
         }
         .padding(.top, 40)
     }
 
     private var createForm: some View {
         VStack(alignment: .leading, spacing: 18) {
-            UnderlineField(placeholder: "Household name — e.g. Prinsengracht 12", text: $householdName)
-            UnderlineField(placeholder: "Your name — what your partner calls you", text: $displayName)
+            UnderlineField(placeholder: "Household name — e.g. Prinsengracht 12", text: $householdName, id: "household-name")
+            UnderlineField(placeholder: "Your name — what your partner calls you", text: $displayName, id: "display-name-create")
             errorLine
             PrimaryButton(title: working ? "Creating…" : "Create — get the invite code",
                           enabled: ready(householdName) && ready(displayName) && !working) {
@@ -291,6 +297,7 @@ struct HouseholdSetupView: View {
                         displayName: displayName.trimmingCharacters(in: .whitespaces))
                 }
             }
+            .accessibilityIdentifier("create-household")
             Button { mode = .join } label: {
                 Text("HAVE A CODE INSTEAD?").capsLabel(9, tracking: 1.2).foregroundStyle(palette.sub)
             }
@@ -300,8 +307,8 @@ struct HouseholdSetupView: View {
 
     private var joinForm: some View {
         VStack(alignment: .leading, spacing: 18) {
-            UnderlineField(placeholder: "Invite code — 6 characters", text: $inviteCode)
-            UnderlineField(placeholder: "Your name — what your partner calls you", text: $displayName)
+            UnderlineField(placeholder: "Invite code — 6 characters", text: $inviteCode, id: "invite-code")
+            UnderlineField(placeholder: "Your name — what your partner calls you", text: $displayName, id: "display-name-join")
             errorLine
             PrimaryButton(title: working ? "Joining…" : "Join the household",
                           enabled: inviteCode.trimmingCharacters(in: .whitespaces).count >= 6
@@ -312,6 +319,7 @@ struct HouseholdSetupView: View {
                         displayName: displayName.trimmingCharacters(in: .whitespaces))
                 }
             }
+            .accessibilityIdentifier("join-household")
             Button { mode = .create } label: {
                 Text("START FRESH INSTEAD?").capsLabel(9, tracking: 1.2).foregroundStyle(palette.sub)
             }

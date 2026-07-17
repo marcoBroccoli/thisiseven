@@ -18,12 +18,14 @@ var validReminders = map[string]bool{"on_day": true, "1_day": true, "3_days": tr
 func scanDraft(row pgx.Row) (DraftJSON, error) {
 	var d DraftJSON
 	var dueOn *time.Time
+	var gmailID *string
 	err := row.Scan(&d.ID, &d.FromLabel, &d.Subject, &d.Summary, &d.Urgency,
 		&d.Title, &d.OwnerMemberID, &d.AmountCents, &dueOn, &d.Reminder,
-		&d.Status, &d.CreatedByMemberID)
+		&d.Status, &d.CreatedByMemberID, &gmailID, &d.SourceFrom, &d.SourcePreview)
 	if err != nil {
 		return d, err
 	}
+	d.Gmail = gmailID != nil
 	if dueOn != nil {
 		d.DueOn = strPtr(dateStr(*dueOn))
 	}
@@ -31,7 +33,8 @@ func scanDraft(row pgx.Row) (DraftJSON, error) {
 }
 
 const draftCols = `id, from_label, subject, summary, urgency, title,
-	owner_member_id, amount_cents, due_on, reminder, status, created_by`
+	owner_member_id, amount_cents, due_on, reminder, status, created_by,
+	gmail_message_id, source_from, source_preview`
 
 func (a *API) fetchDraft(ctx context.Context, m *Membership, id string) (DraftJSON, error) {
 	return scanDraft(a.DB.QueryRow(ctx, `
@@ -122,7 +125,7 @@ func (a *API) CreateDraft(w http.ResponseWriter, r *http.Request) {
 	}
 	owner := m.MemberID
 	if in.OwnerMemberID != nil {
-		if *in.OwnerMemberID != m.MemberID && *in.OwnerMemberID != m.PartnerID {
+		if !strings.EqualFold(*in.OwnerMemberID, m.MemberID) && !strings.EqualFold(*in.OwnerMemberID, m.PartnerID) {
 			httpx.Error(w, http.StatusNotFound, "not_found", "owner is not in this household")
 			return
 		}
@@ -176,7 +179,7 @@ func (a *API) UpdateDraft(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusBadRequest, "bad_title", "title cannot be empty")
 		return
 	}
-	if in.OwnerMemberID != nil && *in.OwnerMemberID != m.MemberID && *in.OwnerMemberID != m.PartnerID {
+	if in.OwnerMemberID != nil && !strings.EqualFold(*in.OwnerMemberID, m.MemberID) && !strings.EqualFold(*in.OwnerMemberID, m.PartnerID) {
 		httpx.Error(w, http.StatusNotFound, "not_found", "owner is not in this household")
 		return
 	}
@@ -222,16 +225,21 @@ func (a *API) ApproveDraft(w http.ResponseWriter, r *http.Request) {
 	m := membership(r)
 	id := chi.URLParam(r, "id")
 	var taskID string
+	var evTitle, evFrom, evReminder string
+	var evAmount *int64
+	var evDue *time.Time
 	err := pgx.BeginFunc(r.Context(), a.DB, func(tx pgx.Tx) error {
 		var title, owner, fromLabel string
 		var dueOn *time.Time
 		err := tx.QueryRow(r.Context(), `
-			select title, owner_member_id, from_label, due_on from drafts
+			select title, owner_member_id, from_label, due_on, amount_cents, reminder
+			from drafts
 			where id = $1 and household_id = $2 and status = 'pending' for update`,
-			id, m.HouseholdID).Scan(&title, &owner, &fromLabel, &dueOn)
+			id, m.HouseholdID).Scan(&title, &owner, &fromLabel, &dueOn, &evAmount, &evReminder)
 		if err != nil {
 			return err
 		}
+		evTitle, evFrom, evDue = title, fromLabel, dueOn
 		if err := tx.QueryRow(r.Context(), `
 			insert into tasks (household_id, title, section, owner_member_id, weight,
 				recurrence, due_on, origin_label, created_by)
@@ -253,13 +261,21 @@ func (a *API) ApproveDraft(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusInternalServerError, "internal", "could not approve draft")
 		return
 	}
+	// Calendar write happens after commit — a Google failure never undoes an
+	// approval; the response carries calendar_error instead.
+	calendarErr := a.calendarEventForApproval(r.Context(), m, taskID,
+		evTitle, evFrom, evAmount, evDue, evReminder)
 	d, err1 := a.fetchDraft(r.Context(), m, id)
 	t, err2 := a.fetchTask(r.Context(), m, taskID)
 	if err1 != nil || err2 != nil {
 		httpx.Error(w, http.StatusInternalServerError, "internal", "lookup failed")
 		return
 	}
-	httpx.JSON(w, http.StatusOK, map[string]any{"draft": d, "task": t})
+	out := map[string]any{"draft": d, "task": t}
+	if calendarErr != "" {
+		out["calendar_error"] = calendarErr
+	}
+	httpx.JSON(w, http.StatusOK, out)
 }
 
 // POST /v1/drafts/{id}/dismiss

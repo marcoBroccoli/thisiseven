@@ -57,6 +57,7 @@ type TaskJSON struct {
 	Done           bool    `json:"done"`
 	DoneByMemberID *string `json:"done_by_member_id,omitempty"`
 	MetaLine       string  `json:"meta_line"`
+	GoogleEventURL *string `json:"google_event_url,omitempty"`
 }
 
 type DraftJSON struct {
@@ -72,6 +73,9 @@ type DraftJSON struct {
 	Reminder          string  `json:"reminder"`
 	Status            string  `json:"status"`
 	CreatedByMemberID string  `json:"created_by_member_id"`
+	SourceFrom        *string `json:"source_from,omitempty"`
+	SourcePreview     *string `json:"source_preview,omitempty"`
+	Gmail             bool    `json:"gmail"`
 }
 
 type FeedItemJSON struct {

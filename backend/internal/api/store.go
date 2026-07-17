@@ -10,12 +10,14 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/marcoBroccoli/thisiseven/backend/internal/google"
 	"github.com/marcoBroccoli/thisiseven/backend/internal/httpx"
 )
 
 // API carries the handlers' shared state.
 type API struct {
-	DB *pgxpool.Pool
+	DB     *pgxpool.Pool
+	Google *google.Client
 }
 
 // Membership is the resolved caller: member + household + open week. It is

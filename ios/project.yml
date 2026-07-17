@@ -35,3 +35,27 @@ targets:
         CODE_SIGN_ENTITLEMENTS: EvenApp/Even.entitlements
         TARGETED_DEVICE_FAMILY: "1"
         SUPPORTS_MACCATALYST: NO
+  EvenUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [EvenUITests]
+    dependencies:
+      - target: Even
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.umuryavuz.even.uitests
+        DEVELOPMENT_TEAM: C3XSV85364
+        CODE_SIGN_STYLE: Automatic
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: Even
+schemes:
+  Even:
+    build:
+      targets:
+        Even: all
+        EvenUITests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets: [EvenUITests]

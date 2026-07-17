@@ -142,7 +142,7 @@ func (a *API) CreateExpense(w http.ResponseWriter, r *http.Request) {
 			"title, positive amount_cents and paid_by_member_id are required")
 		return
 	}
-	if in.PaidByMemberID != m.MemberID && in.PaidByMemberID != m.PartnerID {
+	if !strings.EqualFold(in.PaidByMemberID, m.MemberID) && !strings.EqualFold(in.PaidByMemberID, m.PartnerID) {
 		httpx.Error(w, http.StatusNotFound, "not_found", "payer is not in this household")
 		return
 	}

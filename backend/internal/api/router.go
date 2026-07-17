@@ -76,6 +76,11 @@ func Router(a *API, verifier httpx.AccessVerifier, gotrueURL string) http.Handle
 		r.Post("/v1/expenses", a.CreateExpense)
 		r.Post("/v1/settle", a.Settle)
 
+		r.Get("/v1/google/status", a.GoogleStatus)
+		r.Post("/v1/google/connect", a.GoogleConnect)
+		r.Post("/v1/google/disconnect", a.GoogleDisconnect)
+		r.Post("/v1/google/sync", a.GoogleSync)
+
 		r.Get("/v1/reset", a.Reset)
 		r.Put("/v1/appreciations/mine", a.PutAppreciation)
 		r.Post("/v1/trades", a.CreateTrade)

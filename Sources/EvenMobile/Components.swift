@@ -71,6 +71,7 @@ struct CheckCircle: View {
     let done: Bool
     let color: Color
     var size: CGFloat = 27
+    var identifier: String? = nil
     let action: () -> Void
 
     var body: some View {
@@ -90,6 +91,7 @@ struct CheckCircle: View {
             .contentShape(Circle())
         }
         .buttonStyle(PressScaleStyle(scale: 0.85))
+        .accessibilityIdentifier(identifier ?? "check")
     }
 }
 
@@ -217,6 +219,8 @@ struct UnderlineField: View {
     let placeholder: String
     @Binding var text: String
     var serifSize: CGFloat = 17
+    /// Accessibility identifier applied to the TextField itself (UI tests).
+    var id: String? = nil
 
     var body: some View {
         VStack(spacing: 8) {
@@ -224,6 +228,7 @@ struct UnderlineField: View {
                 .font(EvenFont.serif(serifSize))
                 .foregroundStyle(palette.ink)
                 .textFieldStyle(.plain)
+                .accessibilityIdentifier(id ?? placeholder)
             Rectangle().fill(palette.line).frame(height: 1.5)
         }
     }

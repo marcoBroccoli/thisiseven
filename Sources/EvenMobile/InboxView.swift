@@ -13,9 +13,28 @@ struct InboxView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                ScreenHeader(kicker: "SHARED APPROVALS · \(model.drafts.count) PENDING",
-                             title: "Approval Inbox",
-                             subtitle: "Drafts, not tasks. Tap one to review.")
+                HStack(alignment: .top) {
+                    ScreenHeader(kicker: kicker,
+                                 title: "Approval Inbox",
+                                 subtitle: "Drafts, not tasks. Tap one to review.")
+                    if model.googleStatus?.connected == true {
+                        Button {
+                            Task { await model.syncGmail() }
+                        } label: {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(palette.sub)
+                                .rotationEffect(.degrees(model.gmailSyncing ? 360 : 0))
+                                .animation(model.gmailSyncing
+                                           ? .linear(duration: 1).repeatForever(autoreverses: false)
+                                           : .default, value: model.gmailSyncing)
+                                .frame(width: 30, height: 30)
+                                .overlay(Circle().stroke(palette.line, lineWidth: 1))
+                        }
+                        .accessibilityIdentifier("gmail-sync")
+                        .disabled(model.gmailSyncing)
+                    }
+                }
 
                 if model.drafts.isEmpty {
                     emptyState
@@ -45,6 +64,7 @@ struct InboxView: View {
                     .background(Circle().fill(palette.ink).shadow(color: .black.opacity(0.16), radius: 10, y: 5))
             }
             .buttonStyle(PressScaleStyle(scale: 0.9))
+            .accessibilityIdentifier("fab-propose")
             .padding(.trailing, 20)
             .padding(.bottom, 16)
         }
@@ -54,6 +74,14 @@ struct InboxView: View {
         .sheet(isPresented: $proposing) {
             ProposeDraftSheet(model: model)
         }
+    }
+
+    private var kicker: String {
+        if let google = model.googleStatus, google.connected {
+            let scanned = google.lastSyncCount.map { " · \($0) SCANNED" } ?? ""
+            return "GMAIL DISCOVERY\(scanned) · \(model.drafts.count) PENDING"
+        }
+        return "SHARED APPROVALS · \(model.drafts.count) PENDING"
     }
 
     private var emptyState: some View {
@@ -129,6 +157,13 @@ struct DraftCard: View {
                     .font(EvenFont.serif(14.5))
                     .foregroundStyle(palette.ink)
                     .multilineTextAlignment(.leading)
+                if let preview = draft.sourcePreview, !preview.isEmpty {
+                    Text(preview)
+                        .font(EvenFont.serif(11.5, italic: true))
+                        .foregroundStyle(palette.sub)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                }
                 Text(summaryLine)
                     .capsLabel(9, tracking: 0.4)
                     .foregroundStyle(palette.sub)
@@ -141,10 +176,11 @@ struct DraftCard: View {
             .contentShape(RoundedRectangle(cornerRadius: 13))
         }
         .buttonStyle(PressScaleStyle(scale: 0.98))
+        .accessibilityIdentifier("draft-card-\(draft.subject)")
     }
 
     private var summaryLine: String {
-        var parts: [String] = []
+        var parts: [String] = draft.isFromGmail ? ["GMAIL"] : []
         if let owner = model.member(draft.ownerMemberId) {
             parts.append(owner.displayName.uppercased())
         }
@@ -230,6 +266,7 @@ struct DraftReviewSheet: View {
                         .background(RoundedRectangle(cornerRadius: 10).fill(palette.ink))
                 }
                 .buttonStyle(PressScaleStyle())
+                .accessibilityIdentifier("draft-approve")
                 .frame(maxWidth: .infinity)
                 .layoutPriority(1)
             }
@@ -281,8 +318,8 @@ struct ProposeDraftSheet: View {
 
     var body: some View {
         SheetChrome(title: "PROPOSE A DRAFT — PARTNER REVIEWS IT") {
-            UnderlineField(placeholder: "From — e.g. Vattenfall, the dentist", text: $fromLabel, serifSize: 15)
-            UnderlineField(placeholder: "What is it about?", text: $subject)
+            UnderlineField(placeholder: "From — e.g. Vattenfall, the dentist", text: $fromLabel, serifSize: 15, id: "draft-from")
+            UnderlineField(placeholder: "What is it about?", text: $subject, id: "draft-subject")
 
             HStack(spacing: 6) {
                 Text("URGENCY").capsLabel(9, tracking: 1.4).foregroundStyle(palette.sub)
@@ -330,6 +367,7 @@ struct ProposeDraftSheet: View {
                     if ok { dismiss() }
                 }
             }
+            .accessibilityIdentifier("draft-save")
             .padding(.top, 4)
         }
     }

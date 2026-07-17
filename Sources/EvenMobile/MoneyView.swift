@@ -53,6 +53,7 @@ struct MoneyView: View {
                     .background(Circle().fill(palette.ink).shadow(color: .black.opacity(0.16), radius: 10, y: 5))
             }
             .buttonStyle(PressScaleStyle(scale: 0.9))
+            .accessibilityIdentifier("fab-add-expense")
             .padding(.trailing, 20)
             .padding(.bottom, 16)
         }
@@ -167,6 +168,7 @@ struct MoneyView: View {
         }
         .buttonStyle(PressScaleStyle())
         .disabled(even)
+        .accessibilityIdentifier("settle-button")
         .padding(.top, 4)
     }
 
@@ -246,11 +248,11 @@ struct AddExpenseSheet: View {
 
     var body: some View {
         SheetChrome(title: "SHARED RECEIPT — SPLIT 50/50") {
-            UnderlineField(placeholder: "What was it? e.g. Weekly groceries", text: $title)
+            UnderlineField(placeholder: "What was it? e.g. Weekly groceries", text: $title, id: "expense-title")
 
             HStack(spacing: 10) {
                 Text("€").font(EvenFont.serif(20)).foregroundStyle(palette.sub)
-                UnderlineField(placeholder: "0.00", text: $amount, serifSize: 20)
+                UnderlineField(placeholder: "0.00", text: $amount, serifSize: 20, id: "expense-amount")
                     .frame(width: 140)
                 Spacer()
                 DatePicker("", selection: $date, displayedComponents: .date)
@@ -288,6 +290,7 @@ struct AddExpenseSheet: View {
                     if ok { dismiss() }
                 }
             }
+            .accessibilityIdentifier("expense-save")
             .padding(.top, 4)
         }
         .onAppear { payerId = model.me?.id }

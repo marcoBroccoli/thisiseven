@@ -75,6 +75,7 @@ struct ResetView: View {
                 model.resetStep = 1
                 Task { await model.refreshReset() }
             }
+            .accessibilityIdentifier("reset-start")
             .padding(.top, 90)
         }
     }
@@ -149,6 +150,7 @@ struct ResetView: View {
             }
 
             PrimaryButton(title: "Next — say one kind thing") { model.resetStep = 2 }
+                .accessibilityIdentifier("reset-next-1")
                 .padding(.top, 20)
         }
     }
@@ -176,6 +178,7 @@ struct ResetView: View {
             .padding(.top, 18)
 
             PrimaryButton(title: "Next — trade for next week") { model.resetStep = 3 }
+                .accessibilityIdentifier("reset-next-2")
                 .padding(.top, 20)
         }
     }
@@ -201,6 +204,7 @@ struct ResetView: View {
             PrimaryButton(title: "Close the week — pour the pans") {
                 confirmingClose = true
             }
+            .accessibilityIdentifier("reset-close")
             .padding(.top, 20)
         }
     }
