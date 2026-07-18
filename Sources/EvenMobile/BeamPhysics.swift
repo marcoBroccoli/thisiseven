@@ -130,16 +130,20 @@ final class BeamPhysicsScene: SKScene {
         vis.fillColor = .clear
         bucket.addChild(vis)
 
-        // Physics walls: apex → rim strings + dish arc, closed at the apex.
+        // Physics container: tall invisible side walls (slight inward lip at
+        // the top) + the dish arc — one continuous concave bucket, so a full
+        // pile at max tilt cannot crest or slip a joint.
         let wallPath = CGMutablePath()
-        wallPath.move(to: CGPoint(x: 0, y: 4))
-        wallPath.addLine(to: CGPoint(x: -36, y: -46))
+        wallPath.move(to: CGPoint(x: -36, y: 40))
+        wallPath.addLine(to: CGPoint(x: -45, y: 24))
+        wallPath.addLine(to: CGPoint(x: -44, y: -46))
         for i in 0...12 {
             let t = CGFloat(i) / 12
             wallPath.addLine(to: CGPoint(x: quad(-42, 0, 42, t), y: quad(-46, -68, -46, t)))
         }
-        wallPath.addLine(to: CGPoint(x: 36, y: -46))
-        wallPath.addLine(to: CGPoint(x: 0, y: 4))
+        wallPath.addLine(to: CGPoint(x: 44, y: -46))
+        wallPath.addLine(to: CGPoint(x: 45, y: 24))
+        wallPath.addLine(to: CGPoint(x: 36, y: 40))
         let walls = SKNode()
         walls.name = "walls"
         walls.physicsBody = SKPhysicsBody(edgeChainFrom: wallPath)
@@ -275,14 +279,15 @@ final class BeamPhysicsScene: SKScene {
     private func dropIn(_ ball: SKShapeNode, side: Side) {
         guard ball.parent == nil else { return }
         let bucket = side == .me ? meBucket : partnerBucket
-        let jitter = CGFloat.random(in: -6...6)
+        let jitter = CGFloat.random(in: -16...16)
         ball.position = CGPoint(x: bucket.position.x + jitter,
-                                y: pivot.y + 46 + CGFloat.random(in: 0...14))
+                                y: bucket.position.y + CGFloat.random(in: 4...24))
         let body = SKPhysicsBody(circleOfRadius: radius(for: ball.userData?["w"] as? Int ?? 1))
         body.restitution = 0.16
         body.friction = 0.9
         body.linearDamping = 0.35
         body.density = 1
+        body.usesPreciseCollisionDetection = true
         ball.physicsBody = body
         addChild(ball)
     }
@@ -381,6 +386,13 @@ struct BeamScaleView: View {
         scene.apply(ink: palette.ink, sub: palette.sub,
                     me: meColor, partner: partnerColor,
                     ghostPartner: model.partner == nil)
+        #if DEBUG
+        if CommandLine.arguments.contains("--physics-stress") {
+            scene.setTilt(percentMe: 100)
+            scene.syncBalls(me: Array(repeating: 3, count: 16), partner: [])
+            return
+        }
+        #endif
         scene.setTilt(percentMe: summary.percentMe)
         scene.syncBalls(me: weights(for: model.me?.id),
                         partner: weights(for: model.partner?.id))
