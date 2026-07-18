@@ -250,43 +250,72 @@ struct MainScaffold: View {
         }
     }
 
-    /// Each tab: paper ground + the wordmark header above its content.
+    /// Each tab: paper ground + a native navigation bar carrying the
+    /// wordmark (leading) and the dark toggle (trailing).
     private func screen<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        VStack(spacing: 0) {
-            header
+        NavigationStack {
             content()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(palette.bg.ignoresSafeArea())
+                .toolbar {
+                    ToolbarItem(placement: leadingPlacement) {
+                        HStack(spacing: 7) {
+                            ScaleGlyph()
+                                .stroke(palette.ink, style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
+                                .frame(width: 15, height: 15)
+                            Text("Even")
+                                .font(EvenFont.serif(18, .semibold, italic: true))
+                                .foregroundStyle(palette.ink)
+                                .fixedSize()
+                        }
+                        .fixedSize()
+                    }
+                    ToolbarItem(placement: trailingPlacement) {
+                        Button {
+                            isDark.toggle()
+                        } label: {
+                            Image(systemName: isDark ? "sun.max" : "moon")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(palette.sub)
+                                .frame(width: 30, height: 30)
+                                .overlay(Circle().stroke(palette.line, lineWidth: 1))
+                                .contentTransition(.symbolEffect(.replace))
+                        }
+                        .buttonStyle(PressScaleStyle(scale: 0.9))
+                        .accessibilityIdentifier("dark-toggle")
+                    }
+                }
+                .paperNavigationBar(palette)
         }
-        .background(palette.bg.ignoresSafeArea())
     }
 
-    private var header: some View {
-        HStack {
-            HStack(spacing: 7) {
-                ScaleGlyph()
-                    .stroke(palette.ink, style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
-                    .frame(width: 15, height: 15)
-                Text("Even")
-                    .font(EvenFont.serif(18, .semibold, italic: true))
-                    .foregroundStyle(palette.ink)
-            }
-            Spacer()
-            Button {
-                isDark.toggle()
-            } label: {
-                Image(systemName: isDark ? "sun.max" : "moon")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(palette.sub)
-                    .frame(width: 30, height: 30)
-                    .overlay(Circle().stroke(palette.line, lineWidth: 1))
-                    .contentTransition(.symbolEffect(.replace))
-            }
-            .buttonStyle(PressScaleStyle(scale: 0.9))
-            .accessibilityIdentifier("dark-toggle")
-        }
-        .padding(.horizontal, 20)
-        .padding(.top, 8)
-        .padding(.bottom, 4)
+    private var leadingPlacement: ToolbarItemPlacement {
+        #if os(iOS)
+        .topBarLeading
+        #else
+        .navigation
+        #endif
+    }
+
+    private var trailingPlacement: ToolbarItemPlacement {
+        #if os(iOS)
+        .topBarTrailing
+        #else
+        .primaryAction
+        #endif
+    }
+}
+
+private extension View {
+    /// Keeps the native bar on the app's paper instead of system material.
+    @ViewBuilder func paperNavigationBar(_ palette: EvenPalette) -> some View {
+        #if os(iOS)
+        self
+            .toolbarBackground(palette.bg, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+        #else
+        self
+        #endif
     }
 }
 
