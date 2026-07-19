@@ -113,6 +113,16 @@ execution order. AC = acceptance criteria.
 - [x] **EV-75** E2E: send a bill-like email to the household account,
   sync, see the draft, approve, verify the event lands in Google Calendar.
 
+## Security & access architecture review (Umur, 2026-07-19 — do before wider rollout)
+- [ ] **EV-80** Revisit backend security/access end to end now that the API is
+  public (api.thisiseven.app): auth token lifetimes + refresh rotation, HS256
+  shared-secret vs asymmetric JWT signing, rate limiting/abuse protection on
+  auth + sync endpoints, GoTrue signup policy (open email signup is still on
+  for debug), household-scoping audit, secrets handling (backend/.env),
+  debug-build HTTP paths, tunnel exposure surface, and dependency/image
+  update cadence. Outcome: a written threat-model + hardening plan, then the
+  fixes.
+
 ## Post-MVP parking lot
 Push notifications · public API via Cloudflare tunnel (api.thisiseven.app) ·
 TestFlight (needs explicit approval) · Android · uneven splits · week
