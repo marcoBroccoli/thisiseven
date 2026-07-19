@@ -91,3 +91,51 @@ final class EvenCaptureTests: XCTestCase {
         add(attachment)
     }
 }
+
+/// Evidence generator for the stepwise-tilt physics: signs in, then
+/// relaunches with --physics-stress N at several counts × both palettes.
+final class EvenStressCaptureTests: XCTestCase {
+    func testCaptureTiltSteps() throws {
+        var app = XCUIApplication()
+        app.launchArguments = ["--skip-google-prompt"]
+        app.launch()
+
+        // Sign in if the welcome screen is up (session may be cleared).
+        if app.buttons["dev-email-signin"].waitForExistence(timeout: 6) {
+            app.buttons["dev-email-signin"].tap()
+            let email = app.textFields["auth-email"]
+            XCTAssertTrue(email.waitForExistence(timeout: 8))
+            email.tap()
+            email.typeText("capture-umur@even.dev")
+            let password = app.textFields["auth-password"].exists
+                ? app.textFields["auth-password"] : app.secureTextFields.firstMatch
+            password.tap()
+            password.typeText("capture-pass1")
+            app.buttons["Sign in"].tap()
+        }
+        XCTAssertTrue(app.tabBars.buttons.element(boundBy: 0).waitForExistence(timeout: 20))
+
+        for dark in [false, true] {
+            for count in [1, 3, 16] {
+                app.terminate()
+                app = XCUIApplication()
+                app.launchArguments = ["--skip-google-prompt", "--physics-stress", "\(count)"]
+                app.launch()
+                XCTAssertTrue(app.tabBars.buttons.element(boundBy: 0).waitForExistence(timeout: 15))
+                if dark != isDarkNow(app) {
+                    app.buttons["dark-toggle"].tap()
+                }
+                sleep(6)   // let balls drop and the beam settle
+                let shot = XCTAttachment(screenshot: app.screenshot())
+                shot.name = "tilt-\(count)-\(dark ? "dark" : "light")"
+                shot.lifetime = .keepAlways
+                add(shot)
+            }
+        }
+    }
+
+    private func isDarkNow(_ app: XCUIApplication) -> Bool {
+        // The toggle shows "sun.max" (label Sun) in dark mode.
+        app.buttons["dark-toggle"].label.lowercased().contains("sun")
+    }
+}

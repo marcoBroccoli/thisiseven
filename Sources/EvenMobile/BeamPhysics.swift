@@ -100,8 +100,8 @@ final class BeamPhysicsScene: SKScene {
     }
 
     /// Bucket-local geometry: apex at (0,0) hangs off the beam end; strings
-    /// run down to the dish rim; the dish is the design's quad arc. The
-    /// physics edge follows strings + dish so balls settle in the V.
+    /// run down to the dish rim; the dish arc terminates EXACTLY at the
+    /// string endpoints (±36u) — no overhanging tips at tilt.
     private func bucketPath(sampled: Bool) -> CGPath {
         let path = CGMutablePath()
         let rimY: CGFloat = -46 * u
@@ -109,15 +109,15 @@ final class BeamPhysicsScene: SKScene {
         path.addLine(to: CGPoint(x: -36 * u, y: rimY))
         path.move(to: .zero)
         path.addLine(to: CGPoint(x: 36 * u, y: rimY))
-        path.move(to: CGPoint(x: -42 * u, y: rimY))
+        path.move(to: CGPoint(x: -36 * u, y: rimY))
         if sampled {
             for i in 0...12 {
                 let t = CGFloat(i) / 12
-                path.addLine(to: CGPoint(x: quad(-42 * u, 0, 42 * u, t),
-                                         y: quad(rimY, -68 * u, rimY, t)))
+                path.addLine(to: CGPoint(x: quad(-36 * u, 0, 36 * u, t),
+                                         y: quad(rimY, -66 * u, rimY, t)))
             }
         } else {
-            path.addQuadCurve(to: CGPoint(x: 42 * u, y: rimY), control: CGPoint(x: 0, y: -68 * u))
+            path.addQuadCurve(to: CGPoint(x: 36 * u, y: rimY), control: CGPoint(x: 0, y: -66 * u))
         }
         return path
     }
@@ -138,17 +138,17 @@ final class BeamPhysicsScene: SKScene {
         // the top) + the dish arc — one continuous concave bucket, so a full
         // pile at max tilt cannot crest or slip a joint.
         let wallPath = CGMutablePath()
-        wallPath.move(to: CGPoint(x: -36 * u, y: 40 * u))
-        wallPath.addLine(to: CGPoint(x: -45 * u, y: 24 * u))
-        wallPath.addLine(to: CGPoint(x: -44 * u, y: -46 * u))
+        wallPath.move(to: CGPoint(x: -30 * u, y: 40 * u))
+        wallPath.addLine(to: CGPoint(x: -39 * u, y: 24 * u))
+        wallPath.addLine(to: CGPoint(x: -38 * u, y: -46 * u))
         for i in 0...12 {
             let t = CGFloat(i) / 12
-            wallPath.addLine(to: CGPoint(x: quad(-42 * u, 0, 42 * u, t),
-                                         y: quad(-46 * u, -68 * u, -46 * u, t)))
+            wallPath.addLine(to: CGPoint(x: quad(-36 * u, 0, 36 * u, t),
+                                         y: quad(-46 * u, -66 * u, -46 * u, t)))
         }
-        wallPath.addLine(to: CGPoint(x: 44 * u, y: -46 * u))
-        wallPath.addLine(to: CGPoint(x: 45 * u, y: 24 * u))
-        wallPath.addLine(to: CGPoint(x: 36 * u, y: 40 * u))
+        wallPath.addLine(to: CGPoint(x: 38 * u, y: -46 * u))
+        wallPath.addLine(to: CGPoint(x: 39 * u, y: 24 * u))
+        wallPath.addLine(to: CGPoint(x: 30 * u, y: 40 * u))
         let walls = SKNode()
         walls.name = "walls"
         walls.physicsBody = SKPhysicsBody(edgeChainFrom: wallPath)
@@ -212,10 +212,15 @@ final class BeamPhysicsScene: SKScene {
         retarget()
     }
 
+    /// Degrees of tilt per unit of landed weight difference: every ball
+    /// landing sinks its side a visible step further (~6-7 units of
+    /// difference traverse the full ±8° range), instead of the old ratio
+    /// formula that hit the clamp on the very first solo ball.
+    static let degreesPerWeightUnit: Double = 1.2
+
     private func retarget() {
-        let total = landedMe + landedPartner
-        let pct = total > 0 ? landedMe / total * 100 : 50
-        let degrees = max(-8, min(8, (pct - 50) * 0.5))
+        let diff = landedMe - landedPartner
+        let degrees = max(-8, min(8, Self.degreesPerWeightUnit * diff))
         targetAngle = CGFloat(degrees * .pi / 180)
     }
 
@@ -374,13 +379,13 @@ struct BeamScaleView: View {
                     .capsLabel(8.5, tracking: 1.7)
                     .foregroundStyle(meColor)
                     .position(x: cx - 148 * unit(geo), y: 64 + endDrop(sign: -1, geo: geo) + 82 * unit(geo))
-                    .animation(.spring(response: 1.1, dampingFraction: 0.55), value: summary.percentMe)
+                    .animation(.spring(response: 1.1, dampingFraction: 0.55), value: summary.pebbles)
                 Text((model.partner?.displayName ?? "— ?").uppercased())
                     .capsLabel(8.5, tracking: 1.7)
                     .foregroundStyle(model.partner == nil ? AnyShapeStyle(palette.sub.opacity(0.6))
                                                           : AnyShapeStyle(partnerColor))
                     .position(x: cx + 148 * unit(geo), y: 64 + endDrop(sign: 1, geo: geo) + 82 * unit(geo))
-                    .animation(.spring(response: 1.1, dampingFraction: 0.55), value: summary.percentPartner)
+                    .animation(.spring(response: 1.1, dampingFraction: 0.55), value: summary.pebbles)
 
                 RollingNumber(value: summary.percentMe)
                     .font(EvenFont.serif(34, .medium))
@@ -404,9 +409,13 @@ struct BeamScaleView: View {
         min(1, geo.size.width / 400)
     }
 
-    /// Vertical drop of a beam end (SwiftUI y-down) at the settled tilt.
+    /// Vertical drop of a beam end (SwiftUI y-down) at the settled tilt —
+    /// mirrors the scene's stepwise landed-weight formula so the labels
+    /// track where the buckets will actually come to rest.
     private func endDrop(sign: Double, geo: GeometryProxy) -> CGFloat {
-        let degrees = max(-8, min(8, (Double(summary.percentMe) - 50) * 0.5))
+        let meWeight = weights(for: model.me?.id).reduce(0, +)
+        let partnerWeight = weights(for: model.partner?.id).reduce(0, +)
+        let degrees = max(-8, min(8, BeamPhysicsScene.degreesPerWeightUnit * Double(meWeight - partnerWeight)))
         return CGFloat(-sin(degrees * .pi / 180) * 148 * unit(geo) * sign) * -1
     }
 
@@ -415,8 +424,11 @@ struct BeamScaleView: View {
                     me: meColor, partner: partnerColor,
                     ghostPartner: model.partner == nil)
         #if DEBUG
-        if CommandLine.arguments.contains("--physics-stress") {
-            scene.syncBalls(me: Array(repeating: 3, count: 16), partner: [])
+        if let idx = CommandLine.arguments.firstIndex(of: "--physics-stress") {
+            // Optional trailing count: `--physics-stress 3` drops that many
+            // max-weight balls (default 16 = the containment stress).
+            let count = CommandLine.arguments.dropFirst(idx + 1).first.flatMap(Int.init) ?? 16
+            scene.syncBalls(me: Array(repeating: 3, count: count), partner: [])
             return
         }
         #endif
