@@ -17,12 +17,19 @@ private func skColor(_ color: Color) -> SKColor { NSColor(color) }
 final class BeamPhysicsScene: SKScene {
     enum Side { case me, partner }
 
-    private let beamHalf: CGFloat = 148
+    /// Uniform layout scale so the whole assembly fits the container width.
+    var layoutScale: CGFloat = 1
+    private var u: CGFloat { layoutScale }
+    private var beamHalf: CGFloat { 148 * u }
     private let pivotFromTop: CGFloat = 64
     private let maxBallsPerSide = 16
 
     // Spring toward the target tilt (matches the old SwiftUI spring feel).
+    // The target is derived ONLY from weight that has physically landed —
+    // the beam never leans ahead of its balls.
     private var targetAngle: CGFloat = 0
+    private var landedMe: Double = 0
+    private var landedPartner: Double = 0
     private var angle: CGFloat = 0
     private var angularVel: CGFloat = 0
     private var lastTime: TimeInterval?
@@ -68,12 +75,12 @@ final class BeamPhysicsScene: SKScene {
         beamNode.position = pivot
         addChild(beamNode)
 
-        let bar = SKShapeNode(rect: CGRect(x: -beamHalf - 2, y: -1.5, width: (beamHalf + 2) * 2, height: 3),
+        let bar = SKShapeNode(rect: CGRect(x: -beamHalf - 2 * u, y: -1.5, width: (beamHalf + 2 * u) * 2, height: 3),
                               cornerRadius: 1.5)
         bar.name = "bar"
         beamNode.addChild(bar)
-        for (name, x, r) in [("pivotDot", CGFloat(0), CGFloat(4)),
-                             ("endL", -beamHalf, 2), ("endR", beamHalf, 2)] {
+        for (name, x, r) in [("pivotDot", CGFloat(0), 4 * u),
+                             ("endL", -beamHalf, 2 * u), ("endR", beamHalf, 2 * u)] {
             let dot = SKShapeNode(circleOfRadius: r)
             dot.name = name
             dot.position = CGPoint(x: x, y: 0)
@@ -97,23 +104,20 @@ final class BeamPhysicsScene: SKScene {
     /// physics edge follows strings + dish so balls settle in the V.
     private func bucketPath(sampled: Bool) -> CGPath {
         let path = CGMutablePath()
-        let rimY: CGFloat = -46
+        let rimY: CGFloat = -46 * u
         path.move(to: .zero)
-        path.addLine(to: CGPoint(x: -36, y: rimY))
+        path.addLine(to: CGPoint(x: -36 * u, y: rimY))
         path.move(to: .zero)
-        path.addLine(to: CGPoint(x: 36, y: rimY))
-        path.move(to: CGPoint(x: -42, y: rimY))
+        path.addLine(to: CGPoint(x: 36 * u, y: rimY))
+        path.move(to: CGPoint(x: -42 * u, y: rimY))
         if sampled {
-            var pts: [CGPoint] = []
             for i in 0...12 {
                 let t = CGFloat(i) / 12
-                let x = quad(-42, 0, 42, t)
-                let y = quad(rimY, -68, rimY, t)
-                pts.append(CGPoint(x: x, y: y))
+                path.addLine(to: CGPoint(x: quad(-42 * u, 0, 42 * u, t),
+                                         y: quad(rimY, -68 * u, rimY, t)))
             }
-            for p in pts { path.addLine(to: p) }
         } else {
-            path.addQuadCurve(to: CGPoint(x: 42, y: rimY), control: CGPoint(x: 0, y: -68))
+            path.addQuadCurve(to: CGPoint(x: 42 * u, y: rimY), control: CGPoint(x: 0, y: -68 * u))
         }
         return path
     }
@@ -134,16 +138,17 @@ final class BeamPhysicsScene: SKScene {
         // the top) + the dish arc — one continuous concave bucket, so a full
         // pile at max tilt cannot crest or slip a joint.
         let wallPath = CGMutablePath()
-        wallPath.move(to: CGPoint(x: -36, y: 40))
-        wallPath.addLine(to: CGPoint(x: -45, y: 24))
-        wallPath.addLine(to: CGPoint(x: -44, y: -46))
+        wallPath.move(to: CGPoint(x: -36 * u, y: 40 * u))
+        wallPath.addLine(to: CGPoint(x: -45 * u, y: 24 * u))
+        wallPath.addLine(to: CGPoint(x: -44 * u, y: -46 * u))
         for i in 0...12 {
             let t = CGFloat(i) / 12
-            wallPath.addLine(to: CGPoint(x: quad(-42, 0, 42, t), y: quad(-46, -68, -46, t)))
+            wallPath.addLine(to: CGPoint(x: quad(-42 * u, 0, 42 * u, t),
+                                         y: quad(-46 * u, -68 * u, -46 * u, t)))
         }
-        wallPath.addLine(to: CGPoint(x: 44, y: -46))
-        wallPath.addLine(to: CGPoint(x: 45, y: 24))
-        wallPath.addLine(to: CGPoint(x: 36, y: 40))
+        wallPath.addLine(to: CGPoint(x: 44 * u, y: -46 * u))
+        wallPath.addLine(to: CGPoint(x: 45 * u, y: 24 * u))
+        wallPath.addLine(to: CGPoint(x: 36 * u, y: 40 * u))
         let walls = SKNode()
         walls.name = "walls"
         walls.physicsBody = SKPhysicsBody(edgeChainFrom: wallPath)
@@ -196,8 +201,21 @@ final class BeamPhysicsScene: SKScene {
 
     // MARK: Tilt
 
-    func setTilt(percentMe: Int) {
-        let degrees = max(-8, min(8, (Double(percentMe) - 50) * 0.5))
+    private func landed(side: Side, weight: Int) {
+        if side == .me { landedMe += Double(weight) } else { landedPartner += Double(weight) }
+        retarget()
+    }
+
+    private func unlanded(side: Side, weight: Int) {
+        if side == .me { landedMe = max(0, landedMe - Double(weight)) }
+        else { landedPartner = max(0, landedPartner - Double(weight)) }
+        retarget()
+    }
+
+    private func retarget() {
+        let total = landedMe + landedPartner
+        let pct = total > 0 ? landedMe / total * 100 : 50
+        let degrees = max(-8, min(8, (pct - 50) * 0.5))
         targetAngle = CGFloat(degrees * .pi / 180)
     }
 
@@ -228,6 +246,7 @@ final class BeamPhysicsScene: SKScene {
             for ball in current.reversed() where (ball.userData?["w"] as? Int) == weight && removed < extra {
                 removed += 1
                 current.removeAll { $0 === ball }
+                if ball.parent != nil { unlanded(side: side, weight: weight) }
                 ball.physicsBody = nil
                 ball.run(.sequence([
                     .group([.fadeOut(withDuration: 0.22), .scale(to: 0.4, duration: 0.22)]),
@@ -244,9 +263,13 @@ final class BeamPhysicsScene: SKScene {
                 pendingSpawns += 1
                 let ball = makeBall(side: side, weight: weight)
                 current.append(ball)
+                let ballWeight = weight
                 run(.sequence([.wait(forDuration: delay), .run { [weak self] in
                     self?.dropIn(ball, side: side)
                     self?.pendingSpawns = max(0, (self?.pendingSpawns ?? 1) - 1)
+                }, .wait(forDuration: 0.42), .run { [weak self] in
+                    guard ball.parent != nil else { return }
+                    self?.landed(side: side, weight: ballWeight)
                 }]))
             }
         }
@@ -260,9 +283,9 @@ final class BeamPhysicsScene: SKScene {
 
     private func radius(for weight: Int) -> CGFloat {
         switch weight {
-        case 1: return 4
-        case 2: return 5.5
-        default: return 7
+        case 1: return 4 * u
+        case 2: return 5.5 * u
+        default: return 7 * u
         }
     }
 
@@ -279,9 +302,9 @@ final class BeamPhysicsScene: SKScene {
     private func dropIn(_ ball: SKShapeNode, side: Side) {
         guard ball.parent == nil else { return }
         let bucket = side == .me ? meBucket : partnerBucket
-        let jitter = CGFloat.random(in: -16...16)
+        let jitter = CGFloat.random(in: (-16 * u)...(16 * u))
         ball.position = CGPoint(x: bucket.position.x + jitter,
-                                y: bucket.position.y + CGFloat.random(in: 4...24))
+                                y: bucket.position.y + CGFloat.random(in: (4 * u)...(24 * u)))
         let body = SKPhysicsBody(circleOfRadius: radius(for: ball.userData?["w"] as? Int ?? 1))
         body.restitution = 0.16
         body.friction = 0.9
@@ -340,6 +363,7 @@ struct BeamScaleView: View {
 
                 SpriteView(scene: scene, options: [.allowsTransparency])
                     .onAppear {
+                        scene.layoutScale = min(1, geo.size.width / 400)
                         scene.size = geo.size
                         scene.isPaused = false
                         configureScene(meColor: meColor, partnerColor: partnerColor)
@@ -349,26 +373,26 @@ struct BeamScaleView: View {
                 Text((model.me?.displayName ?? "You").uppercased())
                     .capsLabel(8.5, tracking: 1.7)
                     .foregroundStyle(meColor)
-                    .position(x: cx - 148, y: 64 + endDrop(sign: -1) + 82)
+                    .position(x: cx - 148 * unit(geo), y: 64 + endDrop(sign: -1, geo: geo) + 82 * unit(geo))
                     .animation(.spring(response: 1.1, dampingFraction: 0.55), value: summary.percentMe)
                 Text((model.partner?.displayName ?? "— ?").uppercased())
                     .capsLabel(8.5, tracking: 1.7)
                     .foregroundStyle(model.partner == nil ? AnyShapeStyle(palette.sub.opacity(0.6))
                                                           : AnyShapeStyle(partnerColor))
-                    .position(x: cx + 148, y: 64 + endDrop(sign: 1) + 82)
+                    .position(x: cx + 148 * unit(geo), y: 64 + endDrop(sign: 1, geo: geo) + 82 * unit(geo))
                     .animation(.spring(response: 1.1, dampingFraction: 0.55), value: summary.percentPartner)
 
                 RollingNumber(value: summary.percentMe)
                     .font(EvenFont.serif(34, .medium))
                     .monospacedDigit()
                     .foregroundStyle(meColor)
-                    .position(x: cx - 128, y: 34)
+                    .position(x: cx - 128 * unit(geo), y: 34)
                 RollingNumber(value: summary.percentPartner)
                     .font(EvenFont.serif(34, .medium))
                     .monospacedDigit()
                     .foregroundStyle(model.partner == nil ? AnyShapeStyle(palette.sub.opacity(0.6))
                                                           : AnyShapeStyle(partnerColor))
-                    .position(x: cx + 128, y: 34)
+                    .position(x: cx + 128 * unit(geo), y: 34)
             }
             .onChange(of: summary.percentMe) { configureScene(meColor: meColor, partnerColor: partnerColor) }
             .onChange(of: summary.pebbles) { configureScene(meColor: meColor, partnerColor: partnerColor) }
@@ -376,10 +400,14 @@ struct BeamScaleView: View {
         }
     }
 
+    private func unit(_ geo: GeometryProxy) -> CGFloat {
+        min(1, geo.size.width / 400)
+    }
+
     /// Vertical drop of a beam end (SwiftUI y-down) at the settled tilt.
-    private func endDrop(sign: Double) -> CGFloat {
+    private func endDrop(sign: Double, geo: GeometryProxy) -> CGFloat {
         let degrees = max(-8, min(8, (Double(summary.percentMe) - 50) * 0.5))
-        return CGFloat(-sin(degrees * .pi / 180) * 148 * sign) * -1
+        return CGFloat(-sin(degrees * .pi / 180) * 148 * unit(geo) * sign) * -1
     }
 
     private func configureScene(meColor: Color, partnerColor: Color) {
@@ -388,12 +416,10 @@ struct BeamScaleView: View {
                     ghostPartner: model.partner == nil)
         #if DEBUG
         if CommandLine.arguments.contains("--physics-stress") {
-            scene.setTilt(percentMe: 100)
             scene.syncBalls(me: Array(repeating: 3, count: 16), partner: [])
             return
         }
         #endif
-        scene.setTilt(percentMe: summary.percentMe)
         scene.syncBalls(me: weights(for: model.me?.id),
                         partner: weights(for: model.partner?.id))
     }
