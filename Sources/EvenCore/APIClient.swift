@@ -3,21 +3,26 @@ import Foundation
 public enum APIEnvironment: Sendable {
     /// Simulator / same-machine development.
     case localhost
-    /// LAN / tailnet devices via the Caddy route.
+    /// LAN / tailnet dev-install devices via the Caddy route.
     case home
+    /// The public HTTPS endpoint (Cloudflare tunnel) — release/TestFlight.
+    case publicCloud
 
     public var baseURL: URL {
         switch self {
         case .localhost: return URL(string: "http://localhost:8091")!
         case .home: return URL(string: "http://even-api.home")!
+        case .publicCloud: return URL(string: "https://api.thisiseven.app")!
         }
     }
 
     public static var current: APIEnvironment {
         #if targetEnvironment(simulator)
         return .localhost
-        #else
+        #elseif DEBUG
         return .home
+        #else
+        return .publicCloud
         #endif
     }
 }
