@@ -27,6 +27,25 @@ final class HouseholdDashboardTests: XCTestCase {
         XCTAssertEqual(draft.areaID, areaID)
     }
 
+    func testManualRecurringDraftCanHaveNoAmount() {
+        let dueDate = Date(timeIntervalSince1970: 1_800_086_400)
+
+        let draft = ManualDraftFactory.makeDraft(
+            title: "Wash the dog",
+            dueDate: dueDate,
+            amount: nil,
+            ownerID: nil,
+            areaID: nil,
+            recurrence: .fortnightly
+        )
+
+        XCTAssertEqual(draft.title, "Wash the dog")
+        XCTAssertEqual(draft.dueDate, dueDate)
+        XCTAssertNil(draft.amount)
+        XCTAssertEqual(draft.recurrence, .fortnightly)
+        XCTAssertEqual(draft.source.label, "Manual")
+    }
+
     func testDashboardBillsDueSoonFiltersAndSortsOpenFinanceItems() {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
         let dueSoon = makeDraft(title: "Due soon", dueOffset: 86_400, amount: Decimal(20), status: .pendingApproval)
@@ -34,8 +53,10 @@ final class HouseholdDashboardTests: XCTestCase {
         let noAmount = makeDraft(title: "No amount", dueOffset: 2 * 86_400, amount: nil, status: .pendingApproval)
         let approvedBill = makeDraft(title: "Approved", dueOffset: 3 * 86_400, amount: Decimal(40), status: .approved)
         let retryBill = makeDraft(title: "Retry", dueOffset: 2 * 86_400, amount: Decimal(50), status: .calendarRetryRequired)
+        var deferredBill = makeDraft(title: "Deferred", dueOffset: 2 * 86_400, amount: Decimal(70), status: .pendingApproval)
+        deferredBill.snoozedUntil = now.addingTimeInterval(3_600)
 
-        let dashboard = HouseholdDashboard(household: makeHousehold(), drafts: [dueLater, retryBill, noAmount, approvedBill, dueSoon], now: now)
+        let dashboard = HouseholdDashboard(household: makeHousehold(), drafts: [dueLater, retryBill, noAmount, approvedBill, dueSoon, deferredBill], now: now)
 
         XCTAssertEqual(dashboard.billsDueSoon.map(\.title), ["Due soon", "Retry"])
     }

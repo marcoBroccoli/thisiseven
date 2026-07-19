@@ -53,7 +53,10 @@ public struct InboxPresentationModel: Equatable, Sendable {
 
     public func triageBuckets(household: HouseholdContext, now: Date = Date()) -> [InboxTriageBucket] {
         let analyzer = EmailIntelligenceAnalyzer()
-        let openDrafts = drafts.filter { !($0.triageState?.isClosed ?? false) }
+        let openDrafts = drafts.filter {
+            !($0.triageState?.isClosed ?? false)
+                && !DraftSnoozeService.isCurrentlySnoozed($0, now: now)
+        }
         let analyzedDrafts = openDrafts.map { draft in
             AnalyzedDraft(
                 draft: draft,

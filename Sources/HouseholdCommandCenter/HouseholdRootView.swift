@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 import HouseholdCore
 
 struct HouseholdRootView: View {
@@ -11,25 +12,11 @@ struct HouseholdRootView: View {
 
             MobileAppShell(store: store)
         }
+        #if os(macOS)
         .frame(minWidth: 390, idealWidth: 430, maxWidth: .infinity, minHeight: 720, idealHeight: 844, maxHeight: .infinity)
+        #endif
+        .preferredColorScheme(.light)
     }
-}
-
-private enum AppPalette {
-    static let canvas = Color(red: 0.933, green: 0.925, blue: 0.906)
-    static let surface = Color.white
-    static let ink = Color(red: 0.086, green: 0.086, blue: 0.086)
-    static let muted = Color.black.opacity(0.48)
-    static let purple = Color(red: 0.420, green: 0.373, blue: 0.780)
-    static let purpleDark = Color(red: 0.290, green: 0.247, blue: 0.569)
-    static let purpleSoft = Color(red: 0.949, green: 0.937, blue: 0.988)
-    static let teal = Color(red: 0.227, green: 0.541, blue: 0.510)
-    static let red = Color(red: 0.702, green: 0.153, blue: 0.122)
-    static let redSoft = Color(red: 0.984, green: 0.906, blue: 0.898)
-    static let amber = Color(red: 0.890, green: 0.604, blue: 0.122)
-    static let amberText = Color(red: 0.604, green: 0.376, blue: 0.031)
-    static let amberSoft = Color(red: 0.984, green: 0.937, blue: 0.859)
-    static let line = Color.black.opacity(0.07)
 }
 
 private struct MobileAppShell: View {
@@ -56,19 +43,60 @@ private struct MobileAppShell: View {
                     .shadow(color: AppPalette.purple.opacity(0.28), radius: 12, x: 0, y: 6)
             }
             .buttonStyle(.plain)
-            .help("Add a household item")
+            .platformHelp("Add a household item")
             .padding(.trailing, 18)
             .padding(.bottom, 74)
         }
-        .frame(maxWidth: 430, maxHeight: .infinity)
+        .frame(maxWidth: mobileShellMaximumWidth, maxHeight: .infinity)
         .background(AppPalette.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
-        .shadow(color: .black.opacity(0.16), radius: 34, x: 0, y: 18)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
+        .clipShape(RoundedRectangle(cornerRadius: mobileShellCornerRadius, style: .continuous))
+        .shadow(color: .black.opacity(mobileShellShadowOpacity), radius: 34, x: 0, y: 18)
+        .padding(.horizontal, mobileShellHorizontalPadding)
+        .padding(.vertical, mobileShellVerticalPadding)
         .sheet(isPresented: $isPresentingQuickAdd) {
             ManualItemSheet(store: store, isPresented: $isPresentingQuickAdd)
+                .presentationDetents([.medium, .large])
         }
+    }
+
+    private var mobileShellMaximumWidth: CGFloat? {
+        #if os(macOS)
+        430
+        #else
+        nil
+        #endif
+    }
+
+    private var mobileShellCornerRadius: CGFloat {
+        #if os(macOS)
+        30
+        #else
+        0
+        #endif
+    }
+
+    private var mobileShellShadowOpacity: Double {
+        #if os(macOS)
+        0.16
+        #else
+        0
+        #endif
+    }
+
+    private var mobileShellHorizontalPadding: CGFloat {
+        #if os(macOS)
+        16
+        #else
+        0
+        #endif
+    }
+
+    private var mobileShellVerticalPadding: CGFloat {
+        #if os(macOS)
+        14
+        #else
+        0
+        #endif
     }
 }
 
@@ -98,7 +126,7 @@ private struct MobileTabBar: View {
         }
         .padding(.top, 9)
         .padding(.bottom, 14)
-        .background(.ultraThinMaterial)
+        .background(AppPalette.surface)
         .overlay(alignment: .top) {
             Rectangle()
                 .fill(AppPalette.line)
@@ -114,90 +142,6 @@ private struct MobileTabBar: View {
             return store.selectedSection == .settings || store.selectedSection == .review || store.selectedSection == .banking
         }
         return false
-    }
-}
-
-private struct HeaderView: View {
-    @ObservedObject var store: DemoHouseholdStore
-
-    var body: some View {
-        HStack(spacing: 16) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Household Command Center")
-                    .font(.system(size: 22, weight: .semibold))
-                Text(store.syncMessage)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-
-            Spacer()
-
-            MetricPill(title: "Urgent", value: store.urgentCount)
-            MetricPill(title: "Replies", value: store.replyNeededCount)
-            MetricPill(title: "Bills", value: store.dashboard.billsDueSoon.count)
-            MetricPill(title: "Sync", value: store.model.changedExternallyCount + store.model.retryRequiredCount)
-
-            Button {
-                Task { await store.importGmailLabel() }
-            } label: {
-                Label("Discover", systemImage: "tray.and.arrow.down")
-            }
-            .buttonStyle(.borderedProminent)
-            .help("Discover likely household emails from Gmail")
-
-            Button {
-                Task { await store.checkCalendarSync() }
-            } label: {
-                Label("Calendar", systemImage: "arrow.triangle.2.circlepath")
-            }
-            .help("Check approved Google Calendar events for external changes")
-        }
-        .padding(20)
-    }
-}
-
-private struct NavigationRail: View {
-    @ObservedObject var store: DemoHouseholdStore
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Household")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 14)
-                .padding(.top, 18)
-
-            ForEach(HouseholdSection.allCases) { section in
-                Button {
-                    store.selectedSection = section
-                } label: {
-                    Label(section.rawValue, systemImage: section.systemImage)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(store.selectedSection == section ? Color.accentColor.opacity(0.14) : Color.clear)
-                        )
-                }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 8)
-            }
-
-            Spacer()
-
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Source of truth")
-                    .font(.caption.weight(.semibold))
-                Text("Approved work becomes Google Calendar events. This app stores approval context.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .padding(14)
-        }
-        .background(Color(nsColor: .controlBackgroundColor))
     }
 }
 
@@ -317,7 +261,7 @@ private struct TodayHeader: View {
                         .frame(width: 18, height: 18)
                 }
                 .buttonStyle(MobileIconButtonStyle())
-                .help("Check approved Google Calendar events for external changes")
+                        .platformHelp("Check approved Google Calendar events for external changes")
             }
 
             Text(store.syncMessage)
@@ -381,7 +325,7 @@ private struct NextActionCard: View {
                         .frame(width: 18, height: 18)
                 }
                 .buttonStyle(MobileIconButtonStyle())
-                .help("Open full item details")
+                .platformHelp("Open full item details")
             }
         }
         .padding(14)
@@ -505,7 +449,10 @@ private struct TodayMVPCard: View {
     }
 
     private var openDrafts: [InboxDraft] {
-        store.model.drafts.filter { !(($0.triageState?.isClosed) ?? false) }
+        store.model.drafts.filter {
+            !(($0.triageState?.isClosed) ?? false)
+                && !DraftSnoozeService.isCurrentlySnoozed($0)
+        }
     }
 
     private var firstMemberID: UUID? { store.household.members.first?.id }
@@ -937,40 +884,6 @@ private struct MobileEmptyState: View {
     }
 }
 
-private struct MobilePrimaryButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(size: 13, weight: .semibold))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 9)
-            .background(AppPalette.purple.opacity(configuration.isPressed ? 0.82 : 1), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-    }
-}
-
-private struct MobileIconButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(size: 14, weight: .semibold))
-            .foregroundStyle(AppPalette.ink.opacity(0.60))
-            .padding(9)
-            .background(Color.black.opacity(configuration.isPressed ? 0.10 : 0.05), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-    }
-}
-
-private struct TodayCircleButtonStyle: ButtonStyle {
-    var foreground: Color
-    var background: Color
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(size: 14, weight: .bold))
-            .foregroundStyle(foreground.opacity(configuration.isPressed ? 0.72 : 1))
-            .frame(width: 30, height: 30)
-            .background(background.opacity(configuration.isPressed ? 0.72 : 1), in: Circle())
-    }
-}
-
 private func todayAccentColor(for title: String) -> Color {
     switch title {
     case "Calendar Attention":
@@ -1090,6 +1003,23 @@ private struct MobileDraftEditor: View {
                 StatusBadge(status: draft.status)
             }
 
+            if DraftSnoozeService.isCurrentlySnoozed(draft), let snoozedUntil = draft.snoozedUntil {
+                HStack(spacing: 10) {
+                    Image(systemName: "moon.zzz.fill")
+                        .foregroundStyle(AppPalette.amberText)
+                    Text("Deferred until \(snoozedUntil.formatted(date: .abbreviated, time: .shortened))")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(AppPalette.ink)
+                    Spacer()
+                    Button("Resume now") {
+                        store.resumeSelectedNow()
+                    }
+                    .buttonStyle(MobileSecondaryButtonStyle())
+                }
+                .padding(12)
+                .background(AppPalette.amberSoft, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            }
+
             EmailIntelligencePanel(store: store, draft: draft, intelligence: intelligence)
             CalendarApprovalPanel(store: store, draft: draft, readiness: store.calendarReadiness(for: draft))
             DailyActionPanel(store: store, draft: draft)
@@ -1165,32 +1095,9 @@ private struct MobileDraftEditor: View {
     }
 }
 
-private struct InboxSidebar: View {
-    @ObservedObject var store: DemoHouseholdStore
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Label("Organized Inbox", systemImage: "tray.full")
-                    .font(.headline)
-                Spacer()
-                Text(store.isGoogleConnected ? "Live Gmail" : store.gmailLabel)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(.quaternary, in: Capsule())
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 16)
-
-                OrganizedDraftList(store: store)
-        }
-    }
-}
-
 private struct OrganizedDraftList: View {
     @ObservedObject var store: DemoHouseholdStore
+    @State private var isShowingSnoozed = false
 
     var body: some View {
         LazyVStack(alignment: .leading, spacing: 12) {
@@ -1198,7 +1105,7 @@ private struct OrganizedDraftList: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Label("\(bucket.title) \(bucket.drafts.count)", systemImage: bucket.systemImage)
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppPalette.secondaryText)
                         .padding(.horizontal, 6)
 
                     ForEach(bucket.drafts) { draft in
@@ -1226,6 +1133,40 @@ private struct OrganizedDraftList: View {
                     }
                 }
             }
+
+            if !store.snoozedDrafts.isEmpty {
+                DisclosureGroup(isExpanded: $isShowingSnoozed) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(store.snoozedDrafts) { draft in
+                            Button {
+                                store.selectDraft(id: draft.id)
+                                store.selectedSection = .inbox
+                            } label: {
+                                InboxRow(
+                                    draft: draft,
+                                    household: store.household,
+                                    intelligence: store.intelligence(for: draft)
+                                )
+                                .padding(10)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(AppPalette.cardFill, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .stroke(AppPalette.line, lineWidth: 1)
+                                }
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.top, 6)
+                } label: {
+                    Label("Deferred \(store.snoozedDrafts.count)", systemImage: "moon.zzz")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(AppPalette.secondaryText)
+                        .padding(.horizontal, 6)
+                }
+                .padding(.top, 4)
+            }
         }
         .padding(.horizontal, 16)
     }
@@ -1246,6 +1187,12 @@ private struct InboxRow: View {
                 if let triageState = draft.triageState, triageState != .active {
                     TriageBadge(state: triageState)
                 }
+                if DraftSnoozeService.isCurrentlySnoozed(draft) {
+                    SnoozeStatusBadge()
+                }
+                if let recurrence = draft.recurrence {
+                    RecurrenceBadge(recurrence: recurrence)
+                }
                 if let replyStatus = draft.replyStatus, replyStatus != ReplyWorkflowStatus.none {
                     ReplyStatusBadge(status: replyStatus)
                 }
@@ -1254,7 +1201,7 @@ private struct InboxRow: View {
 
             Text(draft.source.from)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(AppPalette.secondaryText)
                 .lineLimit(1)
 
             HStack(spacing: 8) {
@@ -1272,7 +1219,7 @@ private struct InboxRow: View {
                 }
             }
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(AppPalette.secondaryText)
 
             HStack(spacing: 5) {
                 UrgencyBadge(urgency: intelligence.urgency)
@@ -1281,121 +1228,11 @@ private struct InboxRow: View {
                         .font(.caption2.weight(.semibold))
                         .padding(.horizontal, 6)
                         .padding(.vertical, 3)
-                        .background(.quaternary, in: Capsule())
+                        .background(AppPalette.cardFill, in: Capsule())
                 }
             }
         }
         .padding(.vertical, 6)
-    }
-}
-
-private struct DraftDetailView: View {
-    @ObservedObject var store: DemoHouseholdStore
-
-    var body: some View {
-        Group {
-            if let draft = store.selectedDraft {
-                DraftDetailContent(
-                    store: store,
-                    draft: draft,
-                    intelligence: store.intelligence(for: draft)
-                )
-            } else {
-                ContentUnavailableView("No Draft Selected", systemImage: "tray", description: Text("Discover Gmail emails or create a manual item."))
-            }
-        }
-    }
-}
-
-private struct DraftDetailContent: View {
-    @ObservedObject var store: DemoHouseholdStore
-    var draft: InboxDraft
-    var intelligence: EmailIntelligenceResult
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Approval Draft")
-                            .font(.title2.weight(.semibold))
-                        Text("Imported from \(draft.source.from)")
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    StatusBadge(status: draft.status)
-                }
-
-                EmailIntelligencePanel(store: store, draft: draft, intelligence: intelligence)
-                CalendarApprovalPanel(store: store, draft: draft, readiness: store.calendarReadiness(for: draft))
-                DailyActionPanel(store: store, draft: draft)
-
-                Form {
-                    TextField("Title", text: Binding(
-                        get: { store.titleDraft },
-                        set: store.updateSelectedTitle
-                    ))
-
-                    DatePicker("Due date", selection: Binding(
-                        get: { store.dueDateDraft },
-                        set: store.updateSelectedDueDate
-                    ), displayedComponents: [.date, .hourAndMinute])
-
-                    TextField("Amount", text: Binding(
-                        get: { store.amountDraft },
-                        set: store.updateSelectedAmount
-                    ))
-
-                    Picker("Owner", selection: Binding(
-                        get: { draft.ownerID?.uuidString ?? "" },
-                        set: { store.updateSelectedOwner(UUID(uuidString: $0)) }
-                    )) {
-                        Text("Unassigned").tag("")
-                        ForEach(store.household.members) { member in
-                            Text(member.displayName).tag(member.id.uuidString)
-                        }
-                    }
-
-                    Picker("Area", selection: Binding(
-                        get: { draft.areaID?.uuidString ?? "" },
-                        set: { store.updateSelectedArea(UUID(uuidString: $0)) }
-                    )) {
-                        Text("No area").tag("")
-                        ForEach(store.household.areas) { area in
-                            Text(area.name).tag(area.id.uuidString)
-                        }
-                    }
-                }
-                .formStyle(.grouped)
-
-                SourceEvidenceView(draft: draft)
-
-                HStack {
-                    Button(role: .destructive) {
-                        store.rejectSelectedDraft()
-                    } label: {
-                        Label("Reject", systemImage: "xmark.circle")
-                    }
-                    .disabled(draft.status == .approved)
-
-                    Spacer()
-
-                    Button {
-                        Task { await store.approveSelectedDraft() }
-                    } label: {
-                        if draft.status == .calendarUpdateRequired {
-                            Label("Sync Calendar", systemImage: "arrow.triangle.2.circlepath")
-                        } else {
-                            Label("Approve to Calendar", systemImage: "calendar.badge.plus")
-                        }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(!store.calendarReadiness(for: draft).canApproveToCalendar)
-                    .help(store.calendarReadiness(for: draft).detail)
-                }
-            }
-            .padding(24)
-        }
     }
 }
 
@@ -1407,7 +1244,7 @@ private struct CalendarApprovalPanel: View {
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: "calendar")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(AppPalette.secondaryText)
                 .frame(width: 22)
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
@@ -1417,10 +1254,15 @@ private struct CalendarApprovalPanel: View {
                 }
                 Text(readiness.detail)
                     .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(AppPalette.secondaryText)
                 Label(reminderText(readiness.recommendedReminderMinutesBefore), systemImage: "bell")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(AppPalette.secondaryText)
+                if let recurrence = draft.recurrence {
+                    Label(recurrence.label, systemImage: "repeat")
+                        .font(.caption)
+                        .foregroundStyle(AppPalette.secondaryText)
+                }
                 if draft.googleEventURL != nil {
                     Button {
                         store.selectDraft(id: draft.id)
@@ -1428,20 +1270,22 @@ private struct CalendarApprovalPanel: View {
                     } label: {
                         Label("Open Calendar event", systemImage: "arrow.up.right.square")
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(MobileSecondaryButtonStyle())
                 }
             }
             Spacer()
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+        .background(AppPalette.cardFill, in: RoundedRectangle(cornerRadius: 8))
     }
 }
 
 private struct DailyActionPanel: View {
     @ObservedObject var store: DemoHouseholdStore
     var draft: InboxDraft
+    @State private var isPresentingSnoozePicker = false
+    @State private var customSnoozeDate = Date().addingTimeInterval(86_400)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -1486,10 +1330,32 @@ private struct DailyActionPanel: View {
                 }
                 .disabled(draft.triageState == .done)
 
-                Button {
-                    store.snoozeSelected(byDays: 1)
-                } label: {
-                    Label("Tomorrow", systemImage: "moon")
+                if DraftSnoozeService.isCurrentlySnoozed(draft) {
+                    Button {
+                        store.resumeSelectedNow()
+                    } label: {
+                        Label("Resume", systemImage: "sun.max")
+                    }
+                } else {
+                    Menu {
+                        Button("Later today") {
+                            store.snoozeSelectedLaterToday()
+                        }
+                        Button("Tomorrow morning") {
+                            store.snoozeSelectedTomorrowMorning()
+                        }
+                        Button("Next week") {
+                            store.snoozeSelectedNextWeek()
+                        }
+                        Divider()
+                        Button("Choose date and time") {
+                            customSnoozeDate = Date().addingTimeInterval(86_400)
+                            isPresentingSnoozePicker = true
+                        }
+                    } label: {
+                        Label("Defer", systemImage: "moon.zzz")
+                    }
+                    .disabled(draft.status != .pendingApproval)
                 }
 
                 Button {
@@ -1530,7 +1396,7 @@ private struct DailyActionPanel: View {
                         } label: {
                             Label("Retry Calendar", systemImage: "arrow.clockwise.circle")
                         }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(MobilePrimaryButtonStyle())
                     }
 
                     if draft.status == .calendarUpdateRequired {
@@ -1539,7 +1405,7 @@ private struct DailyActionPanel: View {
                         } label: {
                             Label("Sync Calendar", systemImage: "arrow.triangle.2.circlepath")
                         }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(MobilePrimaryButtonStyle())
                     }
 
                     if draft.status == .changedExternally {
@@ -1572,28 +1438,45 @@ private struct DailyActionPanel: View {
                 if let lastError = draft.lastError {
                     Text(lastError)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppPalette.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
-    }
-}
+        .background(AppPalette.cardFill, in: RoundedRectangle(cornerRadius: 8))
+        .sheet(isPresented: $isPresentingSnoozePicker) {
+            VStack(alignment: .leading, spacing: 18) {
+                Text("Defer task")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(AppPalette.ink)
+                Text("The original due date stays unchanged. The task returns to your active inbox at this time.")
+                    .font(.subheadline)
+                    .foregroundStyle(AppPalette.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+                DatePicker(
+                    "Return to inbox",
+                    selection: $customSnoozeDate,
+                    in: Date()...,
+                    displayedComponents: [.date, .hourAndMinute]
+                )
+                FlowButtonRow {
+                    Button("Cancel") {
+                        isPresentingSnoozePicker = false
+                    }
+                    .buttonStyle(MobileSecondaryButtonStyle())
 
-private struct FlowButtonRow<Content: View>: View {
-    @ViewBuilder var content: () -> Content
-
-    var body: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 8) {
-                content()
+                    Button("Defer") {
+                        store.snoozeSelected(until: customSnoozeDate)
+                        isPresentingSnoozePicker = false
+                    }
+                    .buttonStyle(MobilePrimaryButtonStyle())
+                }
             }
-            VStack(alignment: .leading, spacing: 8) {
-                content()
-            }
+            .padding(24)
+            .frame(width: 360)
+            .background(AppPalette.surface)
         }
     }
 }
@@ -1613,7 +1496,7 @@ private struct EmailIntelligencePanel: View {
                         .font(.callout.weight(.medium))
                     Text(intelligence.reason)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppPalette.secondaryText)
                 }
                 Spacer()
                 UrgencyBadge(urgency: intelligence.urgency)
@@ -1625,14 +1508,14 @@ private struct EmailIntelligencePanel: View {
                         .font(.caption.weight(.semibold))
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(.quaternary, in: Capsule())
+                        .background(AppPalette.cardFill, in: Capsule())
                 }
             }
 
             if !intelligence.recommendedReminderMinutesBefore.isEmpty {
                 Label(reminderText(intelligence.recommendedReminderMinutesBefore), systemImage: "bell")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(AppPalette.secondaryText)
             }
 
             if shouldShowReplyComposer {
@@ -1645,12 +1528,12 @@ private struct EmailIntelligencePanel: View {
                         if let reply = intelligence.suggestedReply {
                             Text("\(Int(reply.confidence * 100))%")
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(AppPalette.secondaryText)
                         }
                     }
                     Text(replySubject)
                         .font(.caption.monospaced())
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppPalette.secondaryText)
                     TextEditor(text: Binding(
                         get: { store.replyDraft },
                         set: store.updateReplyDraft
@@ -1659,7 +1542,7 @@ private struct EmailIntelligencePanel: View {
                     .frame(minHeight: 110)
                     .overlay(
                         RoundedRectangle(cornerRadius: 8)
-                            .stroke(.quaternary)
+                            .stroke(AppPalette.line)
                     )
 
                     FlowButtonRow {
@@ -1677,7 +1560,7 @@ private struct EmailIntelligencePanel: View {
                             )
                         }
                         .disabled(!store.isGoogleConnected || store.isSavingGmailDraft)
-                        .help("Creates or updates an unsent Gmail draft. It never sends the email.")
+                        .platformHelp("Creates or updates an unsent Gmail draft. It never sends the email.")
                         Button {
                             store.openSelectedReplyInGmailCompose()
                         } label: {
@@ -1700,7 +1583,7 @@ private struct EmailIntelligencePanel: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+        .background(AppPalette.cardFill, in: RoundedRectangle(cornerRadius: 8))
     }
 
     private var shouldShowReplyComposer: Bool {
@@ -1762,6 +1645,25 @@ private struct ManualItemSheet: View {
                         )
                     }
 
+                    Picker("Repeat", selection: $store.newItemRecurrence) {
+                        Text("Does not repeat").tag(HouseholdRecurrence?.none)
+                        ForEach(HouseholdRecurrence.allCases, id: \.self) { recurrence in
+                            Text(recurrence.label).tag(Optional(recurrence))
+                        }
+                    }
+                    .onChange(of: store.newItemRecurrence) { _, recurrence in
+                        if recurrence != nil {
+                            store.newItemHasDueDate = true
+                        }
+                    }
+
+                    if store.newItemRecurrence != nil {
+                        Text("Repeat creates a free recurring Google Calendar event after approval. Leave the amount blank for chores.")
+                            .font(.caption)
+                            .foregroundStyle(AppPalette.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
                     TextField("Amount (optional)", text: $store.newItemAmount)
                         .textFieldStyle(.roundedBorder)
 
@@ -1798,7 +1700,7 @@ private struct ManualItemSheet: View {
             }
             .padding(20)
         }
-        .frame(minWidth: 360, idealWidth: 420, minHeight: 540)
+        .mobileSheetSizing()
         .background(AppPalette.canvas)
     }
 }
@@ -1812,7 +1714,11 @@ private struct BillsView: View {
                 SectionHeader(title: "Bills And Obligations", subtitle: "Open finance-related household items due in the next seven days.")
 
                 if store.dashboard.billsDueSoon.isEmpty {
-                    ContentUnavailableView("No Bills Due Soon", systemImage: "creditcard", description: Text("Add an amount to any draft to track it as a bill or obligation."))
+                    MobileEmptyState(
+                        title: "No Bills Due Soon",
+                        detail: "Add an amount to any draft to track it as a bill or obligation.",
+                        systemImage: "creditcard"
+                    )
                 } else {
                     ForEach(store.dashboard.billsDueSoon) { draft in
                         DraftSummaryCard(draft: draft, household: store.household, store: store)
@@ -1835,6 +1741,34 @@ private struct RemindersView: View {
 
                 CalendarOverview(store: store)
 
+                SettingsGroup(title: "App Reminders", icon: "bell.badge") {
+                    Text(store.localReminderStatus)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    FlowButtonRow {
+                        Button {
+                            Task { await store.enableLocalReminderNotifications() }
+                        } label: {
+                            Label("Enable alerts", systemImage: "bell.badge")
+                        }
+                        .buttonStyle(MobilePrimaryButtonStyle())
+                        .disabled(store.isSchedulingLocalReminders)
+
+                        Button {
+                            Task { await store.refreshLocalReminderNotifications() }
+                        } label: {
+                            Label("Refresh", systemImage: "arrow.triangle.2.circlepath")
+                        }
+                        .buttonStyle(MobileSecondaryButtonStyle())
+                        .disabled(store.isSchedulingLocalReminders)
+                    }
+
+                    Text("Approved items keep their Google Calendar reminders. Local alerts cover open work that still needs attention.")
+                        .font(.caption)
+                        .foregroundStyle(AppPalette.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
                 FlowButtonRow {
                     Button {
                         Task { await store.checkCalendarSync() }
@@ -1848,7 +1782,7 @@ private struct RemindersView: View {
                     } label: {
                         Label("Open Calendar", systemImage: "arrow.up.right.square")
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(MobileSecondaryButtonStyle())
                 }
 
                 Text("Last checked: \(store.lastCalendarSyncText)")
@@ -1964,7 +1898,7 @@ private struct WeeklyReviewView: View {
                         SectionHeader(title: "Weekly Review", subtitle: "Unassigned work, failed Calendar writes, and Calendar items changed outside the app.")
                         Text("Last Calendar sync: \(store.lastCalendarSyncText)")
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(AppPalette.secondaryText)
                     }
                     Spacer()
                     Button {
@@ -1975,7 +1909,11 @@ private struct WeeklyReviewView: View {
                 }
 
                 if store.dashboard.weeklyReviewItems.isEmpty {
-                    ContentUnavailableView("Review Queue Clear", systemImage: "checkmark.circle", description: Text("No unassigned, retry, or externally changed items need attention."))
+                    MobileEmptyState(
+                        title: "Review Queue Clear",
+                        detail: "No unassigned, retry, or externally changed items need attention.",
+                        systemImage: "checkmark.circle"
+                    )
                 } else {
                     ForEach(store.dashboard.weeklyReviewItems) { draft in
                         DraftSummaryCard(draft: draft, household: store.household, store: store)
@@ -1990,35 +1928,100 @@ private struct WeeklyReviewView: View {
 
 private struct BankingView: View {
     @ObservedObject var store: DemoHouseholdStore
+    @State private var isImportingStatement = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                SectionHeader(title: "Banking Candidates", subtitle: "Bills and payment emails that can later be matched against bunq transactions.")
+                SectionHeader(title: "Payments", subtitle: "Read-only statement matching for bills and household obligations.")
 
-                SettingsGroup(title: "bunq Private Test", icon: "building.columns") {
-                    Text("Planned as read-only matching first: find expected payments from Gmail, then reconcile against bank transactions.")
-                    Text("No payment initiation, no transaction ledger, and no budget model in this app until the household workflow is solid.")
-                        .foregroundStyle(.secondary)
-                    Button {
-                        store.syncMessage = "bunq is not connected yet. Next build should add sandbox OAuth and read-only transaction matching."
-                    } label: {
-                        Label("Prepare bunq Sandbox", systemImage: "wrench.and.screwdriver")
+                HStack(spacing: 10) {
+                    BankingMetric(value: store.bankTransactions.count, title: "Imported", color: AppPalette.purple, background: AppPalette.purpleSoft)
+                    BankingMetric(value: store.bankingMatchSuggestions.count, title: "To review", color: AppPalette.amberText, background: AppPalette.amberSoft)
+                    BankingMetric(value: store.confirmedBankMatchCount, title: "Matched", color: AppPalette.teal, background: AppPalette.teal.opacity(0.12))
+                }
+
+                SettingsGroup(title: "Statement Import", icon: "arrow.down.doc") {
+                    Text("Import a CSV export from your bank. Transactions remain on this Mac and are only matched against household items.")
+                    Text("No bank login, payment initiation, or account sync is enabled.")
+                        .foregroundStyle(AppPalette.secondaryText)
+
+                    FlowButtonRow {
+                        Button {
+                            isImportingStatement = true
+                        } label: {
+                            Label("Import CSV", systemImage: "tray.and.arrow.down")
+                        }
+                        .buttonStyle(MobilePrimaryButtonStyle())
+
+                        Button {
+                            store.loadSampleBankTransactions()
+                        } label: {
+                            Label("Load sample", systemImage: "wand.and.stars")
+                        }
+                        .buttonStyle(MobileSecondaryButtonStyle())
                     }
-                    .buttonStyle(.bordered)
+
+                    Text("Last import: " + store.lastBankImportText)
+                        .font(.caption)
+                        .foregroundStyle(AppPalette.secondaryText)
                 }
 
                 if store.bankingCandidateDrafts.isEmpty {
-                    ContentUnavailableView("No Banking Matches Yet", systemImage: "building.columns", description: Text("Emails with amounts, invoices, payments, renewals, or subscriptions will appear here."))
+                    MobileEmptyState(
+                        title: "No Payment Items Yet",
+                        detail: "Emails with amounts, invoices, payments, renewals, or subscriptions will appear here.",
+                        systemImage: "creditcard"
+                    )
                 } else {
+                    Text("Household payments")
+                        .font(.headline)
                     ForEach(store.bankingCandidateDrafts) { draft in
-                        BankingCandidateCard(draft: draft, intelligence: store.intelligence(for: draft), household: store.household, store: store)
+                        BankingCandidateCard(
+                            draft: draft,
+                            intelligence: store.intelligence(for: draft),
+                            confirmedMatch: store.bankMatch(for: draft),
+                            suggestion: store.bankSuggestion(for: draft),
+                            household: store.household,
+                            store: store
+                        )
+                    }
+                }
+
+                if !store.bankTransactions.isEmpty {
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack {
+                            Text("Imported transactions")
+                                .font(.headline)
+                            Spacer()
+                            Text("\(store.unmatchedOutgoingTransactionCount) unmatched")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(AppPalette.secondaryText)
+                        }
+
+                        ForEach(store.bankTransactions.prefix(6)) { transaction in
+                            BankTransactionRow(transaction: transaction)
+                        }
                     }
                 }
             }
             .padding(24)
         }
         .background(AppPalette.canvas)
+        .fileImporter(
+            isPresented: $isImportingStatement,
+            allowedContentTypes: [.commaSeparatedText, .plainText],
+            allowsMultipleSelection: false
+        ) { result in
+            switch result {
+            case .success(let urls):
+                if let url = urls.first {
+                    store.importBankStatement(from: url)
+                }
+            case .failure(let error):
+                store.syncMessage = "Statement selection failed: \(error.localizedDescription)"
+            }
+        }
     }
 }
 
@@ -2060,14 +2063,14 @@ private struct AreasView: View {
                             }
                             Text(summary.defaultOwnerName ?? "No default owner")
                                 .font(.callout)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(AppPalette.secondaryText)
                             Label(summary.openObligationTotal.description, systemImage: "creditcard")
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(AppPalette.secondaryText)
                         }
                         .padding(14)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+                        .background(AppPalette.cardFill, in: RoundedRectangle(cornerRadius: 8))
                     }
                 }
             }
@@ -2090,19 +2093,26 @@ private struct SettingsView: View {
                 SectionHeader(title: "Integration Settings", subtitle: "Google connects Gmail discovery, unsent reply drafts, and real Calendar approval.")
 
                 SettingsGroup(title: "Google OAuth", icon: "person.badge.key") {
-                    Text("Desktop Client ID")
+                    Text(googleClientIDLabel)
                         .font(.caption.weight(.semibold))
                     TextField("4229...apps.googleusercontent.com", text: $store.googleClientID)
                         .font(.callout.monospaced())
                         .textFieldStyle(.roundedBorder)
 
+                    #if os(macOS)
                     Text("Desktop Client Secret")
                         .font(.caption.weight(.semibold))
                         .padding(.top, 8)
                     SecureField("GOCSPX-...", text: $store.googleClientSecret)
                         .font(.callout.monospaced())
                         .textFieldStyle(.roundedBorder)
-                        .help("Stored in Keychain after a successful connection. Required by this Google Desktop OAuth client.")
+                        .platformHelp("Stored in Keychain after a successful connection. Required by this Google Desktop OAuth client.")
+                    #else
+                    Text("Use the iOS OAuth client ID from this app's Google Cloud project. iPhone sign-in does not use a client secret.")
+                        .font(.caption)
+                        .foregroundStyle(AppPalette.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                    #endif
 
                     Text("Test account")
                         .font(.caption.weight(.semibold))
@@ -2116,19 +2126,19 @@ private struct SettingsView: View {
                     TextField("primary", text: $store.googleCalendarID)
                         .font(.callout.monospaced())
                         .textFieldStyle(.roundedBorder)
-                        .help("Use primary for the signed-in account, or paste a shared Google Calendar ID.")
+                        .platformHelp("Use primary for the signed-in account, or paste a shared Google Calendar ID.")
 
                     Text("Status")
                         .font(.caption.weight(.semibold))
                         .padding(.top, 8)
                     Text(store.googleConnectionStatus)
-                        .foregroundStyle(store.isGoogleConnected ? .green : .secondary)
+                        .foregroundStyle(store.isGoogleConnected ? AppPalette.teal : AppPalette.secondaryText)
                         .textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
 
                     Text("Reconnect Google once to grant Gmail draft access. The app creates or updates drafts only; it never sends email automatically.")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppPalette.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
 
                     if !store.lastGoogleError.isEmpty {
@@ -2137,7 +2147,7 @@ private struct SettingsView: View {
                             .padding(.top, 8)
                         Text(store.lastGoogleError)
                             .font(.caption.monospaced())
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(AppPalette.amberText)
                             .textSelection(.enabled)
                             .fixedSize(horizontal: false, vertical: true)
                             .padding(10)
@@ -2151,7 +2161,7 @@ private struct SettingsView: View {
                         } label: {
                             Label(store.isGoogleConnected ? "Reconnect Google" : "Connect Google", systemImage: "person.crop.circle.badge.checkmark")
                         }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(MobilePrimaryButtonStyle())
                         .disabled(store.isConnectingGoogle || store.googleClientID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
                         Button {
@@ -2172,9 +2182,9 @@ private struct SettingsView: View {
                     Text("Redirect URI")
                         .font(.caption.weight(.semibold))
                         .padding(.top, 8)
-                    Text("http://127.0.0.1:<random-port>")
+                    Text(googleRedirectDescription)
                         .font(.caption.monospaced())
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppPalette.secondaryText)
 
                     Text("Scopes")
                         .font(.caption.weight(.semibold))
@@ -2182,39 +2192,39 @@ private struct SettingsView: View {
                     ForEach(scopes, id: \.rawValue) { scope in
                         Text(scope.rawValue)
                             .font(.caption.monospaced())
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(AppPalette.secondaryText)
                     }
                 }
 
                 SettingsGroup(title: "Backend Later", icon: "externaldrive.connected.to.line.below") {
                     Text("The app is local-first while the product shape is still changing.")
                     Text("A database can later sync households, members, approval events, ignored senders, and Google object mappings without changing the daily workflow.")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppPalette.secondaryText)
                 }
 
                 SettingsGroup(title: "Local Demo Mode", icon: "shippingbox") {
                     Text("When Google is disconnected, Gmail import and Calendar approval use local demo adapters.")
                     Text("Email intelligence runs locally with deterministic rules. Backend AI extraction can replace it later without changing the inbox workflow.")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppPalette.secondaryText)
                 }
 
                 SettingsGroup(title: "Local Storage", icon: "internaldrive") {
                     Text("Drafts, edits, approvals, Calendar mappings, ignored senders, and reply text are stored locally until the product is ready for a real database.")
                     Text("Last Calendar sync: \(store.lastCalendarSyncText)")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppPalette.secondaryText)
                     Text("Ignored senders: \(store.ignoredSenderCount)")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppPalette.secondaryText)
                     Text(store.localStoragePath)
                         .font(.caption.monospaced())
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppPalette.secondaryText)
                         .textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
                 SettingsGroup(title: "Banking", icon: "building.columns") {
-                    Text("The app now marks banking candidates from emails with amounts, invoices, renewals, and payment language.")
-                    Text("bunq should be added as a read-only sandbox connector first, then matched against these candidates. No payments should be initiated from v1.")
-                        .foregroundStyle(.secondary)
+                    Text("Payments can import a local bank-statement CSV and match outgoing transactions to email-derived household obligations.")
+                    Text("Transactions stay on this Mac. No bank login, account sync, or payments are initiated from v1.")
+                        .foregroundStyle(AppPalette.secondaryText)
                 }
             }
             .padding(24)
@@ -2224,22 +2234,21 @@ private struct SettingsView: View {
             store.refreshGoogleConnectionStatus()
         }
     }
-}
 
-private struct SettingsGroup<Content: View>: View {
-    var title: String
-    var icon: String
-    @ViewBuilder var content: Content
+    private var googleClientIDLabel: String {
+        #if os(iOS)
+        "iOS Client ID"
+        #else
+        "Desktop Client ID"
+        #endif
+    }
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label(title, systemImage: icon)
-                .font(.headline)
-            content
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+    private var googleRedirectDescription: String {
+        #if os(iOS)
+        "Google Sign-In iOS URL scheme"
+        #else
+        "http://127.0.0.1:<random-port>"
+        #endif
     }
 }
 
@@ -2264,7 +2273,7 @@ private struct DraftSummaryCard: View {
             }
             .padding(14)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+            .background(AppPalette.cardFill, in: RoundedRectangle(cornerRadius: 8))
         }
         .buttonStyle(.plain)
     }
@@ -2289,19 +2298,19 @@ private struct ReminderCard: View {
 
             Text(readiness.detail)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(AppPalette.secondaryText)
 
             HStack(spacing: 6) {
                 UrgencyBadge(urgency: intelligence.urgency)
                 if let dueDate = draft.dueDate {
                     Label(shortDate(dueDate), systemImage: "calendar")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppPalette.secondaryText)
                 }
                 if !readiness.recommendedReminderMinutesBefore.isEmpty {
                     Label(reminderText(readiness.recommendedReminderMinutesBefore), systemImage: "bell")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppPalette.secondaryText)
                         .lineLimit(1)
                 }
             }
@@ -2313,7 +2322,7 @@ private struct ReminderCard: View {
                 } label: {
                     Label("Review", systemImage: "pencil")
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(MobileSecondaryButtonStyle())
 
                 if draft.googleEventURL != nil {
                     Button {
@@ -2322,7 +2331,7 @@ private struct ReminderCard: View {
                     } label: {
                         Label("Open event", systemImage: "arrow.up.right.square")
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(MobileSecondaryButtonStyle())
                 }
 
                 if readiness.canApproveToCalendar {
@@ -2377,369 +2386,166 @@ private struct ReminderCard: View {
     }
 }
 
-private struct BankingCandidateCard: View {
-    var draft: InboxDraft
-    var intelligence: EmailIntelligenceResult
-    var household: HouseholdContext
-    @ObservedObject var store: DemoHouseholdStore
-
-    var body: some View {
-        Button {
-            store.selectDraft(id: draft.id)
-            store.selectedSection = .inbox
-        } label: {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Label(draft.title, systemImage: "creditcard")
-                        .font(.headline)
-                    Spacer()
-                    if let amount = draft.amount {
-                        Text(amount.description)
-                            .font(.system(.headline, design: .rounded))
-                    }
-                }
-                Text(intelligence.summary)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                InboxRow(draft: draft, household: household, intelligence: intelligence)
-            }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-private struct SectionHeader: View {
-    var title: String
-    var subtitle: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text(title)
-                .font(.system(size: 28, weight: .bold))
-                .foregroundStyle(AppPalette.ink)
-            Text(subtitle)
-                .font(.system(size: 14))
-                .foregroundStyle(AppPalette.muted)
-        }
-    }
-}
-
-private struct SourceEvidenceView: View {
-    var draft: InboxDraft
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label("AI extraction", systemImage: "wand.and.stars")
-                .font(.headline)
-            Text("Confidence \(draft.extractionConfidence.formatted(.number.precision(.fractionLength(2))))")
-                .foregroundStyle(confidenceColor)
-
-            if !draft.evidence.isEmpty {
-                ForEach(draft.evidence, id: \.self) { evidence in
-                    Text(evidence)
-                        .font(.callout)
-                        .padding(10)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
-                }
-            }
-
-            Text(draft.source.bodyPreview)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-    }
-
-    private var confidenceColor: Color {
-        draft.extractionConfidence >= DraftFactory.minimumActionConfidence ? .secondary : .orange
-    }
-}
-
-private struct ConnectionsPanel: View {
-    @ObservedObject var store: DemoHouseholdStore
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Text("Connections")
-                .font(.headline)
-
-            ConnectionRow(
-                icon: "envelope",
-                title: "Gmail",
-                detail: store.isGoogleConnected ? "\(store.googleExpectedAccount), auto-discovery" : "Demo mode",
-                state: store.isGoogleConnected ? "Live" : "Demo"
-            )
-            ConnectionRow(
-                icon: "calendar",
-                title: "Google Calendar",
-                detail: store.isGoogleConnected ? store.googleCalendarID : (store.household.sharedCalendarID ?? "Demo calendar"),
-                state: store.isGoogleConnected ? "Live" : "Demo"
-            )
-            ConnectionRow(icon: "internaldrive", title: "Local Storage", detail: "Drafts, decisions, replies, and mappings", state: "Live")
-            ConnectionRow(icon: "sparkles", title: "Email intelligence", detail: "Urgency, tags, replies, reminders", state: "Local")
-            ConnectionRow(icon: "building.columns", title: "Banking", detail: "bunq candidate matching next", state: "Staged")
-
-            Divider()
-
-            Text("Calendar is canonical. Gmail discovery feeds drafts. Banking stays read-only matching until the household workflow proves useful.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            Spacer()
-        }
-        .padding(20)
-        .background(Color(nsColor: .controlBackgroundColor))
-    }
-}
-
-private struct ConnectionRow: View {
-    var icon: String
-    var title: String
-    var detail: String
-    var state: String
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: icon)
-                .frame(width: 22)
-                .foregroundStyle(.secondary)
-            VStack(alignment: .leading, spacing: 3) {
-                HStack {
-                    Text(title)
-                        .font(.subheadline.weight(.semibold))
-                    Spacer()
-                    Text(state)
-                        .font(.caption2.weight(.semibold))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 3)
-                        .background(.quaternary, in: Capsule())
-                }
-                Text(detail)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-    }
-}
-
-private struct MetricPill: View {
-    var title: String
+private struct BankingMetric: View {
     var value: Int
+    var title: String
+    var color: Color
+    var background: Color
 
     var body: some View {
         VStack(spacing: 2) {
             Text("\(value)")
-                .font(.system(size: 18, weight: .semibold, design: .rounded))
+                .font(.system(size: 20, weight: .bold, design: .rounded))
             Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(.system(size: 10, weight: .semibold))
+                .lineLimit(1)
         }
-        .frame(width: 72)
-        .padding(.vertical, 7)
-        .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+        .foregroundStyle(color)
+        .frame(maxWidth: .infinity, minHeight: 56)
+        .background(background, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
 
-private struct StatusBadge: View {
-    var status: InboxDraftStatus
+private struct BankTransactionRow: View {
+    var transaction: BankTransaction
 
     var body: some View {
-        Text(label)
-            .font(.caption2.weight(.semibold))
-            .padding(.horizontal, 7)
-            .padding(.vertical, 4)
-            .foregroundStyle(color)
-            .background(color.opacity(0.12), in: Capsule())
-    }
-
-    private var label: String {
-        switch status {
-        case .pendingApproval:
-            "Pending"
-        case .approved:
-            "Approved"
-        case .rejected:
-            "Rejected"
-        case .calendarRetryRequired:
-            "Retry"
-        case .calendarUpdateRequired:
-            "Needs Sync"
-        case .changedExternally:
-            "External"
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: transaction.isOutgoing ? "arrow.up.right.circle" : "arrow.down.left.circle")
+                .foregroundStyle(transaction.isOutgoing ? AppPalette.ink : AppPalette.teal)
+                .font(.title3)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(transaction.displayName)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                Text("\(transaction.bookingDate.formatted(date: .abbreviated, time: .omitted))  -  \(transaction.source)")
+                    .font(.caption)
+                    .foregroundStyle(AppPalette.secondaryText)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 8)
+            Text(transaction.amount.formatted(.currency(code: "EUR")))
+                .font(.subheadline.monospacedDigit().weight(.semibold))
+                .foregroundStyle(transaction.isOutgoing ? AppPalette.ink : AppPalette.teal)
         }
-    }
-
-    private var color: Color {
-        switch status {
-        case .pendingApproval:
-            .blue
-        case .approved:
-            .green
-        case .rejected:
-            .red
-        case .calendarRetryRequired:
-            .orange
-        case .calendarUpdateRequired:
-            .orange
-        case .changedExternally:
-            .purple
-        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(AppPalette.cardFill, in: RoundedRectangle(cornerRadius: 8))
     }
 }
 
-private struct TriageBadge: View {
-    var state: DraftTriageState
+private struct BankingCandidateCard: View {
+    var draft: InboxDraft
+    var intelligence: EmailIntelligenceResult
+    var confirmedMatch: BankTransactionMatch?
+    var suggestion: BankMatchSuggestion?
+    var household: HouseholdContext
+    @ObservedObject var store: DemoHouseholdStore
+
+    private var matchedTransaction: BankTransaction? {
+        confirmedMatch.flatMap { store.bankTransaction(for: $0.transactionID) }
+    }
+
+    private var suggestedTransaction: BankTransaction? {
+        suggestion.flatMap { store.bankTransaction(for: $0.transactionID) }
+    }
 
     var body: some View {
-        Text(label)
-            .font(.caption2.weight(.semibold))
-            .padding(.horizontal, 7)
-            .padding(.vertical, 4)
-            .foregroundStyle(color)
-            .background(color.opacity(0.12), in: Capsule())
-    }
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 10) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(draft.title)
+                        .font(.headline)
+                    Text(intelligence.summary)
+                        .font(.callout)
+                        .foregroundStyle(AppPalette.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 8)
+                if let amount = draft.amount {
+                    Text(amount.formatted(.currency(code: "EUR")))
+                        .font(.system(.headline, design: .rounded))
+                        .lineLimit(1)
+                }
+            }
 
-    private var label: String {
-        switch state {
-        case .active:
-            "Active"
-        case .waiting:
-            "Waiting"
-        case .done:
-            "Done"
-        case .notHousehold:
-            "Not Household"
+            if let matchedTransaction {
+                paymentState(
+                    icon: "checkmark.circle.fill",
+                    color: AppPalette.teal,
+                    title: "Payment matched",
+                    detail: "\(matchedTransaction.displayName) on \(matchedTransaction.bookingDate.formatted(date: .abbreviated, time: .omitted))"
+                )
+            } else if let suggestion, let suggestedTransaction {
+                paymentState(
+                    icon: "sparkles",
+                    color: AppPalette.amberText,
+                    title: "Suggested: \(suggestedTransaction.displayName)",
+                    detail: suggestion.reasons.joined(separator: " - ")
+                )
+
+                FlowButtonRow {
+                    Button {
+                        store.confirmBankMatch(
+                            draftID: draft.id,
+                            transactionID: suggestion.transactionID,
+                            confidence: suggestion.confidence
+                        )
+                    } label: {
+                        Label("Confirm", systemImage: "checkmark")
+                    }
+                    .buttonStyle(MobilePrimaryButtonStyle())
+
+                    Button {
+                        store.dismissBankMatch(draftID: draft.id, transactionID: suggestion.transactionID)
+                    } label: {
+                        Label("Not this", systemImage: "xmark")
+                    }
+                    .buttonStyle(MobileSecondaryButtonStyle())
+                }
+            } else if !store.bankTransactionsForManualMatch(against: draft).isEmpty {
+                Menu {
+                    ForEach(store.bankTransactionsForManualMatch(against: draft)) { transaction in
+                        Button("\(transaction.displayName) - \(transaction.amount.formatted(.currency(code: "EUR")))") {
+                            store.confirmBankMatch(draftID: draft.id, transactionID: transaction.id, confidence: 0.5)
+                        }
+                    }
+                } label: {
+                    Label("Match a payment", systemImage: "link")
+                }
+                .menuStyle(.borderlessButton)
+            } else {
+                Text(store.bankTransactions.isEmpty ? "Import a statement to check for this payment." : "No matching outgoing payment found yet.")
+                    .font(.caption)
+                    .foregroundStyle(AppPalette.secondaryText)
+            }
+
+            Button {
+                store.selectDraft(id: draft.id)
+                store.selectedSection = .inbox
+            } label: {
+                Label("Open household item", systemImage: "arrow.right")
+            }
+            .buttonStyle(.borderless)
         }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(AppPalette.cardFill, in: RoundedRectangle(cornerRadius: 8))
     }
 
-    private var color: Color {
-        switch state {
-        case .active:
-            .blue
-        case .waiting:
-            .orange
-        case .done:
-            .green
-        case .notHousehold:
-            .secondary
-        }
-    }
-}
-
-private struct ReplyStatusBadge: View {
-    var status: ReplyWorkflowStatus
-
-    var body: some View {
-        Text(label)
-            .font(.caption2.weight(.semibold))
-            .padding(.horizontal, 7)
-            .padding(.vertical, 4)
-            .foregroundStyle(color)
-            .background(color.opacity(0.12), in: Capsule())
-    }
-
-    private var label: String {
-        switch status {
-        case .none:
-            "No Reply"
-        case .needsReply:
-            "Needs Reply"
-        case .drafted:
-            "Reply Drafted"
-        case .copied:
-            "Reply Copied"
-        case .openedInGmail:
-            "Opened Gmail"
-        case .savedToGmailDraft:
-            "Gmail Draft"
-        case .sentManually:
-            "Sent"
-        case .done:
-            "Reply Done"
-        }
-    }
-
-    private var color: Color {
-        switch status {
-        case .none:
-            .secondary
-        case .needsReply:
-            .blue
-        case .drafted:
-            .blue
-        case .copied:
-            .purple
-        case .openedInGmail:
-            .orange
-        case .savedToGmailDraft:
-            .purple
-        case .sentManually:
-            .green
-        case .done:
-            .green
-        }
-    }
-}
-
-private struct UrgencyBadge: View {
-    var urgency: EmailUrgency
-
-    var body: some View {
-        Text(urgency.label)
-            .font(.caption2.weight(.semibold))
-            .padding(.horizontal, 7)
-            .padding(.vertical, 4)
-            .foregroundStyle(color)
-            .background(color.opacity(0.12), in: Capsule())
-    }
-
-    private var color: Color {
-        switch urgency {
-        case .immediate:
-            .red
-        case .soon:
-            .orange
-        case .normal:
-            .blue
-        case .low:
-            .secondary
-        }
-    }
-}
-
-private struct CalendarReadinessBadge: View {
-    var state: CalendarReadinessState
-
-    var body: some View {
-        Text(state.label)
-            .font(.caption2.weight(.semibold))
-            .padding(.horizontal, 7)
-            .padding(.vertical, 4)
-            .foregroundStyle(color)
-            .background(color.opacity(0.12), in: Capsule())
-    }
-
-    private var color: Color {
-        switch state {
-        case .needsDueDate:
-            .orange
-        case .readyToApprove:
-            .blue
-        case .scheduled:
-            .green
-        case .retryRequired:
-            .orange
-        case .updateRequired:
-            .orange
-        case .externalChange:
-            .purple
-        case .rejected:
-            .red
+    @ViewBuilder
+    private func paymentState(icon: String, color: Color, title: String, detail: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: icon)
+                .foregroundStyle(color)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(AppPalette.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 }

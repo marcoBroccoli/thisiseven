@@ -2,7 +2,7 @@
 
 ## OAuth
 
-Use a Google Cloud desktop OAuth client for local Mac testing. Keep the consent screen in testing mode and add only test users.
+Use a Google Cloud iOS OAuth client for mobile testing. Keep the consent screen in testing mode and add only test users. The legacy Mac target still uses a Desktop app OAuth client.
 
 Required test scopes:
 
@@ -22,12 +22,13 @@ The app first imports messages labeled `HouseholdTodo` when that label exists. I
 - `GmailMessageMapper` converts Gmail metadata responses into `SourceEmail`.
 - `GoogleCalendarPayloadFactory` converts approved household drafts into Calendar API event payloads.
 
-The macOS target adds the live local test flow:
+The iOS target adds the live mobile test flow:
 
-- Paste the Desktop app client ID and client secret in **Settings**.
-- Click **Connect Google**.
-- The app opens Google sign-in and listens on `http://127.0.0.1:<random-port>/oauth/callback`.
-- Tokens are stored in macOS Keychain.
+- Create an OAuth client of type `iOS` for bundle ID `local.household-command-center.ios`.
+- Put the client ID and reverse client ID URL scheme into `MobileApp/Config/Google.xcconfig` before building the iPhone app.
+- The Settings screen pre-fills the bundled iOS client ID; no client secret is used.
+- Tap **Connect Google** to use the native Google Sign-In session.
+- Google Sign-In manages the iOS session and refreshes access tokens as needed.
 - **Discover Gmail Emails** uses live Gmail when connected and demo Gmail when disconnected.
 - Calendar ID defaults to `primary`, which writes to the signed-in account's primary Google Calendar.
 - **Approve to Calendar** uses live Google Calendar when connected and demo Calendar when disconnected.
@@ -40,7 +41,7 @@ Do not commit the downloaded OAuth JSON or put the client secret in source code.
 2. Gmail import function fetches labeled messages, or searches likely household messages when the label is absent.
 3. Import creates an `inbox_drafts` row with source email metadata.
 4. AI extraction writes title, due date, amount, owner, area, evidence, and confidence.
-5. Mac app shows the draft for human approval.
+5. Mobile app shows the draft for human approval.
 6. Approval creates a Google Calendar event.
 7. Supabase stores the Google Calendar event ID and audit event.
 

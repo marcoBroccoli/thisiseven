@@ -1,3 +1,4 @@
+#if os(macOS)
 import AppKit
 import Foundation
 import HouseholdCore
@@ -90,7 +91,8 @@ final class GoogleDesktopOAuthCoordinator {
             accessToken: response.accessToken,
             refreshToken: refreshToken,
             expiresAt: Date().addingTimeInterval(TimeInterval(response.expiresIn)),
-            accountHint: accountHint
+            accountHint: accountHint,
+            grantedScopes: configuration.scopes.map(\.rawValue)
         )
         try tokenStore.save(tokens)
         return tokens
@@ -337,3 +339,4 @@ private extension Result {
         return false
     }
 }
+#endif

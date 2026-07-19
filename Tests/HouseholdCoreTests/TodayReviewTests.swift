@@ -41,6 +41,23 @@ final class TodayReviewTests: XCTestCase {
         XCTAssertTrue(sections.isEmpty)
     }
 
+    func testTodayReviewHidesDeferredWorkUntilItsReturnTime() {
+        var draft = makeDraft(title: "Pay water bill", dueOffset: 3 * 3_600)
+        draft.snoozedUntil = now.addingTimeInterval(60 * 60)
+        let household = HouseholdContext(id: UUID(), members: [], areas: [], sharedCalendarID: nil)
+
+        let deferredSections = TodayReviewModel(drafts: [draft], household: household, now: now).sections
+        let returnedSections = TodayReviewModel(
+            drafts: [draft],
+            household: household,
+            now: now.addingTimeInterval(60 * 60)
+        ).sections
+
+        XCTAssertTrue(deferredSections.isEmpty)
+        XCTAssertEqual(returnedSections.map(\.title), ["Due Today"])
+        XCTAssertEqual(draft.dueDate, now.addingTimeInterval(3 * 3_600))
+    }
+
     private func makeDraft(title: String, dueOffset: TimeInterval, bodyPreview: String = "Household task") -> InboxDraft {
         InboxDraft.pending(
             source: SourceEmail(

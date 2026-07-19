@@ -163,6 +163,7 @@ public final class HouseholdApprovalService: Sendable {
             notes: notes(for: draft, household: household),
             attendeeEmails: household.members.map(\.email),
             reminderMinutesBefore: reminderMinutesBefore,
+            recurrenceRule: draft.recurrence?.googleCalendarRule,
             appURL: appURL(for: draft)
         )
     }
@@ -195,6 +196,10 @@ public final class HouseholdApprovalService: Sendable {
 
         if let amount = draft.amount {
             lines.append("Amount: \(amount)")
+        }
+
+        if let recurrence = draft.recurrence {
+            lines.append("Repeat: \(recurrence.label)")
         }
 
         if !draft.evidence.isEmpty {

@@ -1,4 +1,3 @@
-import AppKit
 import Foundation
 import HouseholdCore
 
@@ -14,6 +13,7 @@ final class DemoHouseholdStore: ObservableObject {
     @Published var newItemAmount = ""
     @Published var newItemDueDate = Date().addingTimeInterval(86_400)
     @Published var newItemHasDueDate = true
+    @Published var newItemRecurrence: HouseholdRecurrence?
     @Published var newItemOwnerID = ""
     @Published var newItemAreaID = ""
     @Published var replyDraft = ""
@@ -26,6 +26,9 @@ final class DemoHouseholdStore: ObservableObject {
     @Published private(set) var isGoogleConnected = false
     @Published private(set) var isConnectingGoogle = false
     @Published private(set) var isSavingGmailDraft = false
+    @Published private(set) var localReminderStatus = "Checking notification permission..."
+    @Published private(set) var isSchedulingLocalReminders = false
+    @Published private var activeWorkNow = Date()
 
     let household: HouseholdContext
     let gmailLabel = "HouseholdTodo"
@@ -35,10 +38,18 @@ final class DemoHouseholdStore: ObservableObject {
     private let intelligenceAnalyzer = EmailIntelligenceAnalyzer()
     private let localStore: HouseholdLocalStore
     private let googleTokenStore = GoogleKeychainTokenStore()
+    private let localReminderNotifications = LocalReminderNotificationCoordinator()
     private let appBaseURL = URL(string: "household://drafts")!
     private var localState: LocalHouseholdState
+    private var localReminderRefreshTask: Task<Void, Never>?
+    private var activeWorkRefreshTask: Task<Void, Never>?
     private static let googleClientIDDefaultsKey = "HouseholdCommandCenter.GoogleClientID"
     private static let googleCalendarIDDefaultsKey = "HouseholdCommandCenter.GoogleCalendarID"
+    private static let requiredGoogleScopes = Set([
+        GoogleOAuthScope.gmailReadonly.rawValue,
+        GoogleOAuthScope.gmailCompose.rawValue,
+        GoogleOAuthScope.calendarEvents.rawValue
+    ])
 
     init() {
         let seed = DemoSeedData.make()
@@ -53,10 +64,19 @@ final class DemoHouseholdStore: ObservableObject {
         self.localStore = localStore
         self.localState = initialState
         self.model = InboxPresentationModel(drafts: initialState.drafts)
-        self.googleClientID = UserDefaults.standard.string(forKey: Self.googleClientIDDefaultsKey) ?? ""
+        self.googleClientID = UserDefaults.standard.string(forKey: Self.googleClientIDDefaultsKey)
+            ?? Self.bundledGoogleClientID
+            ?? ""
         self.googleCalendarID = UserDefaults.standard.string(forKey: Self.googleCalendarIDDefaultsKey) ?? "primary"
         refreshEditorFields()
         refreshGoogleConnectionStatus()
+        Task { await refreshLocalReminderNotifications() }
+        startActiveWorkClock()
+    }
+
+    deinit {
+        localReminderRefreshTask?.cancel()
+        activeWorkRefreshTask?.cancel()
     }
 
     var selectedDraft: InboxDraft? {
@@ -64,15 +84,15 @@ final class DemoHouseholdStore: ObservableObject {
     }
 
     var dashboard: HouseholdDashboard {
-        HouseholdDashboard(household: household, drafts: model.drafts, now: Date())
+        HouseholdDashboard(household: household, drafts: model.drafts, now: activeWorkNow)
     }
 
     var triageBuckets: [InboxTriageBucket] {
-        model.triageBuckets(household: household, now: Date())
+        model.triageBuckets(household: household, now: activeWorkNow)
     }
 
     var todaySections: [TodayReviewSection] {
-        TodayReviewModel(drafts: model.drafts, household: household, now: Date()).sections
+        TodayReviewModel(drafts: model.drafts, household: household, now: activeWorkNow).sections
     }
 
     var urgentCount: Int {
@@ -91,6 +111,57 @@ final class DemoHouseholdStore: ObservableObject {
 
     var bankingCandidateDrafts: [InboxDraft] {
         visibleDrafts.filter { intelligence(for: $0).tags.contains(.bankingCandidate) }
+    }
+
+    var snoozedDrafts: [InboxDraft] {
+        model.drafts
+            .filter {
+                DraftSnoozeService.isCurrentlySnoozed($0, now: activeWorkNow)
+                    && !($0.triageState?.isClosed ?? false)
+                    && $0.status != .approved
+                    && $0.status != .rejected
+            }
+            .sorted { ($0.snoozedUntil ?? .distantFuture) < ($1.snoozedUntil ?? .distantFuture) }
+    }
+
+    var bankTransactions: [BankTransaction] {
+        localState.bankTransactions.sorted { left, right in
+            left.bookingDate > right.bookingDate
+        }
+    }
+
+    var bankingMatchSuggestions: [BankMatchSuggestion] {
+        BankingReconciliation.suggestions(
+            drafts: bankingCandidateDrafts,
+            transactions: localState.bankTransactions,
+            storedMatches: localState.bankMatches
+        )
+    }
+
+    var confirmedBankMatchCount: Int {
+        localState.bankMatches.filter { $0.status == .confirmed }.count
+    }
+
+    var unmatchedOutgoingTransactionCount: Int {
+        let confirmedTransactionIDs = Set(
+            localState.bankMatches
+                .filter { $0.status == .confirmed }
+                .map(\.transactionID)
+        )
+        return localState.bankTransactions.filter {
+            $0.isOutgoing && !confirmedTransactionIDs.contains($0.id)
+        }.count
+    }
+
+    var lastBankImportText: String {
+        guard let lastBankImportAt = localState.lastBankImportAt else {
+            return "No statement imported"
+        }
+
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: lastBankImportAt)
     }
 
     var nextActionDraft: InboxDraft? {
@@ -178,6 +249,11 @@ final class DemoHouseholdStore: ObservableObject {
     }
 
     func importGmailLabel() async {
+        guard !shouldBlockGoogleDemoFallback else {
+            syncMessage = "Google needs reconnecting before live Gmail import. Open Settings and select Reconnect Google."
+            return
+        }
+
         let importMode = isGoogleConnected ? "live Gmail" : "demo Gmail"
         syncMessage = "Importing and organizing household emails from \(importMode)..."
         let service = HouseholdInboxImportService(gmail: gmailClientForImport(), extractor: extractor, label: gmailLabel)
@@ -197,8 +273,29 @@ final class DemoHouseholdStore: ObservableObject {
             let newCount = localState.drafts.filter { !previousIDs.contains($0.id) }.count
             syncMessage = "Imported \(drafts.count) emails from \(importMode). Added \(newCount) new draft(s); existing edits were preserved."
         } catch {
+            recordGoogleReconnectIfNeeded(error.localizedDescription)
             syncMessage = "Import failed from \(importMode): \(error.localizedDescription)"
         }
+    }
+
+    func enableLocalReminderNotifications() async {
+        isSchedulingLocalReminders = true
+        let state = await localReminderNotifications.requestPermissionAndSchedule(
+            drafts: model.drafts,
+            household: household
+        )
+        localReminderStatus = state.statusText
+        isSchedulingLocalReminders = false
+    }
+
+    func refreshLocalReminderNotifications() async {
+        isSchedulingLocalReminders = true
+        let state = await localReminderNotifications.scheduleIfAuthorized(
+            drafts: model.drafts,
+            household: household
+        )
+        localReminderStatus = state.statusText
+        isSchedulingLocalReminders = false
     }
 
     func connectGoogle() async {
@@ -206,7 +303,7 @@ final class DemoHouseholdStore: ObservableObject {
         let clientSecret = effectiveGoogleClientSecret()
         let calendarID = normalizedGoogleCalendarID()
         guard !clientID.isEmpty else {
-            googleConnectionStatus = "Paste your Desktop app client ID first."
+            googleConnectionStatus = googleClientIDRequirement
             syncMessage = googleConnectionStatus
             return
         }
@@ -223,6 +320,20 @@ final class DemoHouseholdStore: ObservableObject {
         defer { isConnectingGoogle = false }
 
         do {
+            #if os(iOS)
+            let coordinator = GoogleMobileOAuthCoordinator()
+            let identity = try await coordinator.connect(
+                clientID: clientID,
+                accountHint: googleExpectedAccount
+            )
+            guard Self.requiredGoogleScopes.isSubset(of: Set(identity.grantedScopes)) else {
+                throw GoogleMobileOAuthError.missingAccessToken
+            }
+            isGoogleConnected = true
+            lastGoogleError = ""
+            googleConnectionStatus = "Connected for \(identity.accountHint). Gmail and Calendar are live."
+            syncMessage = "Google connected. Gmail import and Calendar approval are live."
+            #else
             let coordinator = GoogleDesktopOAuthCoordinator(tokenStore: googleTokenStore)
             let tokens = try await coordinator.connect(
                 clientID: clientID,
@@ -233,6 +344,7 @@ final class DemoHouseholdStore: ObservableObject {
             lastGoogleError = ""
             googleConnectionStatus = "Connected for \(tokens.accountHint). Gmail and Calendar are live."
             syncMessage = "Google connected. Gmail import and Calendar approval are live."
+            #endif
         } catch {
             isGoogleConnected = false
             lastGoogleError = error.localizedDescription
@@ -242,6 +354,13 @@ final class DemoHouseholdStore: ObservableObject {
     }
 
     func disconnectGoogle() {
+        #if os(iOS)
+        GoogleMobileOAuthCoordinator.signOut()
+        isGoogleConnected = false
+        lastGoogleError = ""
+        googleConnectionStatus = "Disconnected. Import uses demo Gmail data."
+        syncMessage = googleConnectionStatus
+        #else
         do {
             try googleTokenStore.clear()
             isGoogleConnected = false
@@ -252,9 +371,19 @@ final class DemoHouseholdStore: ObservableObject {
             googleConnectionStatus = "Disconnect failed: \(error.localizedDescription)"
             syncMessage = googleConnectionStatus
         }
+        #endif
     }
 
     func refreshGoogleConnectionStatus() {
+        #if os(iOS)
+        isGoogleConnected = GoogleMobileOAuthCoordinator.hasCurrentUser
+        if isGoogleConnected {
+            lastGoogleError = ""
+            googleConnectionStatus = "Google session restored. Gmail and Calendar are live."
+        } else if lastGoogleError.isEmpty {
+            googleConnectionStatus = "Not connected. Import uses demo Gmail data."
+        }
+        #else
         do {
             if let tokens = try googleTokenStore.load() {
                 if googleClientID.isEmpty {
@@ -263,6 +392,14 @@ final class DemoHouseholdStore: ObservableObject {
                 if googleClientSecret.isEmpty {
                     googleClientSecret = tokens.clientSecret ?? ""
                 }
+
+                guard Self.requiredGoogleScopes.isSubset(of: Set(tokens.grantedScopes)) else {
+                    isGoogleConnected = false
+                    lastGoogleError = "The saved Google authorization predates the current Gmail and Calendar permissions."
+                    googleConnectionStatus = "Reconnect Google to grant Gmail read, Gmail Draft, and Calendar access."
+                    return
+                }
+
                 isGoogleConnected = true
                 lastGoogleError = ""
                 googleConnectionStatus = "Connected for \(tokens.accountHint)."
@@ -277,21 +414,62 @@ final class DemoHouseholdStore: ObservableObject {
             lastGoogleError = error.localizedDescription
             googleConnectionStatus = "Keychain read failed: \(error.localizedDescription)"
         }
+        #endif
+    }
+
+    func restoreGoogleSession() async {
+        #if os(iOS)
+        guard !googleClientID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            refreshGoogleConnectionStatus()
+            return
+        }
+
+        do {
+            let coordinator = GoogleMobileOAuthCoordinator()
+            guard let identity = try await coordinator.restorePreviousSignIn() else {
+                refreshGoogleConnectionStatus()
+                return
+            }
+
+            guard Self.requiredGoogleScopes.isSubset(of: Set(identity.grantedScopes)) else {
+                isGoogleConnected = false
+                lastGoogleError = "The saved Google authorization is missing Gmail or Calendar permissions."
+                googleConnectionStatus = "Reconnect Google to grant Gmail and Calendar access."
+                return
+            }
+
+            isGoogleConnected = true
+            lastGoogleError = ""
+            googleConnectionStatus = "Connected for \(identity.accountHint). Gmail and Calendar are live."
+        } catch {
+            isGoogleConnected = false
+            lastGoogleError = error.localizedDescription
+            googleConnectionStatus = "Google session restore failed: \(error.localizedDescription)"
+        }
+        #else
+        refreshGoogleConnectionStatus()
+        #endif
     }
 
     func approveSelectedDraft() async {
         guard let selectedDraft else { return }
+        guard !shouldBlockGoogleDemoFallback else {
+            syncMessage = "Google needs reconnecting before Calendar changes can be made. Open Settings and select Reconnect Google."
+            return
+        }
         if selectedDraft.status == .calendarUpdateRequired, selectedDraft.googleEventID != nil {
             await syncSelectedCalendarUpdate()
             return
         }
 
+        var draftForApproval = selectedDraft
+        draftForApproval.snoozedUntil = nil
         let approvalMode = isGoogleConnected ? "Google Calendar \(normalizedGoogleCalendarID())" : "demo Calendar"
         syncMessage = "Creating event in \(approvalMode)..."
         let service = approvalServiceForCurrentConnection()
-        let readiness = calendarReadiness(for: selectedDraft)
+        let readiness = calendarReadiness(for: draftForApproval)
         let approved = await service.approve(
-            selectedDraft,
+            draftForApproval,
             in: householdForApproval(),
             reminderMinutesBefore: readiness.recommendedReminderMinutesBefore
         )
@@ -303,6 +481,7 @@ final class DemoHouseholdStore: ObservableObject {
         case .approved:
             syncMessage = "Approved and linked to Google Calendar event \(approved.googleEventID ?? "unknown")."
         case .calendarRetryRequired:
+            recordGoogleReconnectIfNeeded(approved.lastError)
             syncMessage = "Calendar write needs retry: \(approved.lastError ?? "Unknown error")."
         default:
             syncMessage = "Draft moved to \(approved.status.rawValue)."
@@ -311,7 +490,9 @@ final class DemoHouseholdStore: ObservableObject {
 
     func rejectSelectedDraft() {
         guard let selectedDraft else { return }
-        let rejected = approvalServiceForCurrentConnection().reject(selectedDraft, reason: "Rejected from Mac approval queue.")
+        var draftForRejection = selectedDraft
+        draftForRejection.snoozedUntil = nil
+        let rejected = approvalServiceForCurrentConnection().reject(draftForRejection, reason: "Rejected from Mac approval queue.")
         model.replaceDraft(rejected)
         refreshEditorFields()
         persistCurrentState()
@@ -323,6 +504,7 @@ final class DemoHouseholdStore: ObservableObject {
         updateSelected { draft in
             draft.triageState = .notHousehold
             draft.lastError = "Marked as not household."
+            draft.snoozedUntil = nil
         }
         syncMessage = "Archived '\(selectedDraft.title)' as not household. It will stay out of the working inbox."
     }
@@ -342,6 +524,7 @@ final class DemoHouseholdStore: ObservableObject {
             draft.triageState = .done
             draft.replyStatus = .done
             draft.lastError = nil
+            draft.snoozedUntil = nil
         }
         if selectedDraft.googleEventID != nil {
             syncMessage = "Marked '\(selectedDraft.title)' done locally. Its Calendar event remains as a record."
@@ -350,21 +533,58 @@ final class DemoHouseholdStore: ObservableObject {
         }
     }
 
-    func snoozeSelected(byDays days: Int) {
-        guard days > 0, let selectedDraft else { return }
-        let baseDate = max(selectedDraft.dueDate ?? Date(), Date())
-        let newDueDate = Calendar.current.date(byAdding: .day, value: days, to: baseDate)
-            ?? baseDate.addingTimeInterval(TimeInterval(days) * 86_400)
+    func snoozeSelected(until date: Date) {
+        guard let selectedDraft, selectedDraft.status == .pendingApproval else {
+            syncMessage = "Only work that has not been approved to Calendar can be deferred here."
+            return
+        }
+        guard date > Date() else {
+            syncMessage = "Choose a future time to defer this work."
+            return
+        }
 
         updateSelected { draft in
-            draft.dueDate = newDueDate
-            draft.triageState = .active
-            markCalendarUpdateRequiredIfNeeded(&draft)
+            draft.snoozedUntil = date
         }
-        dueDateDraft = newDueDate
-        syncMessage = selectedDraft.googleEventID == nil
-            ? "Snoozed '\(selectedDraft.title)' by \(days) day\(days == 1 ? "" : "s")."
-            : "Snoozed '\(selectedDraft.title)'. Sync the Calendar update when ready."
+        syncMessage = "Deferred '\(selectedDraft.title)' until \(date.formatted(date: .abbreviated, time: .shortened)). Its due date is unchanged."
+    }
+
+    func snoozeSelectedLaterToday() {
+        let now = Date()
+        let calendar = Calendar.current
+        let thisEvening = calendar.date(bySettingHour: 17, minute: 30, second: 0, of: now)
+        let date = (thisEvening ?? now) > now
+            ? (thisEvening ?? now.addingTimeInterval(3 * 60 * 60))
+            : calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now))
+                .flatMap { calendar.date(bySettingHour: 9, minute: 0, second: 0, of: $0) }
+                ?? now.addingTimeInterval(86_400)
+        snoozeSelected(until: date)
+    }
+
+    func snoozeSelectedTomorrowMorning() {
+        let now = Date()
+        let calendar = Calendar.current
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: now)) ?? now.addingTimeInterval(86_400)
+        let date = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: tomorrow) ?? tomorrow
+        snoozeSelected(until: date)
+    }
+
+    func snoozeSelectedNextWeek() {
+        let now = Date()
+        let date = Calendar.current.nextDate(
+            after: now,
+            matching: DateComponents(hour: 9, minute: 0, weekday: 2),
+            matchingPolicy: .nextTime
+        ) ?? now.addingTimeInterval(7 * 86_400)
+        snoozeSelected(until: date)
+    }
+
+    func resumeSelectedNow() {
+        guard let selectedDraft, selectedDraft.snoozedUntil != nil else { return }
+        updateSelected { draft in
+            draft.snoozedUntil = nil
+        }
+        syncMessage = "Returned '\(selectedDraft.title)' to the active inbox."
     }
 
     func markSelectedNeedsReply() {
@@ -400,6 +620,7 @@ final class DemoHouseholdStore: ObservableObject {
         updateSelected { draft in
             draft.triageState = .notHousehold
             draft.lastError = "Sender ignored locally: \(selectedDraft.source.from)"
+            draft.snoozedUntil = nil
         }
         syncMessage = "Ignored \(selectedDraft.source.from). Future imports from this sender will be skipped."
     }
@@ -421,6 +642,10 @@ final class DemoHouseholdStore: ObservableObject {
 
     func syncSelectedCalendarUpdate() async {
         guard let selectedDraft else { return }
+        guard !shouldBlockGoogleDemoFallback else {
+            syncMessage = "Google needs reconnecting before Calendar changes can be made. Open Settings and select Reconnect Google."
+            return
+        }
         let approvalMode = isGoogleConnected ? "Google Calendar \(normalizedGoogleCalendarID())" : "demo Calendar"
         syncMessage = "Syncing existing event in \(approvalMode)..."
         let service = approvalServiceForCurrentConnection()
@@ -438,6 +663,7 @@ final class DemoHouseholdStore: ObservableObject {
         case .approved:
             syncMessage = "Synced updates to existing Google Calendar event \(synced.googleEventID ?? "unknown")."
         case .calendarRetryRequired:
+            recordGoogleReconnectIfNeeded(synced.lastError)
             syncMessage = "Calendar update needs retry: \(synced.lastError ?? "Unknown error")."
         default:
             syncMessage = "Calendar sync moved draft to \(synced.status.rawValue)."
@@ -479,6 +705,7 @@ final class DemoHouseholdStore: ObservableObject {
         updateSelected { draft in
             draft.triageState = .done
             draft.lastError = nil
+            draft.snoozedUntil = nil
         }
         syncMessage = "Resolved external Calendar change by marking '\(selectedDraft.title)' done."
     }
@@ -495,7 +722,10 @@ final class DemoHouseholdStore: ObservableObject {
         var changedCount = 0
 
         for draft in draftsWithEvents {
-            let reconciled = await service.reconcileCalendarState(for: draft)
+            var reconciled = await service.reconcileCalendarState(for: draft)
+            if reconciled.status == .changedExternally {
+                reconciled.snoozedUntil = nil
+            }
             if reconciled != draft {
                 changedCount += 1
             }
@@ -519,12 +749,18 @@ final class DemoHouseholdStore: ObservableObject {
 
         let amount = Decimal(string: newItemAmount.replacingOccurrences(of: ",", with: "."))
         let hasDueDate = newItemHasDueDate
+        let recurrence = newItemRecurrence
+        guard recurrence == nil || hasDueDate else {
+            syncMessage = "Recurring work needs a first due date."
+            return
+        }
         let draft = ManualDraftFactory.makeDraft(
             title: trimmedTitle,
             dueDate: hasDueDate ? newItemDueDate : nil,
             amount: amount,
             ownerID: UUID(uuidString: newItemOwnerID),
-            areaID: UUID(uuidString: newItemAreaID)
+            areaID: UUID(uuidString: newItemAreaID),
+            recurrence: recurrence
         )
 
         model.replaceDraft(draft)
@@ -534,7 +770,9 @@ final class DemoHouseholdStore: ObservableObject {
         resetManualItemFields()
         persistCurrentState()
         syncMessage = hasDueDate
-            ? "Created '\(trimmedTitle)'. Review it, then approve it to Google Calendar."
+            ? recurrence == nil
+                ? "Created '\(trimmedTitle)'. Review it, then approve it to Google Calendar."
+                : "Created recurring '\(trimmedTitle)'. Approve it to create the repeating Google Calendar event."
             : "Created '\(trimmedTitle)' without a due date. Add one when it becomes schedulable."
     }
 
@@ -542,6 +780,7 @@ final class DemoHouseholdStore: ObservableObject {
         resetManualItemFields()
         newItemHasDueDate = true
         newItemDueDate = Date().addingTimeInterval(86_400)
+        newItemRecurrence = nil
         newItemOwnerID = household.members.first?.id.uuidString ?? ""
         newItemAreaID = household.areas.first?.id.uuidString ?? ""
     }
@@ -607,9 +846,7 @@ final class DemoHouseholdStore: ObservableObject {
         }
 
         let reply = GmailReplyComposer.replyDraft(for: selectedDraft, body: trimmedReply)
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString("Subject: \(reply.subject)\n\n\(reply.body)", forType: .string)
+        PlatformServices.copyToPasteboard("Subject: \(reply.subject)\n\n\(reply.body)")
         updateSelected { draft in
             draft.replyStatus = .copied
         }
@@ -626,7 +863,7 @@ final class DemoHouseholdStore: ObservableObject {
         }
 
         let reply = GmailReplyComposer.replyDraft(for: selectedDraft, body: trimmedReply)
-        NSWorkspace.shared.open(GmailReplyComposer.composeURL(for: reply))
+        PlatformServices.open(GmailReplyComposer.composeURL(for: reply))
         updateSelected { draft in
             draft.replyStatus = .openedInGmail
         }
@@ -662,6 +899,7 @@ final class DemoHouseholdStore: ObservableObject {
                 ? "Updated the Gmail draft. Open Gmail to review and send it."
                 : "Saved a Gmail draft. Open Gmail to review and send it."
         } catch {
+            recordGoogleReconnectIfNeeded(error.localizedDescription)
             lastGoogleError = error.localizedDescription
             syncMessage = "Gmail draft failed: \(error.localizedDescription). Reconnect Google if the compose permission is new."
         }
@@ -675,7 +913,7 @@ final class DemoHouseholdStore: ObservableObject {
             return
         }
 
-        NSWorkspace.shared.open(url)
+        PlatformServices.open(url)
         syncMessage = "Opened Gmail search for '\(selectedDraft.source.subject)'."
     }
 
@@ -686,18 +924,170 @@ final class DemoHouseholdStore: ObservableObject {
             return
         }
 
-        NSWorkspace.shared.open(eventURL)
+        PlatformServices.open(eventURL)
         syncMessage = "Opened the Google Calendar event for '\(selectedDraft.title)'."
     }
 
     func openGoogleCalendar() {
         guard let calendarURL = URL(string: "https://calendar.google.com") else { return }
-        NSWorkspace.shared.open(calendarURL)
+        PlatformServices.open(calendarURL)
         syncMessage = "Opened Google Calendar."
     }
 
+    func importBankStatement(from url: URL) {
+        let hasSecurityScopedAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if hasSecurityScopedAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+
+        do {
+            let data = try Data(contentsOf: url)
+            let transactions = try BankStatementCSVImporter.parse(data: data, source: url.lastPathComponent)
+            let addedCount = localState.mergeBankTransactions(transactions)
+            persistCurrentState()
+            syncMessage = addedCount == 0
+                ? "No new transactions were found. This statement was already imported."
+                : "Imported " + String(addedCount) + " transaction(s). Review the suggested payment matches."
+        } catch {
+            syncMessage = "Statement import failed: " + error.localizedDescription
+        }
+    }
+
+    func loadSampleBankTransactions() {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let transactions = [
+            BankTransaction(
+                bookingDate: calendar.date(byAdding: .day, value: -1, to: today) ?? today,
+                amount: Decimal(string: "-42.50")!,
+                counterparty: "Water Company",
+                description: "Monthly water bill",
+                source: "Sample statement"
+            ),
+            BankTransaction(
+                bookingDate: calendar.date(byAdding: .day, value: -2, to: today) ?? today,
+                amount: Decimal(string: "-129.99")!,
+                counterparty: "Insurance Services",
+                description: "Household insurance renewal",
+                source: "Sample statement"
+            ),
+            BankTransaction(
+                bookingDate: calendar.date(byAdding: .day, value: -3, to: today) ?? today,
+                amount: Decimal(string: "-18.75")!,
+                counterparty: "Local Grocer",
+                description: "Card payment",
+                source: "Sample statement"
+            )
+        ]
+        let addedCount = localState.mergeBankTransactions(transactions)
+        persistCurrentState()
+        syncMessage = addedCount == 0
+            ? "Sample statement is already loaded."
+            : "Loaded " + String(addedCount) + " sample transaction(s). Suggested matches are ready for review."
+    }
+
+    func bankMatch(for draft: InboxDraft) -> BankTransactionMatch? {
+        localState.bankMatches
+            .filter { $0.draftID == draft.id && $0.status == .confirmed }
+            .sorted { $0.createdAt > $1.createdAt }
+            .first
+    }
+
+    func bankSuggestion(for draft: InboxDraft) -> BankMatchSuggestion? {
+        bankingMatchSuggestions.first { $0.draftID == draft.id }
+    }
+
+    func bankTransaction(for id: UUID) -> BankTransaction? {
+        localState.bankTransactions.first { $0.id == id }
+    }
+
+    func bankTransactionsForManualMatch(against draft: InboxDraft) -> [BankTransaction] {
+        let confirmedTransactionIDs = Set(
+            localState.bankMatches
+                .filter { $0.status == .confirmed }
+                .map(\.transactionID)
+        )
+
+        return localState.bankTransactions
+            .filter { $0.isOutgoing && !confirmedTransactionIDs.contains($0.id) }
+            .sorted { left, right in
+                let leftDistance = bankAmountDistance(left.amount, expectedAmount: draft.amount)
+                let rightDistance = bankAmountDistance(right.amount, expectedAmount: draft.amount)
+                if leftDistance == rightDistance {
+                    return left.bookingDate > right.bookingDate
+                }
+                return leftDistance < rightDistance
+            }
+            .prefix(8)
+            .map { $0 }
+    }
+
+    func confirmBankMatch(draftID: UUID, transactionID: UUID, confidence: Double) {
+        guard let draft = model.drafts.first(where: { $0.id == draftID }),
+              let transaction = bankTransaction(for: transactionID) else {
+            syncMessage = "That payment or household item is no longer available."
+            return
+        }
+
+        localState.saveBankMatch(
+            BankTransactionMatch(
+                draftID: draftID,
+                transactionID: transactionID,
+                confidence: confidence,
+                status: .confirmed
+            )
+        )
+        persistCurrentState()
+        syncMessage = "Matched " + transaction.displayName + " to '" + draft.title + "'. This is read-only; complete any remaining task separately."
+    }
+
+    func dismissBankMatch(draftID: UUID, transactionID: UUID) {
+        guard bankTransaction(for: transactionID) != nil else { return }
+        localState.saveBankMatch(
+            BankTransactionMatch(
+                draftID: draftID,
+                transactionID: transactionID,
+                confidence: 0,
+                status: .dismissed
+            )
+        )
+        persistCurrentState()
+        syncMessage = "Dismissed that payment suggestion."
+    }
+
     private var visibleDrafts: [InboxDraft] {
-        model.drafts.filter { !($0.triageState?.isClosed ?? false) }
+        model.drafts.filter {
+            !($0.triageState?.isClosed ?? false)
+                && !DraftSnoozeService.isCurrentlySnoozed($0, now: activeWorkNow)
+        }
+    }
+
+    private var shouldBlockGoogleDemoFallback: Bool {
+        !isGoogleConnected
+            && !lastGoogleError.isEmpty
+            && !googleClientID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private func recordGoogleReconnectIfNeeded(_ errorMessage: String?) {
+        guard let errorMessage, !errorMessage.isEmpty else { return }
+        let requiresReconnect = errorMessage.localizedCaseInsensitiveContains("invalid_grant")
+            || errorMessage.localizedCaseInsensitiveContains("token refresh failed")
+            || errorMessage.localizedCaseInsensitiveContains("missingstoredtokens")
+
+        guard requiresReconnect else { return }
+        isGoogleConnected = false
+        lastGoogleError = errorMessage
+        googleConnectionStatus = "Reconnect Google to restore Gmail and Calendar access."
+    }
+
+    private func bankAmountDistance(_ transactionAmount: Decimal, expectedAmount: Decimal?) -> Decimal {
+        guard let expectedAmount else { return 0 }
+        let actual = transactionAmount < 0 ? -transactionAmount : transactionAmount
+        let expected = expectedAmount < 0 ? -expectedAmount : expectedAmount
+        let distance = actual - expected
+        return distance < 0 ? -distance : distance
     }
 
     private func updateSelected(_ mutate: (inout InboxDraft) -> Void) {
@@ -746,12 +1136,36 @@ final class DemoHouseholdStore: ObservableObject {
         } catch {
             syncMessage = "Local save failed: \(error.localizedDescription)"
         }
+
+        scheduleLocalReminderRefresh()
+    }
+
+    private func scheduleLocalReminderRefresh() {
+        localReminderRefreshTask?.cancel()
+        localReminderRefreshTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            guard !Task.isCancelled, let self else { return }
+            await self.refreshLocalReminderNotifications()
+        }
+    }
+
+    private func startActiveWorkClock() {
+        activeWorkRefreshTask?.cancel()
+        activeWorkRefreshTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 60_000_000_000)
+                guard !Task.isCancelled, let self else { return }
+                self.activeWorkNow = Date()
+                await self.refreshLocalReminderNotifications()
+            }
+        }
     }
 
     private func resetManualItemFields() {
         newItemTitle = ""
         newItemAmount = ""
         newItemHasDueDate = true
+        newItemRecurrence = nil
     }
 
     private func gmailClientForImport() -> GmailClient {
@@ -765,11 +1179,7 @@ final class DemoHouseholdStore: ObservableObject {
         }
 
         return GoogleGmailAPIClient(
-            tokenProvider: GoogleKeychainAccessTokenProvider(
-                clientID: clientID,
-                clientSecret: effectiveGoogleClientSecret(),
-                tokenStore: googleTokenStore
-            )
+            tokenProvider: googleAccessTokenProvider(clientID: clientID)
         )
     }
 
@@ -780,11 +1190,7 @@ final class DemoHouseholdStore: ObservableObject {
         guard !clientID.isEmpty else { return nil }
 
         return GoogleGmailAPIClient(
-            tokenProvider: GoogleKeychainAccessTokenProvider(
-                clientID: clientID,
-                clientSecret: effectiveGoogleClientSecret(),
-                tokenStore: googleTokenStore
-            )
+            tokenProvider: googleAccessTokenProvider(clientID: clientID)
         )
     }
 
@@ -806,11 +1212,7 @@ final class DemoHouseholdStore: ObservableObject {
         }
 
         return GoogleCalendarAPIClient(
-            tokenProvider: GoogleKeychainAccessTokenProvider(
-                clientID: clientID,
-                clientSecret: effectiveGoogleClientSecret(),
-                tokenStore: googleTokenStore
-            ),
+            tokenProvider: googleAccessTokenProvider(clientID: clientID),
             calendarID: normalizedGoogleCalendarID()
         )
     }
@@ -836,21 +1238,61 @@ final class DemoHouseholdStore: ObservableObject {
     }
 
     private func effectiveGoogleClientSecret() -> String? {
+        #if os(iOS)
+        return nil
+        #else
         let trimmed = googleClientSecret.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmed.isEmpty {
             return trimmed
         }
 
         return try? googleTokenStore.load()?.clientSecret
+        #endif
+    }
+
+    private func googleAccessTokenProvider(clientID: String) -> GoogleAccessTokenProvider {
+        #if os(iOS)
+        GoogleMobileAccessTokenProvider()
+        #else
+        GoogleKeychainAccessTokenProvider(
+            clientID: clientID,
+            clientSecret: effectiveGoogleClientSecret(),
+            tokenStore: googleTokenStore
+        )
+        #endif
+    }
+
+    private var googleClientIDRequirement: String {
+        #if os(iOS)
+        "Paste the iOS app client ID first."
+        #else
+        "Paste your Desktop app client ID first."
+        #endif
     }
 
     private static func defaultLocalStoreURL() -> URL {
-        let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support", isDirectory: true)
+        let baseURL: URL
+        if let applicationSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
+            baseURL = applicationSupport
+        } else {
+            #if os(macOS)
+            baseURL = FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent("Library/Application Support", isDirectory: true)
+            #else
+            baseURL = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+            #endif
+        }
 
         return baseURL
             .appendingPathComponent("HouseholdCommandCenter", isDirectory: true)
             .appendingPathComponent("local-state.json")
+    }
+
+    private static var bundledGoogleClientID: String? {
+        let value = (Bundle.main.object(forInfoDictionaryKey: "GIDClientID") as? String ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !value.isEmpty, !value.contains("$(") else { return nil }
+        return value
     }
 }
 

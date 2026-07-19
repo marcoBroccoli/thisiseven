@@ -114,6 +114,31 @@ public enum DraftTriageState: String, Equatable, Codable, CaseIterable, Sendable
     }
 }
 
+public enum HouseholdRecurrence: String, Equatable, Codable, CaseIterable, Sendable {
+    case weekly
+    case fortnightly
+    case monthly
+    case quarterly
+
+    public var label: String {
+        switch self {
+        case .weekly: "Every week"
+        case .fortnightly: "Every 2 weeks"
+        case .monthly: "Every month"
+        case .quarterly: "Every 3 months"
+        }
+    }
+
+    public var googleCalendarRule: String {
+        switch self {
+        case .weekly: "RRULE:FREQ=WEEKLY"
+        case .fortnightly: "RRULE:FREQ=WEEKLY;INTERVAL=2"
+        case .monthly: "RRULE:FREQ=MONTHLY"
+        case .quarterly: "RRULE:FREQ=MONTHLY;INTERVAL=3"
+        }
+    }
+}
+
 public enum ReplyWorkflowStatus: String, Equatable, Codable, CaseIterable, Sendable {
     case none
     case needsReply
@@ -152,6 +177,8 @@ public struct InboxDraft: Identifiable, Equatable, Codable, Sendable {
     public var triageState: DraftTriageState?
     public var replyStatus: ReplyWorkflowStatus?
     public var gmailReplyDraftID: String?
+    public var snoozedUntil: Date?
+    public var recurrence: HouseholdRecurrence?
     public var calendarLastSyncedSnapshot: CalendarEventSnapshot?
     public var calendarExternalSnapshot: CalendarEventSnapshot?
 
@@ -173,6 +200,8 @@ public struct InboxDraft: Identifiable, Equatable, Codable, Sendable {
         triageState: DraftTriageState? = .active,
         replyStatus: ReplyWorkflowStatus? = ReplyWorkflowStatus.none,
         gmailReplyDraftID: String? = nil,
+        snoozedUntil: Date? = nil,
+        recurrence: HouseholdRecurrence? = nil,
         calendarLastSyncedSnapshot: CalendarEventSnapshot? = nil,
         calendarExternalSnapshot: CalendarEventSnapshot? = nil
     ) {
@@ -193,6 +222,8 @@ public struct InboxDraft: Identifiable, Equatable, Codable, Sendable {
         self.triageState = triageState
         self.replyStatus = replyStatus
         self.gmailReplyDraftID = gmailReplyDraftID
+        self.snoozedUntil = snoozedUntil
+        self.recurrence = recurrence
         self.calendarLastSyncedSnapshot = calendarLastSyncedSnapshot
         self.calendarExternalSnapshot = calendarExternalSnapshot
     }
@@ -226,6 +257,8 @@ public struct InboxDraft: Identifiable, Equatable, Codable, Sendable {
             triageState: .active,
             replyStatus: ReplyWorkflowStatus.none,
             gmailReplyDraftID: nil,
+            snoozedUntil: nil,
+            recurrence: nil,
             calendarLastSyncedSnapshot: nil,
             calendarExternalSnapshot: nil
         )

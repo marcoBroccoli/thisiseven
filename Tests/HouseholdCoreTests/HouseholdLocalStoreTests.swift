@@ -5,11 +5,12 @@ final class HouseholdLocalStoreTests: XCTestCase {
     func testStoreSavesAndLoadsDraftsAndReplyText() throws {
         let url = temporaryFileURL()
         let store = HouseholdLocalStore(fileURL: url)
-        let draft = makeDraft(
+        var draft = makeDraft(
             gmailMessageID: "gmail-water",
             title: "Pay water bill",
             status: .pendingApproval
         )
+        draft.snoozedUntil = Date(timeIntervalSince1970: 1_800_086_400)
         let state = LocalHouseholdState(
             drafts: [draft],
             replyDrafts: [LocalReplyDraft(draftID: draft.id, body: "I will handle this.")],
@@ -22,6 +23,7 @@ final class HouseholdLocalStoreTests: XCTestCase {
         XCTAssertEqual(loaded.drafts, [draft])
         XCTAssertEqual(loaded.replyText(for: draft.id), "I will handle this.")
         XCTAssertEqual(loaded.lastCalendarSyncAt, Date(timeIntervalSince1970: 1_800_123_456))
+        XCTAssertEqual(loaded.drafts[0].snoozedUntil, Date(timeIntervalSince1970: 1_800_086_400))
     }
 
     func testStoreReturnsEmptyStateWhenFileDoesNotExist() throws {

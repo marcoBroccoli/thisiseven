@@ -16,6 +16,7 @@ public struct TodayReviewModel: Equatable, Sendable {
             !((draft.triageState?.isClosed) ?? false)
                 && draft.status != .approved
                 && draft.status != .rejected
+                && !DraftSnoozeService.isCurrentlySnoozed(draft, now: now)
         }
         let analyzer = EmailIntelligenceAnalyzer()
         var remainingIDs = Set(openDrafts.map(\.id))

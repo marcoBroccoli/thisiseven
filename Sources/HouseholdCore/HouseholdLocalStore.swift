@@ -31,17 +31,26 @@ public struct LocalHouseholdState: Equatable, Codable, Sendable {
     public var replyDrafts: [LocalReplyDraft]
     public var lastCalendarSyncAt: Date?
     public var ignoredSenders: [IgnoredSenderRule]
+    public var bankTransactions: [BankTransaction]
+    public var bankMatches: [BankTransactionMatch]
+    public var lastBankImportAt: Date?
 
     public init(
         drafts: [InboxDraft] = [],
         replyDrafts: [LocalReplyDraft] = [],
         lastCalendarSyncAt: Date? = nil,
-        ignoredSenders: [IgnoredSenderRule] = []
+        ignoredSenders: [IgnoredSenderRule] = [],
+        bankTransactions: [BankTransaction] = [],
+        bankMatches: [BankTransactionMatch] = [],
+        lastBankImportAt: Date? = nil
     ) {
         self.drafts = drafts
         self.replyDrafts = replyDrafts
         self.lastCalendarSyncAt = lastCalendarSyncAt
         self.ignoredSenders = ignoredSenders
+        self.bankTransactions = bankTransactions
+        self.bankMatches = bankMatches
+        self.lastBankImportAt = lastBankImportAt
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -49,6 +58,9 @@ public struct LocalHouseholdState: Equatable, Codable, Sendable {
         case replyDrafts
         case lastCalendarSyncAt
         case ignoredSenders
+        case bankTransactions
+        case bankMatches
+        case lastBankImportAt
     }
 
     public init(from decoder: Decoder) throws {
@@ -57,6 +69,9 @@ public struct LocalHouseholdState: Equatable, Codable, Sendable {
         replyDrafts = try container.decodeIfPresent([LocalReplyDraft].self, forKey: .replyDrafts) ?? []
         lastCalendarSyncAt = try container.decodeIfPresent(Date.self, forKey: .lastCalendarSyncAt)
         ignoredSenders = try container.decodeIfPresent([IgnoredSenderRule].self, forKey: .ignoredSenders) ?? []
+        bankTransactions = try container.decodeIfPresent([BankTransaction].self, forKey: .bankTransactions) ?? []
+        bankMatches = try container.decodeIfPresent([BankTransactionMatch].self, forKey: .bankMatches) ?? []
+        lastBankImportAt = try container.decodeIfPresent(Date.self, forKey: .lastBankImportAt)
     }
 
     public func replyText(for draftID: UUID) -> String? {
@@ -86,6 +101,37 @@ public struct LocalHouseholdState: Equatable, Codable, Sendable {
         let rule = IgnoredSenderRule(value: sender)
         guard !ignoredSenders.contains(where: { $0.matches(sender: sender) }) else { return }
         ignoredSenders.append(rule)
+    }
+
+    @discardableResult
+    public mutating func mergeBankTransactions(
+        _ importedTransactions: [BankTransaction],
+        importedAt: Date = Date()
+    ) -> Int {
+        var existingFingerprints = Set(bankTransactions.map(\.fingerprint))
+        let newTransactions = importedTransactions.filter { transaction in
+            existingFingerprints.insert(transaction.fingerprint).inserted
+        }
+        bankTransactions.append(contentsOf: newTransactions)
+        lastBankImportAt = importedAt
+        return newTransactions.count
+    }
+
+    public mutating func saveBankMatch(_ match: BankTransactionMatch) {
+        if match.status == .confirmed {
+            bankMatches.removeAll { existing in
+                existing.status == .confirmed
+                    && (existing.draftID == match.draftID || existing.transactionID == match.transactionID)
+            }
+        }
+
+        if let index = bankMatches.firstIndex(where: {
+            $0.draftID == match.draftID && $0.transactionID == match.transactionID
+        }) {
+            bankMatches[index] = match
+        } else {
+            bankMatches.append(match)
+        }
     }
 }
 

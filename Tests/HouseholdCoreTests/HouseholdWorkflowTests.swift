@@ -112,6 +112,32 @@ final class HouseholdWorkflowTests: XCTestCase {
         XCTAssertEqual(calendar.createdEvents[0].reminderMinutesBefore, [60, 15])
     }
 
+    func testApprovalCarriesNoCostRecurrenceToCalendar() async {
+        let household = HouseholdContext(
+            id: UUID(),
+            members: [],
+            areas: [],
+            sharedCalendarID: "household@example.com"
+        )
+        let draft = ManualDraftFactory.makeDraft(
+            title: "Wash the dog",
+            dueDate: Date(timeIntervalSince1970: 1_800_086_400),
+            amount: nil,
+            ownerID: nil,
+            areaID: nil,
+            recurrence: .monthly
+        )
+        let calendar = RecordingCalendarClient(result: .success(CalendarEventReference(id: "event-dog", url: nil)))
+        let service = HouseholdApprovalService(calendar: calendar, appBaseURL: URL(string: "household://drafts")!)
+
+        let approved = await service.approve(draft, in: household)
+
+        XCTAssertEqual(approved.status, .approved)
+        XCTAssertNil(calendar.createdEvents[0].notes.split(separator: "\n").first(where: { $0.contains("Amount:") }))
+        XCTAssertEqual(calendar.createdEvents[0].recurrenceRule, "RRULE:FREQ=MONTHLY")
+        XCTAssertTrue(calendar.createdEvents[0].notes.contains("Repeat: Every month"))
+    }
+
     func testCalendarFailureLeavesDraftPendingRetry() async {
         let owner = HouseholdMember(id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!, displayName: "Marco", email: "marco@example.com")
         let household = HouseholdContext(

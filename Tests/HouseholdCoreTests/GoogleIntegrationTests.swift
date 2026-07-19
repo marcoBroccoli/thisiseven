@@ -227,6 +227,23 @@ final class GoogleIntegrationTests: XCTestCase {
         XCTAssertEqual(payload.reminders.overrides.map(\.minutes), [1_440, 60])
     }
 
+    func testCalendarPayloadIncludesRecurringRule() throws {
+        let event = CalendarEventDraft(
+            calendarID: "family@example.com",
+            title: "Wash the dog",
+            dueDate: Date(timeIntervalSince1970: 1_800_086_400),
+            notes: "Manual household item",
+            attendeeEmails: [],
+            reminderMinutesBefore: [1_440],
+            recurrenceRule: HouseholdRecurrence.fortnightly.googleCalendarRule,
+            appURL: URL(string: "household://drafts/dog-washing")!
+        )
+
+        let payload = GoogleCalendarPayloadFactory.payload(from: event)
+
+        XCTAssertEqual(payload.recurrence, ["RRULE:FREQ=WEEKLY;INTERVAL=2"])
+    }
+
     func testCalendarClientCreatesEventOnConfiguredCalendar() async throws {
         let transport = RecordingGoogleHTTPTransport(routes: [
             "POST https://www.googleapis.com/calendar/v3/calendars/primary/events?sendUpdates=none": #"{"id":"event-123","htmlLink":"https://calendar.google.com/calendar/event?eid=abc","status":"confirmed"}"#

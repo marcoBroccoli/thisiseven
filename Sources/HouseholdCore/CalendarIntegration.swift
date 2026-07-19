@@ -24,6 +24,7 @@ public struct CalendarEventDraft: Equatable, Codable, Sendable {
     public var notes: String
     public var attendeeEmails: [String]
     public var reminderMinutesBefore: [Int]
+    public var recurrenceRule: String?
     public var appURL: URL
 
     public init(
@@ -33,6 +34,7 @@ public struct CalendarEventDraft: Equatable, Codable, Sendable {
         notes: String,
         attendeeEmails: [String],
         reminderMinutesBefore: [Int],
+        recurrenceRule: String? = nil,
         appURL: URL
     ) {
         self.calendarID = calendarID
@@ -41,6 +43,7 @@ public struct CalendarEventDraft: Equatable, Codable, Sendable {
         self.notes = notes
         self.attendeeEmails = attendeeEmails
         self.reminderMinutesBefore = reminderMinutesBefore
+        self.recurrenceRule = recurrenceRule
         self.appURL = appURL
     }
 }

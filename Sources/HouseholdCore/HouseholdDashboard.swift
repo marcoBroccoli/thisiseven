@@ -7,7 +7,8 @@ public enum ManualDraftFactory {
         dueDate: Date?,
         amount: Decimal?,
         ownerID: UUID?,
-        areaID: UUID?
+        areaID: UUID?,
+        recurrence: HouseholdRecurrence? = nil
     ) -> InboxDraft {
         InboxDraft.pending(
             id: id,
@@ -26,7 +27,15 @@ public enum ManualDraftFactory {
             areaID: areaID,
             extractionConfidence: 1,
             evidence: ["Manual household item"]
-        )
+        ).withRecurrence(recurrence)
+    }
+}
+
+private extension InboxDraft {
+    func withRecurrence(_ recurrence: HouseholdRecurrence?) -> InboxDraft {
+        var draft = self
+        draft.recurrence = recurrence
+        return draft
     }
 }
 
@@ -44,7 +53,7 @@ public struct HouseholdDashboard: Equatable, Sendable {
     public var billsDueSoon: [InboxDraft] {
         drafts
             .filter { $0.amount != nil }
-            .filter(\.isOpen)
+            .filter(isOpen)
             .filter { draft in
                 guard let dueDate = draft.dueDate else { return false }
                 return dueDate >= now && dueDate <= now.addingTimeInterval(7 * 86_400)
@@ -54,7 +63,7 @@ public struct HouseholdDashboard: Equatable, Sendable {
 
     public var weeklyReviewItems: [InboxDraft] {
         drafts
-            .filter(\.isOpen)
+            .filter(isOpen)
             .filter { draft in
                 draft.ownerID == nil
                     || draft.status == .calendarRetryRequired
@@ -70,7 +79,7 @@ public struct HouseholdDashboard: Equatable, Sendable {
 
     public var areaSummaries: [HouseholdAreaSummary] {
         household.areas.map { area in
-            let activeDrafts = drafts.filter { $0.areaID == area.id && $0.isOpen }
+            let activeDrafts = drafts.filter { $0.areaID == area.id && isOpen($0) }
             let total = activeDrafts.reduce(Decimal(0)) { partialResult, draft in
                 partialResult + (draft.amount ?? Decimal(0))
             }
@@ -101,6 +110,13 @@ public struct HouseholdDashboard: Equatable, Sendable {
             4
         }
     }
+
+    private func isOpen(_ draft: InboxDraft) -> Bool {
+        draft.status != .approved
+            && draft.status != .rejected
+            && !(draft.triageState?.isClosed ?? false)
+            && !DraftSnoozeService.isCurrentlySnoozed(draft, now: now)
+    }
 }
 
 public struct HouseholdAreaSummary: Equatable, Sendable, Identifiable {
@@ -124,12 +140,7 @@ public struct HouseholdAreaSummary: Equatable, Sendable, Identifiable {
         self.activeItemCount = activeItemCount
         self.openObligationTotal = openObligationTotal
     }
-}
 
-private extension InboxDraft {
-    var isOpen: Bool {
-        status != .approved && status != .rejected && !(triageState?.isClosed ?? false)
-    }
 }
 
 private extension Array where Element == InboxDraft {

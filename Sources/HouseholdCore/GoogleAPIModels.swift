@@ -103,6 +103,7 @@ public struct GoogleCalendarPayload: Equatable, Codable, Sendable {
     public var end: GoogleCalendarDateTime
     public var attendees: [GoogleCalendarAttendee]
     public var reminders: GoogleCalendarReminders
+    public var recurrence: [String]?
 }
 
 public struct GoogleCalendarDateTime: Equatable, Codable, Sendable {
@@ -135,7 +136,8 @@ public enum GoogleCalendarPayloadFactory {
             reminders: GoogleCalendarReminders(
                 useDefault: false,
                 overrides: event.reminderMinutesBefore.map { GoogleCalendarReminder(method: "popup", minutes: $0) }
-            )
+            ),
+            recurrence: event.recurrenceRule.map { [$0] }
         )
     }
 

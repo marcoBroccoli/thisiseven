@@ -1,0 +1,4 @@
+// Populate these values from a Google Cloud OAuth client of type iOS.
+// Do not add a client secret. iOS OAuth clients do not use one.
+GOOGLE_IOS_CLIENT_ID =
+GOOGLE_IOS_REVERSED_CLIENT_ID = householdcommandcenter

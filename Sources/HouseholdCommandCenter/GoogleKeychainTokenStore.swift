@@ -9,6 +9,46 @@ struct StoredGoogleTokens: Codable, Equatable, Sendable {
     var refreshToken: String
     var expiresAt: Date
     var accountHint: String
+    var grantedScopes: [String]
+
+    init(
+        clientID: String,
+        clientSecret: String?,
+        accessToken: String,
+        refreshToken: String,
+        expiresAt: Date,
+        accountHint: String,
+        grantedScopes: [String]
+    ) {
+        self.clientID = clientID
+        self.clientSecret = clientSecret
+        self.accessToken = accessToken
+        self.refreshToken = refreshToken
+        self.expiresAt = expiresAt
+        self.accountHint = accountHint
+        self.grantedScopes = grantedScopes
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case clientID
+        case clientSecret
+        case accessToken
+        case refreshToken
+        case expiresAt
+        case accountHint
+        case grantedScopes
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        clientID = try container.decode(String.self, forKey: .clientID)
+        clientSecret = try container.decodeIfPresent(String.self, forKey: .clientSecret)
+        accessToken = try container.decode(String.self, forKey: .accessToken)
+        refreshToken = try container.decode(String.self, forKey: .refreshToken)
+        expiresAt = try container.decode(Date.self, forKey: .expiresAt)
+        accountHint = try container.decode(String.self, forKey: .accountHint)
+        grantedScopes = try container.decodeIfPresent([String].self, forKey: .grantedScopes) ?? []
+    }
 }
 
 enum GoogleKeychainTokenStoreError: Error, LocalizedError {
@@ -16,6 +56,7 @@ enum GoogleKeychainTokenStoreError: Error, LocalizedError {
     case decodeFailed
     case keychainStatus(OSStatus)
     case missingStoredTokens
+    case tokenRefreshFailed(Int, String)
 
     var errorDescription: String? {
         switch self {
@@ -27,6 +68,8 @@ enum GoogleKeychainTokenStoreError: Error, LocalizedError {
             "Keychain operation failed with status \(status)."
         case .missingStoredTokens:
             "Google is not connected yet."
+        case .tokenRefreshFailed(let status, let message):
+            "Google token refresh failed with HTTP \(status): \(message)"
         }
     }
 }
@@ -150,9 +193,35 @@ final class GoogleKeychainAccessTokenProvider: GoogleAccessTokenProvider, @unche
     private func perform<Response: Decodable>(_ request: URLRequest) async throws -> Response {
         let (data, response) = try await transport.data(for: request)
         guard (200..<300).contains(response.statusCode) else {
-            throw GoogleAPIClientError.httpStatus(response.statusCode)
+            throw GoogleKeychainTokenStoreError.tokenRefreshFailed(
+                response.statusCode,
+                GoogleOAuthTokenErrorFormatter.message(from: data)
+            )
         }
         return try decoder.decode(Response.self, from: data)
+    }
+}
+
+private enum GoogleOAuthTokenErrorFormatter {
+    static func message(from data: Data) -> String {
+        guard let payload = try? JSONDecoder().decode(GoogleOAuthTokenErrorPayload.self, from: data) else {
+            return String(data: data, encoding: .utf8) ?? "No response body."
+        }
+
+        if let description = payload.errorDescription, !description.isEmpty {
+            return "\(payload.error): \(description)"
+        }
+        return payload.error
+    }
+}
+
+private struct GoogleOAuthTokenErrorPayload: Decodable {
+    var error: String
+    var errorDescription: String?
+
+    private enum CodingKeys: String, CodingKey {
+        case error
+        case errorDescription = "error_description"
     }
 }
 

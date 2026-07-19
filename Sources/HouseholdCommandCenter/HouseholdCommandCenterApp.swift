@@ -1,4 +1,5 @@
 import SwiftUI
+#if os(macOS)
 import AppKit
 
 @main
@@ -32,3 +33,4 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         true
     }
 }
+#endif

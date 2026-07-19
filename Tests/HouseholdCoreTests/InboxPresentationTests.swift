@@ -39,6 +39,21 @@ final class InboxPresentationTests: XCTestCase {
         XCTAssertEqual(model.financeObligationCount, 1)
     }
 
+    func testTriageBucketsExcludeDeferredWorkUntilItReturns() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        var draft = makeDraft(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000003")!,
+            title: "Deferred bill",
+            status: .pendingApproval
+        )
+        draft.snoozedUntil = now.addingTimeInterval(3_600)
+        let household = HouseholdContext(id: UUID(), members: [], areas: [], sharedCalendarID: nil)
+        let model = InboxPresentationModel(drafts: [draft])
+
+        XCTAssertTrue(model.triageBuckets(household: household, now: now).isEmpty)
+        XCTAssertFalse(model.triageBuckets(household: household, now: now.addingTimeInterval(3_600)).isEmpty)
+    }
+
     private func makeDraft(id: UUID, title: String, amount: Decimal? = nil, status: InboxDraftStatus) -> InboxDraft {
         var draft = InboxDraft.pending(
             id: id,
