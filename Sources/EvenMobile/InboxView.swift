@@ -17,7 +17,6 @@ struct InboxView: View {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(alignment: .top) {
                     ScreenHeader(kicker: kicker,
-                                 title: "Approval Inbox",
                                  subtitle: "Drafts, not tasks. Tap one to review.")
                     if model.googleStatus?.connected == true {
                         Button {

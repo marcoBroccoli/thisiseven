@@ -236,7 +236,7 @@ struct UnderlineField: View {
 struct ScreenHeader: View {
     @Environment(\.palette) private var palette
     let kicker: String
-    let title: String
+    var title: String?
     var subtitle: String?
 
     var body: some View {
@@ -244,9 +244,11 @@ struct ScreenHeader: View {
             Text(kicker)
                 .capsLabel(10, tracking: 1.4)
                 .foregroundStyle(palette.sub)
-            Text(title)
-                .font(EvenFont.serif(26, .medium))
-                .foregroundStyle(palette.ink)
+            if let title {
+                Text(title)
+                    .font(EvenFont.serif(26, .medium))
+                    .foregroundStyle(palette.ink)
+            }
             if let subtitle {
                 Text(subtitle)
                     .font(EvenFont.serif(12.5, italic: true))

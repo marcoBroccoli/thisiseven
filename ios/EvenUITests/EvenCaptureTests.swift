@@ -146,6 +146,39 @@ final class EvenStressCaptureTests: XCTestCase {
 
 /// Profile-sheet evidence: light + dark.
 final class EvenProfileCaptureTests: XCTestCase {
+    func testCaptureTodayCollapse() throws {
+        var app = XCUIApplication()
+        app.launchArguments = ["--reset-session", "--skip-google-prompt"]
+        app.launch()
+        // The capture household has enough rows to actually scroll.
+        if app.buttons["dev-email-signin"].waitForExistence(timeout: 6) {
+            app.buttons["dev-email-signin"].tap()
+            let email = app.textFields["auth-email"]
+            XCTAssertTrue(email.waitForExistence(timeout: 8))
+            email.tap()
+            email.typeText("capture-umur@even.dev")
+            let password = app.textFields["auth-password"].exists
+                ? app.textFields["auth-password"] : app.secureTextFields.firstMatch
+            password.tap()
+            password.typeText("capture-pass1")
+            app.buttons["Sign in"].tap()
+        }
+        XCTAssertTrue(app.buttons["profile-button"].waitForExistence(timeout: 20))
+        sleep(3)
+        let atRest = XCTAttachment(screenshot: app.screenshot())
+        atRest.name = "today-large-rest"
+        atRest.lifetime = .keepAlways
+        add(atRest)
+        app.swipeUp()
+        app.swipeUp()
+        sleep(1)
+        let collapsed = XCTAttachment(screenshot: app.screenshot())
+        collapsed.name = "today-collapsed"
+        collapsed.lifetime = .keepAlways
+        add(collapsed)
+        app.swipeDown()
+    }
+
     func testCaptureProfile() throws {
         let app = XCUIApplication()
         app.launchArguments = ["--skip-google-prompt"]

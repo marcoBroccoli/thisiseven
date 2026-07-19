@@ -12,7 +12,7 @@ struct MoneyView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                ScreenHeader(kicker: dateLine, title: "Money, settled weekly")
+                ScreenHeader(kicker: dateLine, subtitle: "Settled weekly, split down the middle.")
 
                 if let money = model.money {
                     balanceCard(money)

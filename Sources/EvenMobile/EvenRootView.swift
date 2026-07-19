@@ -132,6 +132,31 @@ struct GlyphBase: Shape {
     }
 }
 
+#if canImport(UIKit)
+/// Large/inline titles in the app's serif on pure paper (no bar material).
+/// Colors are dynamic so the manual dark toggle re-inks them via the trait.
+private let navAppearanceOnce: Void = {
+    let ink = UIColor { trait in
+        trait.userInterfaceStyle == .dark
+            ? UIColor(red: 0xED/255.0, green: 0xE5/255.0, blue: 0xD6/255.0, alpha: 1)
+            : UIColor(red: 0x26/255.0, green: 0x20/255.0, blue: 0x1A/255.0, alpha: 1)
+    }
+    let appearance = UINavigationBarAppearance()
+    appearance.configureWithTransparentBackground()
+    appearance.largeTitleTextAttributes = [
+        .font: UIFont(name: "NewsreaderRoman-Medium", size: 34) ?? UIFont.systemFont(ofSize: 34, weight: .medium),
+        .foregroundColor: ink
+    ]
+    appearance.titleTextAttributes = [
+        .font: UIFont(name: "NewsreaderRoman-Medium", size: 17) ?? UIFont.systemFont(ofSize: 17, weight: .medium),
+        .foregroundColor: ink
+    ]
+    UINavigationBar.appearance().standardAppearance = appearance
+    UINavigationBar.appearance().scrollEdgeAppearance = appearance
+    UINavigationBar.appearance().compactAppearance = appearance
+}()
+#endif
+
 // MARK: - Main scaffold (native TabView)
 
 struct MainScaffold: View {
@@ -144,6 +169,7 @@ struct MainScaffold: View {
     @AppStorage("even-notif-prompted") private var notifPrompted = false
     @State private var currentExtra: OnboardingExtra?
     @State private var showProfile = false
+    @State private var todayBrandCollapsed = false
 
     enum OnboardingExtra: Identifiable {
         case inviteReveal, google, notifications
@@ -158,29 +184,7 @@ struct MainScaffold: View {
     }
 
     var body: some View {
-        TabView(selection: $model.tab) {
-            screen { TodayView(model: model) }
-                .tabItem { Label("Today", systemImage: "scalemass") }
-                .tag(EvenTab.today)
-
-            screen { CalendarView(model: model) }
-                .tabItem { Label("Calendar", systemImage: "calendar") }
-                .tag(EvenTab.calendar)
-
-            screen { InboxView(model: model) }
-                .tabItem { Label("Inbox", systemImage: "tray") }
-                .badge(model.summary?.pendingDraftCount ?? 0)
-                .tag(EvenTab.inbox)
-
-            screen { MoneyView(model: model) }
-                .tabItem { Label("Money", systemImage: "eurosign.circle") }
-                .tag(EvenTab.money)
-
-            screen { ResetView(model: model) }
-                .tabItem { Label("Reset", systemImage: resetSymbol) }
-                .tag(EvenTab.reset)
-        }
-        .tint(palette.clay)
+        tabs
         .overlay(alignment: .bottom) {
             if let message = model.stampMessage {
                 StampToast(message: message)
@@ -210,6 +214,32 @@ struct MainScaffold: View {
                                           set: { if !$0 { currentExtra = nil } })) {
             extraView
         }
+    }
+
+    private var tabs: some View {
+        TabView(selection: $model.tab) {
+            screen(title: nil) { TodayView(model: model, brandCollapsed: $todayBrandCollapsed) }
+                .tabItem { Label("Today", systemImage: "scalemass") }
+                .tag(EvenTab.today)
+
+            screen(title: "Calendar") { CalendarView(model: model) }
+                .tabItem { Label("Calendar", systemImage: "calendar") }
+                .tag(EvenTab.calendar)
+
+            screen(title: "Inbox") { InboxView(model: model) }
+                .tabItem { Label("Inbox", systemImage: "tray") }
+                .badge(model.summary?.pendingDraftCount ?? 0)
+                .tag(EvenTab.inbox)
+
+            screen(title: "Money") { MoneyView(model: model) }
+                .tabItem { Label("Money", systemImage: "eurosign.circle") }
+                .tag(EvenTab.money)
+
+            screen(title: "Reset") { ResetView(model: model) }
+                .tabItem { Label("Reset", systemImage: resetSymbol) }
+                .tag(EvenTab.reset)
+        }
+        .tint(palette.clay)
     }
 
     /// Post-setup onboarding pages (design 06 → 08 → 10), each shown once,
@@ -251,40 +281,48 @@ struct MainScaffold: View {
         }
     }
 
-    /// Each tab: paper ground + a native navigation bar carrying the
-    /// wordmark (leading) and the dark toggle (trailing).
-    private func screen<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+    /// Each tab: paper ground + a native navigation bar. Named tabs use
+    /// large serif titles that collapse natively; Today's "large header"
+    /// is the brand itself — the principal wordmark fades in only as the
+    /// in-content brand header scrolls away.
+    private func screen<Content: View>(title: String?, @ViewBuilder content: () -> Content) -> some View {
         NavigationStack {
             content()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(palette.bg.ignoresSafeArea())
-                .toolbar {
-                    ToolbarItem(placement: .principal) {
-                        HStack(spacing: 7) {
-                            ScaleGlyph()
-                                .stroke(palette.ink, style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
-                                .frame(width: 15, height: 15)
-                            Text("Even")
-                                .font(EvenFont.serif(18, .semibold, italic: true))
-                                .foregroundStyle(palette.ink)
-                                .fixedSize()
-                        }
-                        .fixedSize()
-                    }
-                    ToolbarItem(placement: trailingPlacement) {
-                        Button {
-                            showProfile = true
-                        } label: {
-                            OwnerChip(member: model.me, palette: palette, size: 28)
-                        }
-                        .buttonStyle(PressScaleStyle(scale: 0.9))
-                        .accessibilityIdentifier("profile-button")
-                    }
-                }
+                .navigationTitle(title ?? "")
+                .largeTitleWhenNamed(title != nil)
+                .toolbar { tabToolbar(showBrand: title == nil) }
                 .sheet(isPresented: $showProfile) {
                     ProfileView(model: model, isDark: $isDark)
                 }
         }
+    }
+
+    @ToolbarContentBuilder
+    private func tabToolbar(showBrand: Bool) -> some ToolbarContent {
+        if showBrand {
+            ToolbarItem(placement: .principal) {
+                BrandMark(palette: palette, visible: todayBrandCollapsed)
+            }
+        }
+        ToolbarItem(placement: trailingPlacement) {
+            Button {
+                showProfile = true
+            } label: {
+                OwnerChip(member: model.me, palette: palette, size: 28)
+            }
+            .buttonStyle(PressScaleStyle(scale: 0.9))
+            .accessibilityIdentifier("profile-button")
+        }
+    }
+
+    init(model: AppModel, isDark: Binding<Bool>) {
+        self.model = model
+        self._isDark = isDark
+        #if canImport(UIKit)
+        _ = navAppearanceOnce
+        #endif
     }
 
     private var trailingPlacement: ToolbarItemPlacement {
@@ -355,5 +393,39 @@ private extension View {
         #else
         self.sheet(isPresented: isPresented, content: content)
         #endif
+    }
+}
+
+
+private extension View {
+    /// Large titles on named tabs; inline (empty) on Today.
+    @ViewBuilder func largeTitleWhenNamed(_ named: Bool) -> some View {
+        #if os(iOS)
+        self.navigationBarTitleDisplayMode(named ? .large : .inline)
+        #else
+        self
+        #endif
+    }
+}
+
+
+/// The glyph + italic wordmark used as Today's collapsed principal item.
+struct BrandMark: View {
+    let palette: EvenPalette
+    let visible: Bool
+
+    var body: some View {
+        HStack(spacing: 7) {
+            ScaleGlyph()
+                .stroke(palette.ink, style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
+                .frame(width: 15, height: 15)
+            Text("Even")
+                .font(EvenFont.serif(18, .semibold, italic: true))
+                .foregroundStyle(palette.ink)
+                .fixedSize()
+        }
+        .fixedSize()
+        .opacity(visible ? 1 : 0)
+        .animation(.easeInOut(duration: 0.18), value: visible)
     }
 }

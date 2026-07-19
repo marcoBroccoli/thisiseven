@@ -6,12 +6,32 @@ import EvenCore
 
 struct TodayView: View {
     @Bindable var model: AppModel
+    var brandCollapsed: Binding<Bool>? = nil
     @Environment(\.palette) private var palette
     @State private var showQuickAdd = false
 
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
+                // Today's large header IS the brand: glyph + wordmark at
+                // rest, handing off to the bar's principal mark on scroll.
+                HStack(spacing: 10) {
+                    ScaleGlyph()
+                        .stroke(palette.ink, style: StrokeStyle(lineWidth: 2.4, lineCap: .round, lineJoin: .round))
+                        .frame(width: 30, height: 30)
+                    Text("Even")
+                        .font(EvenFont.serif(34, .semibold, italic: true))
+                        .foregroundStyle(palette.ink)
+                    Spacer()
+                }
+                .padding(.top, 2)
+                .background(
+                    GeometryReader { headerGeo in
+                        Color.clear.preference(
+                            key: BrandHeaderVisibleKey.self,
+                            value: headerGeo.frame(in: .named("todayScroll")).maxY > 8)
+                    }
+                )
                 if model.partner == nil, let household = model.household {
                     InviteBanner(household: household)
                         .padding(.top, 6)
@@ -39,6 +59,10 @@ struct TodayView: View {
             .padding(.horizontal, 20)
             .animation(.easeOut(duration: 0.25), value: model.summary?.week.id)
             .animation(.spring(response: 0.35, dampingFraction: 0.85), value: model.summary?.sections)
+        }
+        .coordinateSpace(name: "todayScroll")
+        .onPreferenceChange(BrandHeaderVisibleKey.self) { visible in
+            brandCollapsed?.wrappedValue = !visible
         }
         .refreshable { await model.refreshAll() }
         .overlay(alignment: .bottomTrailing) {
@@ -330,5 +354,14 @@ struct SheetChrome<Content: View>: View {
         .background(palette.card.ignoresSafeArea())
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.hidden)
+    }
+}
+
+
+/// True while Today's in-content brand header is still on screen.
+struct BrandHeaderVisibleKey: PreferenceKey {
+    static var defaultValue = true
+    static func reduce(value: inout Bool, nextValue: () -> Bool) {
+        value = value && nextValue()
     }
 }
