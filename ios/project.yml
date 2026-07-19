@@ -39,7 +39,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.umuryavuz.even
         MARKETING_VERSION: 0.1.0
-        CURRENT_PROJECT_VERSION: 2
+        CURRENT_PROJECT_VERSION: 3
         DEVELOPMENT_TEAM: C3XSV85364
         CODE_SIGN_STYLE: Automatic
         CODE_SIGN_ENTITLEMENTS: EvenApp/Even.entitlements
