@@ -20,14 +20,14 @@ final class PhysicsStressTests: XCTestCase {
         password.typeText("capture-pass1")
         app.buttons["Sign in"].tap()
 
-        XCTAssertTrue(app.buttons["dark-toggle"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.buttons["profile-button"].waitForExistence(timeout: 15))
         sleep(7)   // let the pile drop and fully settle
         snap(app, "90-stress-light")
 
-        app.buttons["dark-toggle"].tap()
+        toggleDark(app)
         sleep(2)
         snap(app, "91-stress-dark")
-        app.buttons["dark-toggle"].tap()
+        toggleDark(app)
     }
 
     private func snap(_ app: XCUIApplication, _ name: String) {

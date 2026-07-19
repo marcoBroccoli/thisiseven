@@ -319,6 +319,7 @@ struct SheetChrome<Content: View>: View {
                             .font(.system(size: 12))
                             .foregroundStyle(palette.sub)
                     }
+                    .accessibilityIdentifier("sheet-close")
                 }
 
                 content

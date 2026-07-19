@@ -62,12 +62,12 @@ final class EvenCaptureTests: XCTestCase {
 
         // Dark mode
         go(app, "Today")
-        app.buttons["dark-toggle"].tap()
+        toggleDark(app)
         sleep(1)
         snap(app, "07-today-dark")
         go(app, "Inbox"); snap(app, "08-inbox-dark")
         go(app, "Money"); snap(app, "09-money-dark")
-        app.buttons["dark-toggle"].tap()   // leave the app in light mode
+        toggleDark(app)   // leave the app in light mode
     }
 
     private func forceTap(_ element: XCUIElement) {
@@ -123,7 +123,7 @@ final class EvenStressCaptureTests: XCTestCase {
                 app.launch()
                 XCTAssertTrue(app.tabBars.buttons.element(boundBy: 0).waitForExistence(timeout: 15))
                 if dark != isDarkNow(app) {
-                    app.buttons["dark-toggle"].tap()
+                    toggleDark(app)
                 }
                 sleep(6)   // let balls drop and the beam settle
                 let shot = XCTAttachment(screenshot: app.screenshot())
@@ -135,7 +135,59 @@ final class EvenStressCaptureTests: XCTestCase {
     }
 
     private func isDarkNow(_ app: XCUIApplication) -> Bool {
-        // The toggle shows "sun.max" (label Sun) in dark mode.
-        app.buttons["dark-toggle"].label.lowercased().contains("sun")
+        // The profile sheet's toggle shows "sun.max" (label Sun) in dark mode;
+        // callers must have the sheet open when they care. We instead track
+        // the last state we set — captures always start from light.
+        Self.darkNow
+    }
+    static var darkNow = false
+}
+
+
+/// Profile-sheet evidence: light + dark.
+final class EvenProfileCaptureTests: XCTestCase {
+    func testCaptureProfile() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--skip-google-prompt"]
+        app.launch()
+        XCTAssertTrue(app.buttons["profile-button"].waitForExistence(timeout: 20))
+        for name in ["profile-light", "profile-dark"] {
+            for _ in 0..<4 where !app.buttons["dark-toggle"].exists {
+                app.buttons["profile-button"].tap()
+                if app.buttons["dark-toggle"].waitForExistence(timeout: 3) { break }
+            }
+            sleep(1)
+            let shot = XCTAttachment(screenshot: app.screenshot())
+            shot.name = name
+            shot.lifetime = .keepAlways
+            add(shot)
+            if name == "profile-light" {
+                app.buttons["dark-toggle"].tap()
+                sleep(1)
+            } else {
+                app.buttons["dark-toggle"].tap()   // back to light
+                if app.buttons["sheet-close"].waitForExistence(timeout: 3) {
+                    app.buttons["sheet-close"].tap()
+                }
+            }
+        }
+    }
+}
+
+extension XCTestCase {
+    /// Dark toggle moved into the profile sheet (toolbar avatar chip).
+    func toggleDark(_ app: XCUIApplication) {
+        let toggle = app.buttons["dark-toggle"]
+        for _ in 0..<4 where !toggle.exists {
+            app.buttons["profile-button"].tap()
+            if toggle.waitForExistence(timeout: 3) { break }
+        }
+        XCTAssertTrue(toggle.waitForExistence(timeout: 8))
+        toggle.tap()
+        if app.buttons["sheet-close"].waitForExistence(timeout: 4) {
+            app.buttons["sheet-close"].tap()
+        } else {
+            app.swipeDown()
+        }
     }
 }

@@ -18,7 +18,16 @@ final class BeamPhysicsScene: SKScene {
     enum Side { case me, partner }
 
     /// Uniform layout scale so the whole assembly fits the container width.
-    var layoutScale: CGFloat = 1
+    /// The scene can build before SwiftUI delivers the real width (didMove
+    /// fires with the init size), so a later change rebuilds all geometry —
+    /// visual AND physics stay one truth. (The collider-sunk-balls bug was
+    /// exactly this: walls built at scale 1, visuals restyled at 0.905.)
+    var layoutScale: CGFloat = 1 {
+        didSet {
+            guard built, layoutScale != oldValue else { return }
+            rebuildGeometry()
+        }
+    }
     private var u: CGFloat { layoutScale }
     private var beamHalf: CGFloat { 148 * u }
     private let pivotFromTop: CGFloat = 64
@@ -35,6 +44,8 @@ final class BeamPhysicsScene: SKScene {
     private var lastTime: TimeInterval?
 
     private let beamNode = SKNode()
+    private var meName = "YOU"
+    private var partnerName = "\u{2014} ?"
     private let meBucket = SKNode()
     private let partnerBucket = SKNode()
     private var built = false
@@ -75,17 +86,7 @@ final class BeamPhysicsScene: SKScene {
         beamNode.position = pivot
         addChild(beamNode)
 
-        let bar = SKShapeNode(rect: CGRect(x: -beamHalf - 2 * u, y: -1.5, width: (beamHalf + 2 * u) * 2, height: 3),
-                              cornerRadius: 1.5)
-        bar.name = "bar"
-        beamNode.addChild(bar)
-        for (name, x, r) in [("pivotDot", CGFloat(0), 4 * u),
-                             ("endL", -beamHalf, 2 * u), ("endR", beamHalf, 2 * u)] {
-            let dot = SKShapeNode(circleOfRadius: r)
-            dot.name = name
-            dot.position = CGPoint(x: x, y: 0)
-            beamNode.addChild(dot)
-        }
+        buildBeamParts()
 
         for bucket in [meBucket, partnerBucket] {
             buildBucket(bucket)
@@ -97,6 +98,69 @@ final class BeamPhysicsScene: SKScene {
             pendingSync = nil
             syncBalls(me: pending.me, partner: pending.partner)
         }
+    }
+
+    private func buildBeamParts() {
+        for name in ["bar", "pivotDot", "endL", "endR", "labelMe", "labelPartner"] {
+            beamNode.childNode(withName: name)?.removeFromParent()
+        }
+        let bar = SKShapeNode(rect: CGRect(x: -beamHalf - 2 * u, y: -1.5, width: (beamHalf + 2 * u) * 2, height: 3),
+                              cornerRadius: 1.5)
+        bar.name = "bar"
+        beamNode.addChild(bar)
+        for (name, x, r) in [("pivotDot", CGFloat(0), 4 * u),
+                             ("endL", -beamHalf, 2 * u), ("endR", beamHalf, 2 * u)] {
+            let dot = SKShapeNode(circleOfRadius: r)
+            dot.name = name
+            dot.position = CGPoint(x: x, y: 0)
+            beamNode.addChild(dot)
+        }
+        // Member names rest along the arms and ride the beam's live angle.
+        for (name, x) in [("labelMe", -beamHalf * 0.55), ("labelPartner", beamHalf * 0.55)] {
+            let label = SKLabelNode()
+            label.name = name
+            label.position = CGPoint(x: x, y: 7 * u)
+            label.verticalAlignmentMode = .bottom
+            label.horizontalAlignmentMode = .center
+            beamNode.addChild(label)
+        }
+        styleArmLabels()
+    }
+
+    private func styleArmLabels() {
+        guard built else { return }
+        let entries: [(String, String, SKColor, CGFloat)] = [
+            ("labelMe", meName, meColor, 1),
+            ("labelPartner", partnerName, ghostPartner ? subColor : partnerColor, ghostPartner ? 0.7 : 1)
+        ]
+        for (node, text, color, alpha) in entries {
+            guard let label = beamNode.childNode(withName: node) as? SKLabelNode else { continue }
+            #if canImport(UIKit)
+            let font = UIFont(name: "SourceSans3-Roman_SemiBold", size: 8.5)
+                ?? UIFont.systemFont(ofSize: 8.5, weight: .semibold)
+            #else
+            let font = NSFont.systemFont(ofSize: 8.5, weight: .semibold)
+            #endif
+            label.attributedText = NSAttributedString(
+                string: text.uppercased(),
+                attributes: [.font: font, .kern: 1.7, .foregroundColor: color])
+            label.alpha = alpha
+        }
+    }
+
+    /// Rebuild everything geometric after a layout-scale change: beam parts,
+    /// bucket visuals, wall bodies, debug overlays. Balls keep living.
+    private func rebuildGeometry() {
+        buildBeamParts()
+        for bucket in [meBucket, partnerBucket] {
+            bucket.childNode(withName: "vis")?.removeFromParent()
+            bucket.childNode(withName: "walls")?.removeFromParent()
+            bucket.childNode(withName: "debug-overlay")?.removeFromParent()
+            buildBucket(bucket)
+        }
+        beamNode.position = pivot
+        positionBuckets()
+        restyle()
     }
 
     /// Bucket-local geometry: apex at (0,0) hangs off the beam end; strings
@@ -137,16 +201,17 @@ final class BeamPhysicsScene: SKScene {
         // Physics container: tall invisible side walls (slight inward lip at
         // the top) + the dish arc — one continuous concave bucket, so a full
         // pile at max tilt cannot crest or slip a joint.
+        let lift: CGFloat = 0.7   // half the 1.4pt stroke: balls kiss the line's top
         let wallPath = CGMutablePath()
         wallPath.move(to: CGPoint(x: -30 * u, y: 40 * u))
         wallPath.addLine(to: CGPoint(x: -39 * u, y: 24 * u))
-        wallPath.addLine(to: CGPoint(x: -38 * u, y: -46 * u))
+        wallPath.addLine(to: CGPoint(x: -38 * u, y: -46 * u + lift))
         for i in 0...12 {
             let t = CGFloat(i) / 12
             wallPath.addLine(to: CGPoint(x: quad(-36 * u, 0, 36 * u, t),
-                                         y: quad(-46 * u, -66 * u, -46 * u, t)))
+                                         y: quad(-46 * u, -66 * u, -46 * u, t) + lift))
         }
-        wallPath.addLine(to: CGPoint(x: 38 * u, y: -46 * u))
+        wallPath.addLine(to: CGPoint(x: 38 * u, y: -46 * u + lift))
         wallPath.addLine(to: CGPoint(x: 39 * u, y: 24 * u))
         wallPath.addLine(to: CGPoint(x: 30 * u, y: 40 * u))
         let walls = SKNode()
@@ -156,6 +221,17 @@ final class BeamPhysicsScene: SKScene {
         walls.physicsBody?.restitution = 0.1
         bucket.addChild(walls)
 
+        #if DEBUG
+        if CommandLine.arguments.contains("--physics-debug") {
+            let overlay = SKShapeNode(path: wallPath)
+            overlay.name = "debug-overlay"
+            overlay.strokeColor = .red
+            overlay.lineWidth = 1
+            overlay.alpha = 0.85
+            overlay.zPosition = 50
+            bucket.addChild(overlay)
+        }
+        #endif
     }
 
     private func positionBuckets() {
@@ -170,12 +246,15 @@ final class BeamPhysicsScene: SKScene {
 
     // MARK: Styling
 
-    func apply(ink: Color, sub: Color, me: Color, partner: Color, ghostPartner: Bool) {
+    func apply(ink: Color, sub: Color, me: Color, partner: Color, ghostPartner: Bool,
+               meName: String, partnerName: String) {
         inkColor = skColor(ink)
         subColor = skColor(sub)
         meColor = skColor(me)
         partnerColor = skColor(partner)
         self.ghostPartner = ghostPartner
+        self.meName = meName
+        self.partnerName = partnerName
         restyle()
     }
 
@@ -187,6 +266,7 @@ final class BeamPhysicsScene: SKScene {
                 shape.strokeColor = inkColor
             }
         }
+        styleArmLabels()
         for (bucket, ghost) in [(meBucket, false), (partnerBucket, ghostPartner)] {
             if let vis = bucket.childNode(withName: "vis") as? SKShapeNode {
                 let base = bucketPath(sampled: false)
@@ -375,17 +455,16 @@ struct BeamScaleView: View {
                     }
                     .onDisappear { scene.isPaused = true }
 
-                Text((model.me?.displayName ?? "You").uppercased())
-                    .capsLabel(8.5, tracking: 1.7)
-                    .foregroundStyle(meColor)
-                    .position(x: cx - 148 * unit(geo), y: 64 + endDrop(sign: -1, geo: geo) + 82 * unit(geo))
-                    .animation(.spring(response: 1.1, dampingFraction: 0.55), value: summary.pebbles)
-                Text((model.partner?.displayName ?? "— ?").uppercased())
-                    .capsLabel(8.5, tracking: 1.7)
-                    .foregroundStyle(model.partner == nil ? AnyShapeStyle(palette.sub.opacity(0.6))
-                                                          : AnyShapeStyle(partnerColor))
-                    .position(x: cx + 148 * unit(geo), y: 64 + endDrop(sign: 1, geo: geo) + 82 * unit(geo))
-                    .animation(.spring(response: 1.1, dampingFraction: 0.55), value: summary.pebbles)
+                // Names render in-scene on the beam arms; these invisible
+                // statics keep VoiceOver + the E2E name assertions alive.
+                Color.clear.frame(width: 1, height: 1)
+                    .position(x: cx - 100, y: 40)
+                    .accessibilityLabel((model.me?.displayName ?? "You").uppercased())
+                    .accessibilityAddTraits(.isStaticText)
+                Color.clear.frame(width: 1, height: 1)
+                    .position(x: cx + 100, y: 40)
+                    .accessibilityLabel((model.partner?.displayName ?? "— ?").uppercased())
+                    .accessibilityAddTraits(.isStaticText)
 
                 RollingNumber(value: summary.percentMe)
                     .font(EvenFont.serif(34, .medium))
@@ -409,20 +488,12 @@ struct BeamScaleView: View {
         min(1, geo.size.width / 400)
     }
 
-    /// Vertical drop of a beam end (SwiftUI y-down) at the settled tilt —
-    /// mirrors the scene's stepwise landed-weight formula so the labels
-    /// track where the buckets will actually come to rest.
-    private func endDrop(sign: Double, geo: GeometryProxy) -> CGFloat {
-        let meWeight = weights(for: model.me?.id).reduce(0, +)
-        let partnerWeight = weights(for: model.partner?.id).reduce(0, +)
-        let degrees = max(-8, min(8, BeamPhysicsScene.degreesPerWeightUnit * Double(meWeight - partnerWeight)))
-        return CGFloat(-sin(degrees * .pi / 180) * 148 * unit(geo) * sign) * -1
-    }
-
     private func configureScene(meColor: Color, partnerColor: Color) {
         scene.apply(ink: palette.ink, sub: palette.sub,
                     me: meColor, partner: partnerColor,
-                    ghostPartner: model.partner == nil)
+                    ghostPartner: model.partner == nil,
+                    meName: model.me?.displayName ?? "You",
+                    partnerName: model.partner?.displayName ?? "\u{2014} ?")
         #if DEBUG
         if let idx = CommandLine.arguments.firstIndex(of: "--physics-stress") {
             // Optional trailing count: `--physics-stress 3` drops that many

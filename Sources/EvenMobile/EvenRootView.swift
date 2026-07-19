@@ -143,6 +143,7 @@ struct MainScaffold: View {
     @AppStorage("even-seen-invite-reveal") private var seenInviteReveal = false
     @AppStorage("even-notif-prompted") private var notifPrompted = false
     @State private var currentExtra: OnboardingExtra?
+    @State private var showProfile = false
 
     enum OnboardingExtra: Identifiable {
         case inviteReveal, google, notifications
@@ -258,7 +259,7 @@ struct MainScaffold: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(palette.bg.ignoresSafeArea())
                 .toolbar {
-                    ToolbarItem(placement: leadingPlacement) {
+                    ToolbarItem(placement: .principal) {
                         HStack(spacing: 7) {
                             ScaleGlyph()
                                 .stroke(palette.ink, style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
@@ -272,29 +273,18 @@ struct MainScaffold: View {
                     }
                     ToolbarItem(placement: trailingPlacement) {
                         Button {
-                            isDark.toggle()
+                            showProfile = true
                         } label: {
-                            Image(systemName: isDark ? "sun.max" : "moon")
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundStyle(palette.sub)
-                                .frame(width: 30, height: 30)
-                                .overlay(Circle().stroke(palette.line, lineWidth: 1))
-                                .contentTransition(.symbolEffect(.replace))
+                            OwnerChip(member: model.me, palette: palette, size: 28)
                         }
                         .buttonStyle(PressScaleStyle(scale: 0.9))
-                        .accessibilityIdentifier("dark-toggle")
+                        .accessibilityIdentifier("profile-button")
                     }
                 }
-                .paperNavigationBar(palette)
+                .sheet(isPresented: $showProfile) {
+                    ProfileView(model: model, isDark: $isDark)
+                }
         }
-    }
-
-    private var leadingPlacement: ToolbarItemPlacement {
-        #if os(iOS)
-        .topBarLeading
-        #else
-        .navigation
-        #endif
     }
 
     private var trailingPlacement: ToolbarItemPlacement {
@@ -302,19 +292,6 @@ struct MainScaffold: View {
         .topBarTrailing
         #else
         .primaryAction
-        #endif
-    }
-}
-
-private extension View {
-    /// Keeps the native bar on the app's paper instead of system material.
-    @ViewBuilder func paperNavigationBar(_ palette: EvenPalette) -> some View {
-        #if os(iOS)
-        self
-            .toolbarBackground(palette.bg, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
-        #else
-        self
         #endif
     }
 }
