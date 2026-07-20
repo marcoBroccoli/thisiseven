@@ -1,125 +1,175 @@
 import SwiftUI
 import EvenCore
 
-// A static port of the app's balance beam (Sources/EvenMobile/BeamPhysics.swift).
-// Same geometry — pivot pillar, base, a tilting bar, two hanging dish buckets —
-// but frozen: widgets don't animate. The tilt is derived from the week's share
-// split; each bucket carries a small pile of dots for that member's done count.
+// The original Even balance beam, ported to a 100×100 design space and scaled to
+// fit whatever frame the widget gives it. A tilting arm carries two hanging bowls
+// with member discs (ADA left / UMUT right). +tilt ⇒ the heavier ADA (left) pan
+// dips. Frozen — widgets don't animate.
 struct BalanceBeam: View {
     let snapshot: EvenWidgetSnapshot
     let palette: WidgetPalette
 
-    /// Degrees of lean, clamped to the app's ±8° range. Positive ⇒ clay heavier.
-    private var leanDegrees: Double {
-        let diff = Double(snapshot.clay.share - snapshot.teal.share)   // −100…100
-        return max(-8, min(8, diff * 0.11))
+    // Exact geometry parameters (100×100 space).
+    private let cx: CGFloat = 50
+    private let pivotY: CGFloat = 40
+    private let arm: CGFloat = 32
+    private let hang: CGFloat = 13
+    private let bowl: CGFloat = 7
+    private let disc: CGFloat = 5
+    private let baseY: CGFloat = 84
+    private let stroke: CGFloat = 2.6
+
+    private var adaShare: Int { snapshot.clay.share }
+
+    /// tilt = clamp(-24, 24, (adaShare-50)*0.7) degrees.
+    private var tilt: CGFloat {
+        max(-24, min(24, CGFloat(adaShare - 50) * 0.7))
     }
 
     var body: some View {
         Canvas { ctx, size in
-            let w = size.width, h = size.height
-            let u = min(w / 300, h / 210)
-            let cx = w / 2
-            let pivotY = h * 0.24
-            let beamHalf = 128 * u
-            let pivot = CGPoint(x: cx, y: pivotY)
+            // Fit the 100×100 space, centred, preserving aspect.
+            let s = min(size.width, size.height) / 100
+            ctx.translateBy(x: (size.width - 100 * s) / 2, y: (size.height - 100 * s) / 2)
+            ctx.scaleBy(x: s, y: s)
 
-            // Static paper furniture: the pillar and its base.
-            let pillarH = 118 * u
-            ctx.fill(Path(CGRect(x: cx - u, y: pivotY, width: 2 * u, height: pillarH)),
-                     with: .color(palette.ink))
-            ctx.fill(Path(roundedRect: CGRect(x: cx - 58 * u, y: pivotY + pillarH,
-                                              width: 116 * u, height: 2.4 * u),
-                          cornerRadius: 1.2 * u),
-                     with: .color(palette.ink))
+            let ink = palette.beamInk
+            let t = tilt * .pi / 180
+            let ct = cos(t), st = sin(t)
 
-            // The bar tilts about the pivot. Screen y grows downward, so the
-            // heavier (clay/left) side must sink: rotate by −lean.
-            let ang = CGFloat(-leanDegrees * .pi / 180)
-            func end(_ sign: CGFloat) -> CGPoint {
-                let x = sign * beamHalf
-                return CGPoint(x: pivot.x + x * cos(ang), y: pivot.y + x * sin(ang))
+            // Arm ends (screen y grows downward → +st lowers the left pan).
+            let Lx = 50 - arm * ct, Ly = 40 + arm * st
+            let Rx = 50 + arm * ct, Ry = 40 - arm * st
+            let La = Ly + hang, Ra = Ry + hang
+
+            func line(_ a: CGPoint, _ b: CGPoint, _ w: CGFloat, _ color: Color) {
+                var p = Path(); p.move(to: a); p.addLine(to: b)
+                ctx.stroke(p, with: .color(color), style: StrokeStyle(lineWidth: w, lineCap: .round))
             }
-            let left = end(-1), right = end(1)
-
-            var bar = Path()
-            bar.move(to: left); bar.addLine(to: right)
-            ctx.stroke(bar, with: .color(palette.ink),
-                       style: StrokeStyle(lineWidth: 2.4 * u, lineCap: .round))
-
-            // Pivot + arm-end dots.
-            for (p, r) in [(pivot, 3.4 * u), (left, 2 * u), (right, 2 * u)] {
-                ctx.fill(Path(ellipseIn: CGRect(x: p.x - r, y: p.y - r, width: r * 2, height: r * 2)),
-                         with: .color(palette.ink))
+            func dot(_ c: CGPoint, _ r: CGFloat, _ color: Color) {
+                ctx.fill(Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2)),
+                         with: .color(color))
             }
 
-            // Buckets hang vertically from the (moved) arm ends.
-            drawBucket(&ctx, at: left, u: u, ghost: false,
-                       dots: snapshot.clay.done, dotColor: palette.member(snapshot.clay.color))
-            drawBucket(&ctx, at: right, u: u, ghost: !snapshot.hasPartner,
-                       dots: snapshot.teal.done, dotColor: palette.member(snapshot.teal.color))
+            // Base line.
+            line(CGPoint(x: 28, y: baseY), CGPoint(x: 72, y: baseY), stroke, ink)
+
+            // Stand triangle: M50,40 L56,84 L44,84 (stroke, no fill, round join).
+            var stand = Path()
+            stand.move(to: CGPoint(x: 50, y: 40))
+            stand.addLine(to: CGPoint(x: 56, y: baseY))
+            stand.addLine(to: CGPoint(x: 44, y: baseY))
+            ctx.stroke(stand, with: .color(ink),
+                       style: StrokeStyle(lineWidth: stroke, lineJoin: .round))
+
+            // Beam.
+            line(CGPoint(x: Lx, y: Ly), CGPoint(x: Rx, y: Ry), stroke, ink)
+
+            // Pivot dot.
+            dot(CGPoint(x: 50, y: 40), 2.3, ink)
+
+            // Pans (hanger + bowl + disc + initial). Right pan ghosts when solo.
+            drawPan(&ctx, ax: Lx, ay: Ly, anchorY: La, ink: ink,
+                    color: palette.member(snapshot.clay.color),
+                    initial: snapshot.clay.initial, ghost: false)
+            drawPan(&ctx, ax: Rx, ay: Ry, anchorY: Ra, ink: ink,
+                    color: palette.member(snapshot.teal.color),
+                    initial: snapshot.teal.initial, ghost: !snapshot.hasPartner)
         }
     }
 
-    /// A dish bucket: two strings from the apex down to the rim, a shallow
-    /// quadratic dish between them, and a small settled pile of member dots.
-    private func drawBucket(_ ctx: inout GraphicsContext, at apex: CGPoint, u: CGFloat,
-                            ghost: Bool, dots: Int, dotColor: Color) {
-        let rimY = apex.y + 40 * u
-        let rimX = 30 * u
-        let ctrlY = apex.y + 58 * u
+    private func drawPan(_ ctx: inout GraphicsContext, ax: CGFloat, ay: CGFloat, anchorY: CGFloat,
+                         ink: Color, color: Color, initial: String, ghost: Bool) {
+        let inkC = ink.opacity(ghost ? 0.35 : 1)
 
-        var path = Path()
-        path.move(to: apex); path.addLine(to: CGPoint(x: apex.x - rimX, y: rimY))
-        path.move(to: apex); path.addLine(to: CGPoint(x: apex.x + rimX, y: rimY))
-        path.move(to: CGPoint(x: apex.x - rimX, y: rimY))
-        path.addQuadCurve(to: CGPoint(x: apex.x + rimX, y: rimY),
-                          control: CGPoint(x: apex.x, y: ctrlY))
+        // Hanger (thinner).
+        var hanger = Path()
+        hanger.move(to: CGPoint(x: ax, y: ay)); hanger.addLine(to: CGPoint(x: ax, y: anchorY))
+        ctx.stroke(hanger, with: .color(inkC),
+                   style: StrokeStyle(lineWidth: stroke * 0.7, lineCap: .round))
 
-        ctx.stroke(path, with: .color(palette.ink.opacity(ghost ? 0.5 : 1)),
-                   style: StrokeStyle(lineWidth: 1.3 * u, lineCap: .round,
-                                      dash: ghost ? [2.5 * u, 3.5 * u] : []))
+        // Bowl: downward half-circle arc, radius `bowl`, centred at (ax, anchorY).
+        var arc = Path()
+        arc.addArc(center: CGPoint(x: ax, y: anchorY), radius: bowl,
+                   startAngle: .degrees(0), endAngle: .degrees(180), clockwise: false)
+        ctx.stroke(arc, with: .color(inkC),
+                   style: StrokeStyle(lineWidth: stroke, lineCap: .round))
 
-        guard dots > 0 else { return }
-        let n = min(dots, 8)
-        let r = 3.0 * u
-        // Settle the pile in rows along the bottom of the dish.
-        for i in 0..<n {
-            let row = i / 3
-            let inRow = min(3, n - row * 3)
-            let col = i % 3
-            let dx = (CGFloat(col) - CGFloat(inRow - 1) / 2) * (r * 2.2)
-            let dy = ctrlY - r * 1.3 - CGFloat(row) * (r * 1.9)
-            ctx.fill(Path(ellipseIn: CGRect(x: apex.x + dx - r, y: dy - r, width: r * 2, height: r * 2)),
-                     with: .color(dotColor.opacity(ghost ? 0.4 : 1)))
-        }
+        // Disc + initial (disc centre one unit above the bowl centre).
+        let dc = CGPoint(x: ax, y: anchorY - 1)
+        ctx.fill(Path(ellipseIn: CGRect(x: dc.x - disc, y: dc.y - disc, width: disc * 2, height: disc * 2)),
+                 with: .color(color.opacity(ghost ? 0.4 : 1)))
+        let label = Text(initial)
+            .font(WidgetFont.sans(6, .bold))
+            .foregroundStyle(WT.cream.opacity(ghost ? 0.7 : 1))
+        ctx.draw(label, at: dc, anchor: .center)
     }
 }
 
-/// The split ring (lock accessoryCircular): a clay arc sized to the clay share,
-/// a teal arc filling the rest, on a faint track.
+/// The split ring: a faint full track, the ADA arc sized to the ADA share
+/// starting at the top (−90°), and the UMUT arc filling the remainder. Optional
+/// centre content (a mini beam, the share number, or nothing).
 struct SplitRing: View {
     let snapshot: EvenWidgetSnapshot
-    let palette: WidgetPalette
     var lineWidth: CGFloat = 5
+    var center: Center = .none
 
-    private var clayFraction: CGFloat {
+    enum Center { case none, miniBeam, number }
+
+    private var adaFraction: CGFloat {
         let total = max(1, snapshot.clay.share + snapshot.teal.share)
         return CGFloat(snapshot.clay.share) / CGFloat(total)
     }
 
     var body: some View {
         ZStack {
-            Circle().stroke(palette.faint, lineWidth: lineWidth)
-            Circle().trim(from: 0, to: clayFraction)
-                .stroke(palette.member(snapshot.clay.color),
+            Circle().stroke(WT.ringTrack, lineWidth: lineWidth)
+            Circle().trim(from: 0, to: adaFraction)
+                .stroke(WT.ada, style: StrokeStyle(lineWidth: lineWidth, lineCap: .butt))
+                .rotationEffect(.degrees(-90))
+            Circle().trim(from: adaFraction, to: 1)
+                .stroke(WT.umut.opacity(snapshot.hasPartner ? 1 : 0.4),
                         style: StrokeStyle(lineWidth: lineWidth, lineCap: .butt))
                 .rotationEffect(.degrees(-90))
-            Circle().trim(from: clayFraction, to: 1)
-                .stroke(palette.member(snapshot.teal.color).opacity(snapshot.hasPartner ? 1 : 0.4),
-                        style: StrokeStyle(lineWidth: lineWidth, lineCap: .butt))
-                .rotationEffect(.degrees(-90))
+            centerContent
         }
         .padding(lineWidth / 2)
+    }
+
+    @ViewBuilder private var centerContent: some View {
+        switch center {
+        case .none:
+            EmptyView()
+        case .number:
+            Text("\(snapshot.clay.share)")
+                .font(WidgetFont.serif(15, .medium))
+                .minimumScaleFactor(0.6)
+        case .miniBeam:
+            MiniBeam(tiltShare: snapshot.clay.share)
+                .padding(lineWidth + 2)
+        }
+    }
+}
+
+/// A thin cream mini-beam for the ring centre (tilts with the ADA share).
+struct MiniBeam: View {
+    let tiltShare: Int
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width, h = geo.size.height
+            let cx = w / 2, cy = h * 0.5
+            let arm = w * 0.36
+            let tilt = max(-24, min(24, CGFloat(tiltShare - 50) * 0.7)) * .pi / 180
+            let ct = cos(tilt), st = sin(tilt)
+            Path { p in
+                // stand
+                p.move(to: CGPoint(x: cx, y: cy))
+                p.addLine(to: CGPoint(x: cx, y: h * 0.9))
+                // beam
+                p.move(to: CGPoint(x: cx - arm * ct, y: cy + arm * st))
+                p.addLine(to: CGPoint(x: cx + arm * ct, y: cy - arm * st))
+            }
+            .stroke(Color.white, style: StrokeStyle(lineWidth: max(1, w * 0.05), lineCap: .round))
+        }
     }
 }
