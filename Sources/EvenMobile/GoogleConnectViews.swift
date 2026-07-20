@@ -209,7 +209,7 @@ struct GoogleGMark: View {
     }
 }
 
-// MARK: - Inbox card (quiet, whenever not connected)
+// MARK: - Source connection card
 
 struct GoogleConnectCard: View {
     @Bindable var model: AppModel
@@ -218,10 +218,10 @@ struct GoogleConnectCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("GMAIL — NOT CONNECTED")
+            Text("GOOGLE — NOT CONNECTED")
                 .capsLabel(9, tracking: 1.5)
                 .foregroundStyle(palette.sub)
-            Text("Connect Google and the bills find their own way here.")
+            Text("Connect Gmail and Calendar for shared household todos.")
                 .font(EvenFont.serif(14, italic: true))
                 .foregroundStyle(palette.ink)
             if let errorText = connector.errorText {

@@ -128,3 +128,19 @@ Push notifications · public API via Cloudflare tunnel (api.thisiseven.app) ·
 TestFlight (needs explicit approval) · Android · uneven splits · week
 history browser · calendar retry/external-change reconciliation (mac
 prototype has it; port later).
+
+## P7 Financial sources (local-first)
+- [x] **EV-80** Local statement import: parse bank CSV exports on device,
+  deduplicate transactions, and suggest read-only matches to pending household
+  amounts. Statement data and matching choices live in an app-specific,
+  device-only Keychain record; old UserDefaults data migrates once. AC: no
+  bank credentials, statement uploads, or payment APIs exist in the app.
+- [ ] **EV-81** Bunq sandbox discovery: configure a separate Bunq sandbox OAuth
+  client and backend callback, run read-only account/payment retrieval against
+  sandbox data, and map it through the existing statement matcher. AC: no
+  production credentials, payment creation endpoints, or real-account calls.
+- [ ] **EV-82** Production banking decision: complete privacy, security, and
+  regulatory review before enabling an OAuth connection to another person's
+  financial data. AC: explicit per-user consent, server-side encrypted token
+  storage, revocation, retention policy, and confirmed applicable PSD2/AISP
+  requirements; payment initiation remains out of scope.

@@ -46,6 +46,7 @@ public enum Recurrence: String, Codable, CaseIterable, Sendable {
         case .weekly: return "Weekly"
         }
     }
+
 }
 
 public struct HouseholdTask: Codable, Identifiable, Hashable, Sendable {
@@ -60,6 +61,36 @@ public struct HouseholdTask: Codable, Identifiable, Hashable, Sendable {
     public var doneByMemberId: UUID?
     public var metaLine: String
     public var googleEventUrl: String?
+    public var calendarSyncState: CalendarSyncState?
+    public var calendarLastSyncedAt: Date?
+    public var calendarLastError: String?
+}
+
+public enum CalendarSyncState: String, Codable, Sendable {
+    case notScheduled = "not_scheduled"
+    case synced
+    case externalChanged = "external_changed"
+    case externalDeleted = "external_deleted"
+    case retryRequired = "retry_required"
+
+    public var label: String {
+        switch self {
+        case .notScheduled: return "Not scheduled"
+        case .synced: return "Calendar synced"
+        case .externalChanged: return "Updated in Calendar"
+        case .externalDeleted: return "Removed in Calendar"
+        case .retryRequired: return "Calendar needs retry"
+        }
+    }
+
+    public var requiresResolution: Bool {
+        switch self {
+        case .externalChanged, .externalDeleted, .retryRequired:
+            return true
+        case .notScheduled, .synced:
+            return false
+        }
+    }
 }
 
 public enum DraftReminder: String, Codable, CaseIterable, Sendable {
@@ -77,6 +108,24 @@ public enum DraftReminder: String, Codable, CaseIterable, Sendable {
 
 public enum DraftStatus: String, Codable, Sendable {
     case pending, approved, dismissed
+}
+
+public enum DraftReplyStatus: String, Codable, Sendable {
+    case none
+    case drafted
+    case openedInGmail = "opened_in_gmail"
+    case sentManually = "sent_manually"
+    case done
+
+    public var label: String {
+        switch self {
+        case .none: return "Reply needed"
+        case .drafted: return "Draft ready"
+        case .openedInGmail: return "Opened in Gmail"
+        case .sentManually: return "Sent"
+        case .done: return "Done"
+        }
+    }
 }
 
 public struct Draft: Codable, Identifiable, Hashable, Sendable {
@@ -97,9 +146,17 @@ public struct Draft: Codable, Identifiable, Hashable, Sendable {
     public var gmail: Bool?
     public var gmailMessageId: String?
     public var category: String?
+    public var needsReply: Bool?
+    public var suggestedReply: String?
+    public var replyText: String?
+    public var replyStatus: DraftReplyStatus?
 
     public var isFromGmail: Bool { gmail ?? false }
     public var categoryKey: String { category ?? "other" }
+    public var hasReplyWork: Bool {
+        (needsReply ?? false) || !(suggestedReply?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+            || !(replyText?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+    }
 }
 
 public struct Expense: Codable, Identifiable, Hashable, Sendable {
@@ -212,6 +269,7 @@ public struct GoogleStatus: Codable, Sendable {
     public var email: String?
     public var lastSyncAt: Date?
     public var lastSyncCount: Int?
+    public var calendarLastSyncAt: Date?
     // Live scan-job state — the app polls these while a sync runs.
     public var syncRunning: Bool?
     public var scanned: Int?
@@ -230,7 +288,9 @@ public struct GoogleSyncStart: Codable, Sendable {
 public struct CalendarItem: Codable, Identifiable, Hashable, Sendable {
     public var kind: Kind
     public enum Kind: String, Codable, Sendable { case draft, task }
-    public let id: UUID
+    /// A repeat gets a stable "task-id:occurrence-date" identity, so the
+    /// schedule can show each calendar occurrence independently.
+    public let id: String
     public var title: String
     public var category: String?
     public var ownerMemberId: UUID
@@ -250,6 +310,15 @@ public struct GoogleCalendarInfo: Codable, Sendable {
     public var calendarId: String
     public var shared: Bool
     public var shareUrl: String?
+}
+
+public struct CalendarSyncResult: Codable, Sendable {
+    public var calendarId: String
+    public var imported: Int
+    public var updated: Int
+    public var deleted: Int
+    public var unchanged: Int
+    public var lastSyncedAt: Date
 }
 
 public struct APIErrorBody: Codable, Sendable {

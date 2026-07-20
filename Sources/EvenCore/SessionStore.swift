@@ -1,6 +1,5 @@
 import Foundation
 import Observation
-import Security
 
 // MARK: - Session persistence
 
@@ -12,39 +11,22 @@ public protocol SessionStorage: Sendable {
 
 /// Keychain-backed storage (kilo pattern: one generic-password item).
 public struct KeychainSessionStorage: SessionStorage {
-    let service = "com.umuryavuz.even.session"
+    private let store = KeychainDataStore(service: "com.umuryavuz.even.session", account: "gotrue")
 
     public init() {}
 
     public func load() -> AuthSession? {
-        var query = baseQuery
-        query[kSecReturnData as String] = true
-        query[kSecMatchLimit as String] = kSecMatchLimitOne
-        var result: AnyObject?
-        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
-              let data = result as? Data else { return nil }
+        guard let data = try? store.load() else { return nil }
         return try? JSONDecoder().decode(AuthSession.self, from: data)
     }
 
     public func save(_ session: AuthSession) {
         guard let data = try? JSONEncoder().encode(session) else { return }
-        var query = baseQuery
-        let update = [kSecValueData as String: data]
-        let status = SecItemUpdate(query as CFDictionary, update as CFDictionary)
-        if status == errSecItemNotFound {
-            query[kSecValueData as String] = data
-            SecItemAdd(query as CFDictionary, nil)
-        }
+        try? store.save(data)
     }
 
     public func clear() {
-        SecItemDelete(baseQuery as CFDictionary)
-    }
-
-    private var baseQuery: [String: Any] {
-        [kSecClass as String: kSecClassGenericPassword,
-         kSecAttrService as String: service,
-         kSecAttrAccount as String: "gotrue"]
+        try? store.clear()
     }
 }
 

@@ -24,7 +24,7 @@ let package = Package(
         ),
         .target(
             name: "EvenMobile",
-            dependencies: ["EvenCore"],
+            dependencies: ["EvenCore", "HouseholdCore"],
             path: "Sources/EvenMobile",
             resources: [.process("Resources")]
         ),
@@ -42,6 +42,11 @@ let package = Package(
             name: "EvenCoreTests",
             dependencies: ["EvenCore"],
             path: "Tests/EvenCoreTests"
+        ),
+        .testTarget(
+            name: "EvenMobileTests",
+            dependencies: ["EvenMobile", "HouseholdCore"],
+            path: "Tests/EvenMobileTests"
         )
     ]
 )

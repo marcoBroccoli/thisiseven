@@ -176,6 +176,16 @@ func TestFullFlow(t *testing.T) {
 		"owner_member_id": umutID, "weight": 1, "recurrence": "daily"})
 	mustStatus(t, code, 201, "create task2", task2)
 	task2ID := task2["id"].(string)
+	code, datedTask := ada.do("POST", "/v1/tasks", map[string]any{
+		"title": "Book the dentist", "section": "admin",
+		"owner_member_id": adaID, "weight": 1, "recurrence": "none", "due_on": "2026-08-12"})
+	mustStatus(t, code, 201, "create dated task", datedTask)
+	datedTaskID := datedTask["id"].(string)
+	code, body = ada.do("PATCH", "/v1/tasks/"+datedTaskID, map[string]any{"clear_due_on": true})
+	mustStatus(t, code, 200, "clear task due date", body)
+	if body["due_on"] != nil || body["calendar_sync_state"] != "not_scheduled" {
+		t.Fatalf("cleared task still looks scheduled: %v", body)
+	}
 
 	code, body = ada.do("POST", "/v1/tasks/"+taskID+"/toggle", nil)
 	mustStatus(t, code, 200, "toggle", body)
@@ -216,10 +226,14 @@ func TestFullFlow(t *testing.T) {
 	draftID := draft["id"].(string)
 
 	code, body = ada.do("PATCH", "/v1/drafts/"+draftID, map[string]any{
-		"title": "Pay Vattenfall — July", "reminder": "1_day"})
+		"title": "Pay Vattenfall — July", "reminder": "1_day",
+		"reply_text": "Thanks, we'll confirm shortly.", "reply_status": "opened_in_gmail"})
 	mustStatus(t, code, 200, "draft patch", body)
 	if body["title"] != "Pay Vattenfall — July" {
 		t.Fatalf("draft title: %v", body["title"])
+	}
+	if body["reply_text"] != "Thanks, we'll confirm shortly." || body["reply_status"] != "opened_in_gmail" {
+		t.Fatalf("draft reply fields: %v / %v", body["reply_text"], body["reply_status"])
 	}
 
 	code, appr := ada.do("POST", "/v1/drafts/"+draftID+"/approve", nil)

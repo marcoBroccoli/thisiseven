@@ -1,9 +1,8 @@
 import SwiftUI
 import EvenCore
 
-// The shared month — docs/design/even-calendar.dc.html implemented 1:1.
-// Month grid with member-colored day dots, selected-day card, the week
-// ahead, and the shared-Google-calendar footer.
+// Dated todos are shown as one shared schedule and are published to Google
+// Calendar when the household connection is available.
 
 struct CalendarView: View {
     @Bindable var model: AppModel
@@ -20,6 +19,8 @@ struct CalendarView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
+                ScreenHeader(kicker: "GOOGLE CALENDAR", title: "Schedule",
+                             subtitle: "Dated todos live on the shared calendar.")
                 sharedPill
                 monthHeader
                 dowRow
@@ -45,8 +46,8 @@ struct CalendarView: View {
             .animation(.easeOut(duration: 0.2), value: selectedKey)
             .animation(.easeOut(duration: 0.25), value: model.calendarMonthItems)
         }
-        .refreshable { await model.loadCalendar(month: displayedMonth) }
-        .task { await model.loadCalendar(month: displayedMonth) }
+        .refreshable { await refreshSchedule() }
+        .task(id: model.calendarRevision) { await refreshSchedule() }
         .onChange(of: monthKey) { _, _ in
             Task { await model.loadCalendar(month: displayedMonth) }
         }
@@ -140,6 +141,14 @@ struct CalendarView: View {
         }
     }
 
+    private func refreshSchedule() async {
+        await model.loadCalendar(month: displayedMonth)
+        if model.calendarInfo?.shared == true {
+            await model.syncCalendar()
+            await model.loadCalendar(month: displayedMonth)
+        }
+    }
+
     // MARK: Grid
 
     private var dowRow: some View {
@@ -218,12 +227,14 @@ struct CalendarView: View {
 
     private var emptyMonthCard: some View {
         VStack(spacing: 0) {
-            MiniScaleIllustration().scaleEffect(0.85)
+            Image(systemName: "calendar")
+                .font(.system(size: 28, weight: .light))
+                .foregroundStyle(palette.sub)
             Text("Nothing due in \(monthName) — yet.")
                 .font(EvenFont.serif(17, italic: true))
                 .foregroundStyle(palette.ink)
                 .padding(.top, 4)
-            Text("Bills, renewals and appointments will land here as Gmail and Calendar find them.")
+            Text("Add a due date to a todo and it will appear here.")
                 .font(EvenFont.sans(11.5, .regular))
                 .foregroundStyle(palette.sub)
                 .multilineTextAlignment(.center)
@@ -360,7 +371,7 @@ struct CalendarView: View {
 
     private func metaLine(_ item: CalendarItem) -> String {
         if item.kind == .task {
-            return item.done == true ? "TASK · DONE" : "TASK"
+            return item.done == true ? "TODO · DONE" : "TODO"
         }
         let type: String
         switch item.category {
@@ -370,7 +381,7 @@ struct CalendarView: View {
         case "admin": type = "ADMIN"
         default: type = "DRAFT"
         }
-        return type == "DRAFT" ? "DRAFT · TO APPROVE" : "\(type) · TO APPROVE"
+        return type == "DRAFT" ? "SUGGESTED TODO · REVIEW" : "\(type) · REVIEW"
     }
 
     @ViewBuilder
@@ -416,7 +427,7 @@ struct CalendarView: View {
             .padding(.top, 2)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("This calendar lives in Google too.")
+                Text("This schedule lives in Google Calendar.")
                     .font(EvenFont.serif(14.5))
                     .foregroundStyle(palette.ink)
                 Text(googleCardBody)
@@ -443,11 +454,11 @@ struct CalendarView: View {
 
     private var googleCardBody: String {
         if model.calendarInfo?.shared == true {
-            return "Even publishes a shared “Even” calendar — subscribe once and every bill, renewal and visit sits beside your own plans."
+            return "Every dated todo is published to this shared calendar."
         }
         if model.googleStatus?.connected == true {
-            return "Your first approved dated item creates the shared “Even” calendar — the subscribe link appears here."
+            return "Your first dated todo creates the shared calendar — the subscribe link appears here."
         }
-        return "Connect Google in the Inbox and Even will publish a shared “Even” calendar you can both subscribe to."
+        return "Connect Google from Todos to publish a shared household calendar."
     }
 }

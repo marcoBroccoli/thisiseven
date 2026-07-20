@@ -11,7 +11,7 @@ final class EvenE2ETests: XCTestCase {
         continueAfterFailure = false
     }
 
-    func testFullMVPFlow() throws {
+    func testSharedTodoFlow() throws {
         // No hyphens: the sim keyboard's smart punctuation turns "-" into an
         // en dash, which GoTrue rejects as an invalid email.
         let stamp = String(Int(Date().timeIntervalSince1970))
@@ -31,34 +31,13 @@ final class EvenE2ETests: XCTestCase {
         let code = String(invite.label.suffix(6))
         XCTAssertEqual(code.count, 6)
 
-        // ── A: two chores, toggle one → beam reads 100 ───────────────────
+        // ── A: capture household todos and complete one ──────────────────
         addTask(app, title: "Dishes tonight")
         addTask(app, title: "Water the plants")
         tap(app.buttons["check-Dishes tonight"])
-        XCTAssertTrue(app.staticTexts["100"].waitForExistence(timeout: 10),
-                      "solo completion should read 100%")
-
-        // ── A: propose a draft, approve it into THE ADMIN ────────────────
-        tap(tab(app, "Inbox"))
-        tapExpecting(app.buttons["fab-propose"], reveals: app.textFields["draft-from"])
-        typeInto(app.textFields["draft-from"], "Vattenfall", app: app)
-        typeInto(app.textFields["draft-subject"], "July energy bill", app: app)
-        tapExpecting(app.buttons["Send to the inbox"],
-                     reveals: app.buttons["draft-card-July energy bill"])
-        tapExpecting(app.buttons["draft-card-July energy bill"],
-                     reveals: app.buttons["draft-approve"])
-        tap(app.buttons["draft-approve"])
-        XCTAssertTrue(app.staticTexts["ON THE CALENDAR ✓"].waitForExistence(timeout: 10))
-        tap(tab(app, "Today"))
-        XCTAssertTrue(app.staticTexts["July energy bill"].waitForExistence(timeout: 10),
-                      "approved draft becomes admin work")
-
-        // ── A: front an expense ──────────────────────────────────────────
-        tap(tab(app, "Money"))
-        tapExpecting(app.buttons["fab-add-expense"], reveals: app.textFields["expense-title"])
-        typeInto(app.textFields["expense-title"], "Weekly groceries", app: app)
-        typeInto(app.textFields["expense-amount"], "86.20", app: app)
-        tapExpecting(app.buttons["Add receipt"], reveals: app.staticTexts["€86.20"])
+        XCTAssertTrue(app.staticTexts["Water the plants"].waitForExistence(timeout: 10))
+        tap(tab(app, "Schedule"))
+        XCTAssertTrue(app.staticTexts["Schedule"].waitForExistence(timeout: 10))
 
         // ── Account B: join with the invite code ─────────────────────────
         app.terminate()
@@ -72,31 +51,15 @@ final class EvenE2ETests: XCTestCase {
         // Shared state visible to B: A's open task appears after joining.
         tapExpecting(app.buttons["Join the household"],
                      reveals: app.staticTexts["Water the plants"])
-        tap(tab(app, "Money"))
-        XCTAssertTrue(app.staticTexts["€43.10"].waitForExistence(timeout: 10),
-                      "B owes half of A's groceries")
-        tapExpecting(app.buttons["Settle up"], reveals: app.buttons["Settled ✓"])
-        XCTAssertTrue(app.staticTexts["€0.00"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Dishes tonight"].waitForExistence(timeout: 10),
+                      "B sees the household's completed todo")
 
-        // ── B: run the Sunday reset and pour the pans ────────────────────
-        tap(tab(app, "Reset"))
-        tapExpecting(app.buttons["Start the reset"],
-                     reveals: app.buttons["Next — say one kind thing"])
-        tap(app.buttons["Next — say one kind thing"])
-        tap(app.buttons["Next — trade for next week"])
-        tapExpecting(app.buttons["Close the week — pour the pans"],
-                     reveals: app.staticTexts["Week 1, poured out."],
-                     revealTimeout: 6)
-        XCTAssertTrue(app.staticTexts["Week 1, poured out."].waitForExistence(timeout: 12))
-
-        // ── Back as A: partner present, pans empty, level again ──────────
+        // ── Back as A: both members see the same unified list ────────────
         app.terminate()
         app = launchFresh()
         signIn(app, email: emailA)
-        XCTAssertTrue(app.staticTexts["BESTE"].waitForExistence(timeout: 12),
-                      "A sees Beste on the scale")
-        XCTAssertTrue(app.staticTexts["Empty pans. A new week, level by definition."]
-            .waitForExistence(timeout: 10), "closed week starts level")
+        XCTAssertTrue(app.staticTexts["Water the plants"].waitForExistence(timeout: 12),
+                      "A sees the household's shared todo")
     }
 
     // MARK: - Helpers
@@ -143,7 +106,7 @@ final class EvenE2ETests: XCTestCase {
     private func addTask(_ app: XCUIApplication, title: String) {
         tapExpecting(app.buttons["fab-add-task"], reveals: app.textFields["task-title"])
         typeInto(app.textFields["task-title"], title, app: app)
-        tapExpecting(app.buttons["Add to the week"], reveals: app.staticTexts[title])
+        tapExpecting(app.buttons["Add todo"], reveals: app.staticTexts[title])
     }
 
     private func typeInto(_ field: XCUIElement, _ text: String, app: XCUIApplication) {

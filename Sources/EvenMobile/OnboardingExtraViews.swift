@@ -290,6 +290,7 @@ struct InviteRevealView: View {
 // MARK: - 10 · notifications ask
 
 struct NotificationsPromptView: View {
+    @Bindable var model: AppModel
     let done: () -> Void
     @Environment(\.palette) private var palette
 
@@ -300,7 +301,7 @@ struct NotificationsPromptView: View {
                 .foregroundStyle(palette.sub)
                 .padding(.top, 46)
 
-            Text("Two nudges.\nThat's all.")
+            Text("One quiet nudge.\nThat's all.")
                 .font(EvenFont.serif(34, .medium))
                 .foregroundStyle(palette.ink)
                 .lineSpacing(2)
@@ -311,14 +312,9 @@ struct NotificationsPromptView: View {
                 .foregroundStyle(palette.sub)
                 .padding(.top, 12)
 
-            VStack(spacing: 14) {
-                nudgeCard(icon: "arrow.clockwise",
-                          title: "Sunday, 6:00 PM",
-                          body: "One reminder for the weekly reset. Move it or mute it whenever you like.")
-                nudgeCard(icon: "tray",
-                          title: "A draft needs you",
-                          body: "One ping when your partner sends something for your approval.")
-            }
+            nudgeCard(icon: "checkmark.circle",
+                      title: "Dated todo, 9:00 AM",
+                      body: "A quiet alert on this phone when a household todo is due. Google Calendar keeps its own shared reminder.")
             .padding(.top, 30)
 
             Text("No streaks, no re-engagement, no guilt.")
@@ -330,7 +326,10 @@ struct NotificationsPromptView: View {
             Spacer()
 
             PrimaryButton(title: "Turn them on") {
-                requestAuthorization()
+                Task {
+                    await model.enableTodoReminders()
+                    done()
+                }
             }
             Text("iOS WILL CONFIRM NEXT")
                 .capsLabel(9, tracking: 1)
@@ -378,13 +377,4 @@ struct NotificationsPromptView: View {
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(palette.line, lineWidth: 1.5))
     }
 
-    private func requestAuthorization() {
-        #if canImport(UserNotifications)
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in
-            DispatchQueue.main.async { done() }
-        }
-        #else
-        done()
-        #endif
-    }
 }

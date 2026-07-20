@@ -77,6 +77,32 @@ final class BankingReconciliationTests: XCTestCase {
         XCTAssertTrue(suggestions[0].reasons.contains("Exact amount"))
     }
 
+    func testGenericObligationAdapterReusesTheStatementScorer() {
+        let dueDate = Date(timeIntervalSince1970: 1_784_332_800)
+        let obligation = BankPaymentObligation(
+            id: UUID(),
+            title: "Pay water bill",
+            amount: Decimal(string: "42.50")!,
+            referenceDate: dueDate,
+            searchText: "Water Company monthly invoice"
+        )
+        let transaction = BankTransaction(
+            bookingDate: dueDate.addingTimeInterval(-86_400),
+            amount: Decimal(string: "-42.50")!,
+            counterparty: "Water Company",
+            description: "Monthly payment",
+            source: "statement.csv"
+        )
+
+        let suggestions = BankingReconciliation.suggestions(
+            obligations: [obligation], transactions: [transaction]
+        )
+
+        XCTAssertEqual(suggestions.first?.obligationID, obligation.id)
+        XCTAssertEqual(suggestions.first?.transactionID, transaction.id)
+        XCTAssertGreaterThan(suggestions.first?.confidence ?? 0, 0.9)
+    }
+
     func testLocalStateDeduplicatesTransactionsAndDefaultsNewFieldsForOlderData() throws {
         let transaction = BankTransaction(
             bookingDate: Date(timeIntervalSince1970: 1_784_332_800),

@@ -40,34 +40,19 @@ final class EvenCaptureTests: XCTestCase {
         if springboard.buttons["Not Now"].waitForExistence(timeout: 3) {
             springboard.buttons["Not Now"].tap()
         }
-        go(app, "Today")
+        go(app, "Todos")
         sleep(1)
 
-        snap(app, "01-today-light")
-        go(app, "Inbox"); snap(app, "02-inbox-light")
-        go(app, "Money"); snap(app, "03-money-light")
-        go(app, "Reset"); snap(app, "04-reset-light")
-
-        // Reset step 1 + 3 (computed bars, trades)
-        if app.buttons["Start the reset"].waitForExistence(timeout: 5) {
-            forceTap(app.buttons["Start the reset"])
-            sleep(1)
-            snap(app, "05-reset-week-honestly")
-            if app.buttons["Next — say one kind thing"].exists {
-                forceTap(app.buttons["Next — say one kind thing"])
-                sleep(1)
-                snap(app, "06-reset-kind-thing")
-            }
-        }
+        snap(app, "01-todos-light")
+        go(app, "Schedule"); snap(app, "02-schedule-light")
 
         // Dark mode
-        go(app, "Today")
-        toggleDark(app)
+        go(app, "Todos")
+        app.buttons["dark-toggle"].tap()
         sleep(1)
-        snap(app, "07-today-dark")
-        go(app, "Inbox"); snap(app, "08-inbox-dark")
-        go(app, "Money"); snap(app, "09-money-dark")
-        toggleDark(app)   // leave the app in light mode
+        snap(app, "03-todos-dark")
+        go(app, "Schedule"); snap(app, "04-schedule-dark")
+        app.buttons["dark-toggle"].tap()   // leave the app in light mode
     }
 
     private func forceTap(_ element: XCUIElement) {

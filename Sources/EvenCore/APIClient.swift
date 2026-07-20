@@ -181,15 +181,28 @@ public extension EvenAPIClient {
         public var weight: Int
         public var recurrence: Recurrence
         public var dueOn: String?
+        public var clearDueOn: Bool
         public init(title: String, section: TaskSection, ownerMemberId: UUID,
-                    weight: Int, recurrence: Recurrence, dueOn: String? = nil) {
+                    weight: Int, recurrence: Recurrence, dueOn: String? = nil,
+                    clearDueOn: Bool = false) {
             self.title = title
             self.section = section
             self.ownerMemberId = ownerMemberId
             self.weight = weight
             self.recurrence = recurrence
             self.dueOn = dueOn
+            self.clearDueOn = clearDueOn
         }
+    }
+
+    enum CalendarResolutionAction: String, Encodable, Sendable {
+        case acknowledge
+        case restore
+        case retry
+    }
+
+    struct CalendarResolutionBody: Encodable {
+        let action: CalendarResolutionAction
     }
 
     func createTask(_ body: TaskDraftBody) async throws -> HouseholdTask {
@@ -198,6 +211,11 @@ public extension EvenAPIClient {
 
     func updateTask(id: UUID, _ body: TaskDraftBody) async throws -> HouseholdTask {
         try await patch("v1/tasks/\(id.uuidString.lowercased())", body)
+    }
+
+    func resolveTaskCalendar(id: UUID, action: CalendarResolutionAction) async throws -> HouseholdTask {
+        try await post("v1/tasks/\(id.uuidString.lowercased())/calendar/resolve",
+                       CalendarResolutionBody(action: action))
     }
 
     func deleteTask(id: UUID) async throws {
@@ -243,14 +261,19 @@ public extension EvenAPIClient {
         public var amountCents: Int?
         public var dueOn: String?
         public var reminder: DraftReminder?
+        public var replyText: String?
+        public var replyStatus: DraftReplyStatus?
         public init(title: String? = nil, ownerMemberId: UUID? = nil,
                     amountCents: Int? = nil, dueOn: String? = nil,
-                    reminder: DraftReminder? = nil) {
+                    reminder: DraftReminder? = nil, replyText: String? = nil,
+                    replyStatus: DraftReplyStatus? = nil) {
             self.title = title
             self.ownerMemberId = ownerMemberId
             self.amountCents = amountCents
             self.dueOn = dueOn
             self.reminder = reminder
+            self.replyText = replyText
+            self.replyStatus = replyStatus
         }
     }
 
@@ -325,6 +348,10 @@ public extension EvenAPIClient {
 
     func calendar(from: String, to: String) async throws -> CalendarResponse {
         try await get("v1/calendar?from=\(from)&to=\(to)")
+    }
+
+    func syncCalendar() async throws -> CalendarSyncResult {
+        try await post("v1/calendar/sync")
     }
 
     func calendarInfo() async throws -> GoogleCalendarInfo {

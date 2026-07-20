@@ -1,8 +1,8 @@
 import SwiftUI
 import EvenCore
 
-// Approval Inbox — drafts, not tasks. Partner-proposed in MVP (Gmail
-// discovery is post-MVP); approving turns a draft into THE ADMIN work.
+// Review components are shared by the Todo workspace. This legacy screen is
+// kept for deep-link compatibility while the primary navigation is unified.
 
 struct InboxView: View {
     @Bindable var model: AppModel
@@ -237,14 +237,17 @@ struct DraftReviewSheet: View {
     let draft: Draft
     @Environment(\.palette) private var palette
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
 
     @State private var title = ""
     @State private var ownerId: UUID?
     @State private var reminder: DraftReminder = .oneDay
+    @State private var replyText = ""
+    @State private var replyStatus: DraftReplyStatus = .none
     @State private var working = false
 
     var body: some View {
-        SheetChrome(title: "REVIEW DRAFT — EVERYTHING EDITABLE") {
+        SheetChrome(title: "REVIEW SUGGESTED TODO") {
             UnderlineField(placeholder: "Task title", text: $title)
 
             HStack(spacing: 8) {
@@ -275,6 +278,53 @@ struct DraftReviewSheet: View {
                 }
             }
 
+            if draft.isFromGmail && draft.hasReplyWork {
+                VStack(alignment: .leading, spacing: 9) {
+                    HStack {
+                        Text("REPLY").capsLabel(9, tracking: 1.4).foregroundStyle(palette.sub)
+                        Spacer()
+                        Text(replyStatus.label.uppercased())
+                            .capsLabel(8, tracking: 1.1)
+                            .foregroundStyle(replyStatus == .sentManually || replyStatus == .done ? palette.teal : palette.clay)
+                    }
+
+                    TextEditor(text: $replyText)
+                        .font(EvenFont.serif(14))
+                        .foregroundStyle(palette.ink)
+                        .scrollContentBackground(.hidden)
+                        .frame(minHeight: 118)
+                        .padding(8)
+                        .background(RoundedRectangle(cornerRadius: 10).fill(palette.bg))
+                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(palette.line, lineWidth: 1))
+                        .accessibilityIdentifier("reply-draft")
+
+                    HStack(spacing: 8) {
+                        GhostButton(title: "Mark sent") {
+                            markReplySent()
+                        }
+                        .frame(maxWidth: .infinity)
+
+                        Button {
+                            openReplyInGmail()
+                        } label: {
+                            Label("Open Gmail", systemImage: "envelope")
+                                .font(EvenFont.serif(14, .medium))
+                                .foregroundStyle(palette.bg)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 46)
+                                .background(RoundedRectangle(cornerRadius: 10).fill(palette.ink))
+                        }
+                        .buttonStyle(PressScaleStyle())
+                        .disabled(replyComposeDraft == nil || replyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || working)
+                        .frame(maxWidth: .infinity)
+                    }
+                    .disabled(working)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(12)
+                .background(RoundedRectangle(cornerRadius: 12).fill(palette.faint))
+            }
+
             HStack(spacing: 8) {
                 GhostButton(title: "Dismiss") {
                     working = true
@@ -294,7 +344,7 @@ struct DraftReviewSheet: View {
                         dismiss()
                     }
                 } label: {
-                    Text("Approve → The Admin")
+                    Text("Add to todos")
                         .font(EvenFont.serif(15, .medium))
                         .foregroundStyle(palette.bg)
                         .frame(maxWidth: .infinity)
@@ -311,7 +361,7 @@ struct DraftReviewSheet: View {
 
             if draft.isFromGmail {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("FROM THE MAIL PILE").capsLabel(9, tracking: 1.4).foregroundStyle(palette.sub)
+                    Text("SOURCE EMAIL").capsLabel(9, tracking: 1.4).foregroundStyle(palette.sub)
                     Text(draft.subject)
                         .font(EvenFont.serif(12.5, italic: true))
                         .foregroundStyle(palette.sub)
@@ -332,7 +382,7 @@ struct DraftReviewSheet: View {
                 .background(RoundedRectangle(cornerRadius: 12).fill(palette.faint))
             }
 
-            Text("Approval creates one piece of shared work with a reminder. Never before.")
+            Text("Adding it creates a shared todo. Dated todos are sent to Google Calendar.")
                 .font(EvenFont.serif(11.5, italic: true))
                 .foregroundStyle(palette.sub)
                 .frame(maxWidth: .infinity)
@@ -342,6 +392,8 @@ struct DraftReviewSheet: View {
             title = draft.title
             ownerId = draft.ownerMemberId
             reminder = draft.reminder
+            replyText = draft.replyText ?? draft.suggestedReply ?? ""
+            replyStatus = draft.replyStatus ?? (draft.hasReplyWork ? .drafted : .none)
         }
     }
 
@@ -353,10 +405,49 @@ struct DraftReviewSheet: View {
     }
 
     private func save() async {
+        let normalisedReply = replyText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let nextReplyStatus: DraftReplyStatus? = draft.hasReplyWork
+            ? (normalisedReply.isEmpty ? .none : (replyStatus == .none ? .drafted : replyStatus))
+            : nil
         _ = await model.updateDraft(id: draft.id, .init(
             title: title.trimmingCharacters(in: .whitespaces),
             ownerMemberId: ownerId,
-            reminder: reminder))
+            reminder: reminder,
+            replyText: draft.hasReplyWork ? normalisedReply : nil,
+            replyStatus: nextReplyStatus))
+    }
+
+    private var replyComposeDraft: GmailReplyDraft? {
+        guard let sourceFrom = draft.sourceFrom else { return nil }
+        return GmailReplyComposer.draft(sourceFrom: sourceFrom, sourceSubject: draft.subject, body: replyText)
+    }
+
+    private func openReplyInGmail() {
+        guard let composeDraft = replyComposeDraft else { return }
+        working = true
+        Task {
+            let updated = await model.updateDraft(id: draft.id, .init(
+                replyText: replyText.trimmingCharacters(in: .whitespacesAndNewlines),
+                replyStatus: .openedInGmail))
+            if updated != nil {
+                replyStatus = .openedInGmail
+                openURL(GmailReplyComposer.composeURL(for: composeDraft))
+            }
+            working = false
+        }
+    }
+
+    private func markReplySent() {
+        working = true
+        Task {
+            let updated = await model.updateDraft(id: draft.id, .init(
+                replyText: replyText.trimmingCharacters(in: .whitespacesAndNewlines),
+                replyStatus: .sentManually))
+            if updated != nil {
+                replyStatus = .sentManually
+            }
+            working = false
+        }
     }
 }
 

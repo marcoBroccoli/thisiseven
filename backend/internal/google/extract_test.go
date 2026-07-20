@@ -63,6 +63,18 @@ func TestExtractDueTomorrowIsImmediate(t *testing.T) {
 	}
 }
 
+func TestNeedsReplyRejectsAutomatedMail(t *testing.T) {
+	if NeedsReply("Please confirm your appointment", "Reply before Friday", "Clinic <no-reply@example.com>") {
+		t.Fatal("no-reply sender must not create a reply draft")
+	}
+	if !NeedsReply("Please confirm your appointment", "Reply before Friday", "Clinic <bookings@example.com>") {
+		t.Fatal("explicit confirmation request should need a reply")
+	}
+	if got := SuggestedReply("Weekly digest", "Unsubscribe or reply for help", "News <mail@example.com>"); got != "" {
+		t.Fatalf("generic footer should not create reply suggestion: %q", got)
+	}
+}
+
 func TestExtractEndOfMonth(t *testing.T) {
 	e := Extract("Subscription renewal bill", "Renew by end of month to keep your plan. €15.99", "Netflix", now)
 	if e.DueOn == nil || e.DueOn.Format("2006-01-02") != "2026-07-31" {
@@ -112,5 +124,12 @@ func TestBuildEventPayload(t *testing.T) {
 	}
 	if p.Summary != "Pay Vattenfall energy bill — July" {
 		t.Fatalf("summary wrong: %q", p.Summary)
+	}
+	if p.Recurrence != nil {
+		t.Fatalf("one-off event should not carry a recurrence: %+v", p.Recurrence)
+	}
+	weekly := BuildEvent("Wash the dog", "", nil, due, "on_day", "weekly")
+	if len(weekly.Recurrence) != 1 || weekly.Recurrence[0] != "RRULE:FREQ=WEEKLY" {
+		t.Fatalf("weekly rule = %+v", weekly.Recurrence)
 	}
 }

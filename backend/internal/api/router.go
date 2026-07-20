@@ -14,9 +14,10 @@ import (
 )
 
 // Router wires the whole surface. Contract: docs/product/API.md.
-//   GET  /healthz
-//   /auth/*  → GoTrue (Supabase Auth) with the /auth prefix stripped
-//   /v1/*    → evend, Bearer-gated
+//
+//	GET  /healthz
+//	/auth/*  → GoTrue (Supabase Auth) with the /auth prefix stripped
+//	/v1/*    → evend, Bearer-gated
 func Router(a *API, verifier httpx.AccessVerifier, gotrueURL string) http.Handler {
 	r := chi.NewRouter()
 	r.Use(httpx.Recover, httpx.Log)
@@ -65,6 +66,7 @@ func Router(a *API, verifier httpx.AccessVerifier, gotrueURL string) http.Handle
 		r.Patch("/v1/tasks/{id}", a.UpdateTask)
 		r.Delete("/v1/tasks/{id}", a.DeleteTask)
 		r.Post("/v1/tasks/{id}/toggle", a.ToggleTask)
+		r.Post("/v1/tasks/{id}/calendar/resolve", a.ResolveTaskCalendar)
 
 		r.Get("/v1/drafts", a.ListDrafts)
 		r.Post("/v1/drafts", a.CreateDraft)
@@ -83,6 +85,7 @@ func Router(a *API, verifier httpx.AccessVerifier, gotrueURL string) http.Handle
 		r.Get("/v1/google/calendar-info", a.GoogleCalendarInfo)
 
 		r.Get("/v1/calendar", a.Calendar)
+		r.Post("/v1/calendar/sync", a.SyncCalendar)
 
 		r.Get("/v1/reset", a.Reset)
 		r.Put("/v1/appreciations/mine", a.PutAppreciation)

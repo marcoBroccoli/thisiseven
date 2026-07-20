@@ -20,10 +20,12 @@ func scanDraft(row pgx.Row) (DraftJSON, error) {
 	var dueOn *time.Time
 	var gmailID *string
 	var category *string
+	var suggestedReply, replyText *string
+	var replyStatus string
 	err := row.Scan(&d.ID, &d.FromLabel, &d.Subject, &d.Summary, &d.Urgency,
 		&d.Title, &d.OwnerMemberID, &d.AmountCents, &dueOn, &d.Reminder,
 		&d.Status, &d.CreatedByMemberID, &gmailID, &d.SourceFrom, &d.SourcePreview,
-		&category)
+		&category, &d.NeedsReply, &suggestedReply, &replyText, &replyStatus)
 	if err != nil {
 		return d, err
 	}
@@ -33,6 +35,12 @@ func scanDraft(row pgx.Row) (DraftJSON, error) {
 	}
 	d.Gmail = gmailID != nil
 	d.GmailMessageID = gmailID
+	d.SuggestedReply = suggestedReply
+	d.ReplyText = replyText
+	d.ReplyStatus = replyStatus
+	if d.ReplyStatus == "" {
+		d.ReplyStatus = "none"
+	}
 	if dueOn != nil {
 		d.DueOn = strPtr(dateStr(*dueOn))
 	}
@@ -41,7 +49,8 @@ func scanDraft(row pgx.Row) (DraftJSON, error) {
 
 const draftCols = `id, from_label, subject, summary, urgency, title,
 	owner_member_id, amount_cents, due_on, reminder, status, created_by,
-	gmail_message_id, source_from, source_preview, category`
+	gmail_message_id, source_from, source_preview, category, needs_reply,
+	suggested_reply, reply_text, reply_status`
 
 func (a *API) fetchDraft(ctx context.Context, m *Membership, id string) (DraftJSON, error) {
 	return scanDraft(a.DB.QueryRow(ctx, `
@@ -95,6 +104,25 @@ type draftInput struct {
 	AmountCents   *int64  `json:"amount_cents"`
 	DueOn         *string `json:"due_on"`
 	Reminder      *string `json:"reminder"`
+	ReplyText     *string `json:"reply_text"`
+	ReplyStatus   *string `json:"reply_status"`
+}
+
+var validReplyStatuses = map[string]bool{
+	"none": true, "drafted": true, "opened_in_gmail": true,
+	"sent_manually": true, "done": true,
+}
+
+func validateReplyInput(w http.ResponseWriter, in draftInput) bool {
+	if in.ReplyStatus != nil && !validReplyStatuses[*in.ReplyStatus] {
+		httpx.Error(w, http.StatusBadRequest, "bad_reply_status", "unknown reply status")
+		return false
+	}
+	if in.ReplyText != nil && len([]rune(*in.ReplyText)) > 4000 {
+		httpx.Error(w, http.StatusBadRequest, "reply_too_long", "reply text must be at most 4000 characters")
+		return false
+	}
+	return true
 }
 
 func (in *draftInput) parseDue(w http.ResponseWriter) (*time.Time, bool) {
@@ -150,6 +178,9 @@ func (a *API) CreateDraft(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusBadRequest, "bad_amount", "amount_cents must be positive")
 		return
 	}
+	if !validateReplyInput(w, in) {
+		return
+	}
 	dueOn, ok := in.parseDue(w)
 	if !ok {
 		return
@@ -160,14 +191,27 @@ func (a *API) CreateDraft(w http.ResponseWriter, r *http.Request) {
 	} else if dueOn != nil {
 		category = "appointments"
 	}
+	var replyText *string
+	if in.ReplyText != nil {
+		if text := strings.TrimSpace(*in.ReplyText); text != "" {
+			replyText = &text
+		}
+	}
+	replyStatus := "none"
+	if in.ReplyStatus != nil {
+		replyStatus = *in.ReplyStatus
+	} else if replyText != nil {
+		replyStatus = "drafted"
+	}
 	var id string
 	err := a.DB.QueryRow(r.Context(), `
 		insert into drafts (household_id, from_label, subject, summary, urgency,
-			title, owner_member_id, amount_cents, due_on, reminder, created_by, category)
-		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) returning id`,
+			title, owner_member_id, amount_cents, due_on, reminder, created_by, category,
+			reply_text, reply_status)
+		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) returning id`,
 		m.HouseholdID, strings.TrimSpace(*in.FromLabel), strings.TrimSpace(*in.Subject),
 		in.Summary, *in.Urgency, title, owner, in.AmountCents, dueOn, reminder,
-		m.MemberID, category).Scan(&id)
+		m.MemberID, category, replyText, replyStatus).Scan(&id)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "internal", "could not create draft")
 		return
@@ -204,6 +248,9 @@ func (a *API) UpdateDraft(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusBadRequest, "bad_amount", "amount_cents must be positive")
 		return
 	}
+	if !validateReplyInput(w, in) {
+		return
+	}
 	dueOn, ok := in.parseDue(w)
 	if !ok {
 		return
@@ -214,9 +261,12 @@ func (a *API) UpdateDraft(w http.ResponseWriter, r *http.Request) {
 			owner_member_id = coalesce($2, owner_member_id),
 			amount_cents = coalesce($3, amount_cents),
 			due_on = case when $4::date is not null then $4 else due_on end,
-			reminder = coalesce($5, reminder)
-		where id = $6 and household_id = $7 and status = 'pending'`,
-		in.Title, in.OwnerMemberID, in.AmountCents, dueOn, in.Reminder, id, m.HouseholdID)
+			reminder = coalesce($5, reminder),
+			reply_text = case when $6::text is not null then nullif(trim($6), '') else reply_text end,
+			reply_status = coalesce($7, reply_status)
+		where id = $8 and household_id = $9 and status = 'pending'`,
+		in.Title, in.OwnerMemberID, in.AmountCents, dueOn, in.Reminder,
+		in.ReplyText, in.ReplyStatus, id, m.HouseholdID)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "internal", "could not update draft")
 		return
@@ -276,7 +326,7 @@ func (a *API) ApproveDraft(w http.ResponseWriter, r *http.Request) {
 	}
 	// Calendar write happens after commit — a Google failure never undoes an
 	// approval; the response carries calendar_error instead.
-	calendarErr := a.calendarEventForApproval(r.Context(), m, taskID,
+	calendarErr := a.publishTaskToCalendar(r.Context(), m, taskID,
 		evTitle, evFrom, evAmount, evDue, evReminder)
 	d, err1 := a.fetchDraft(r.Context(), m, id)
 	t, err2 := a.fetchTask(r.Context(), m, taskID)

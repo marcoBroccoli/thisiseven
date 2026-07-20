@@ -1,8 +1,8 @@
 package api
 
 import (
-	"encoding/base64"
 	"context"
+	"encoding/base64"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -18,21 +18,24 @@ import (
 
 // googleAccount is one household's connected Google identity.
 type googleAccount struct {
-	Email        string
-	RefreshToken string
-	ClientKind   string
-	ConnectedBy  *string
-	CalendarID   string
-	LastSyncAt   *time.Time
-	LastSync     int
+	Email              string
+	RefreshToken       string
+	ClientKind         string
+	ConnectedBy        *string
+	CalendarID         string
+	LastSyncAt         *time.Time
+	LastSync           int
+	LastCalendarSyncAt *time.Time
 }
 
 func (a *API) googleAccount(ctx context.Context, householdID string) (*googleAccount, error) {
 	g := &googleAccount{}
 	err := a.DB.QueryRow(ctx, `
-		select email, refresh_token, client_kind, connected_by, calendar_id, last_sync_at, last_sync_count
+		select email, refresh_token, client_kind, connected_by, calendar_id, last_sync_at, last_sync_count,
+		calendar_last_sync_at
 		from google_accounts where household_id = $1`, householdID).
-		Scan(&g.Email, &g.RefreshToken, &g.ClientKind, &g.ConnectedBy, &g.CalendarID, &g.LastSyncAt, &g.LastSync)
+		Scan(&g.Email, &g.RefreshToken, &g.ClientKind, &g.ConnectedBy, &g.CalendarID, &g.LastSyncAt, &g.LastSync,
+			&g.LastCalendarSyncAt)
 	if err != nil {
 		return nil, err
 	}
@@ -110,6 +113,9 @@ func (a *API) GoogleStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	if g.LastSyncAt != nil {
 		out["last_sync_at"] = g.LastSyncAt.UTC().Format(time.RFC3339)
+	}
+	if g.LastCalendarSyncAt != nil {
+		out["calendar_last_sync_at"] = g.LastCalendarSyncAt.UTC().Format(time.RFC3339)
 	}
 	job := a.jobSnapshot(m.HouseholdID)
 	out["sync_running"] = job.Running
@@ -384,6 +390,8 @@ func (a *API) classifyAndInsert(ctx context.Context, householdID, owner, token s
 			v = claude.Verdict{
 				ID: m.id, Actionable: true,
 				Title: ex.Title, Urgency: ex.Urgency, AmountCents: ex.AmountCents,
+				NeedsReply:     google.NeedsReply(m.msg.Subject, m.msg.Snippet, m.msg.From),
+				SuggestedReply: google.SuggestedReply(m.msg.Subject, m.msg.Snippet, m.msg.From),
 			}
 			if ex.DueOn != nil {
 				d := ex.DueOn.Format("2006-01-02")
@@ -464,15 +472,27 @@ func (a *API) insertVerdict(ctx context.Context, householdID, owner, gmailID str
 		default:
 			category = "other"
 		}
+		needsReply := v.NeedsReply && google.CanReply(msg.From)
+		var suggestedReply *string
+		if needsReply {
+			s := strings.TrimSpace(v.SuggestedReply)
+			if s == "" {
+				s = google.SuggestedReply(msg.Subject, msg.Snippet, msg.From)
+			}
+			if s != "" {
+				suggestedReply = &s
+			}
+		}
 		if _, err := tx.Exec(ctx, `
 			insert into drafts (household_id, from_label, subject, summary, urgency,
 				title, owner_member_id, amount_cents, due_on, reminder, created_by,
-				gmail_message_id, source_from, source_preview, category)
-			values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $7, $11, $12, $13, $14)
+				gmail_message_id, source_from, source_preview, category, needs_reply,
+				suggested_reply)
+			values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $7, $11, $12, $13, $14, $15, $16)
 			on conflict do nothing`,
 			householdID, google.SenderDisplay(msg.From), msg.Subject, summary,
 			urgency, title, owner, amount, dueOn, reminder,
-			gmailID, msg.From, previewPtr, category); err != nil {
+			gmailID, msg.From, previewPtr, category, needsReply, suggestedReply); err != nil {
 			return err
 		}
 	}
@@ -517,10 +537,9 @@ func (a *API) RunGmailPoller(ctx context.Context, every time.Duration) {
 	}
 }
 
-// calendarEventForApproval writes the Calendar event for a freshly-approved
-// draft's task. Called AFTER the approve transaction commits — a Calendar
-// failure never rolls back an approval.
-func (a *API) calendarEventForApproval(ctx context.Context, m *Membership,
+// publishTaskToCalendar writes a Calendar event for a dated todo. It runs
+// after the database write, so a Google failure never loses household work.
+func (a *API) publishTaskToCalendar(ctx context.Context, m *Membership,
 	taskID, title, fromLabel string, amountCents *int64, dueOn *time.Time, reminder string) (calendarError string) {
 	if dueOn == nil || !a.Google.Configured() {
 		return ""
@@ -530,30 +549,100 @@ func (a *API) calendarEventForApproval(ctx context.Context, m *Membership,
 		return ""
 	}
 	if err != nil {
-		return "calendar lookup failed"
+		return a.recordCalendarFailure(ctx, taskID, "calendar lookup failed")
 	}
 	token, err := a.Google.AccessToken(ctx, m.HouseholdID, g.RefreshToken, g.ClientKind)
 	if err != nil {
 		slog.Error("calendar token", "err", err)
-		return "Google access expired — reconnect to write calendar events"
+		return a.recordCalendarFailure(ctx, taskID, "Google access expired — reconnect to write calendar events")
 	}
 	calID, err := a.ensureHouseholdCalendar(ctx, m, token, g.CalendarID)
 	if err != nil {
 		slog.Error("calendar create", "err", err)
-		return "the shared calendar could not be created"
+		return a.recordCalendarFailure(ctx, taskID, "the shared calendar could not be created")
 	}
-	payload := google.BuildEvent(title, fromLabel, amountCents, *dueOn, reminder)
-	eventID, url, err := a.Google.InsertEvent(ctx, token, calID, payload)
+	var existingEventID *string
+	var recurrence string
+	if err := a.DB.QueryRow(ctx, `select google_event_id, recurrence from tasks where id = $1`, taskID).
+		Scan(&existingEventID, &recurrence); err != nil {
+		return a.recordCalendarFailure(ctx, taskID, "the todo could not be prepared for Calendar")
+	}
+	payload := google.BuildEvent(title, fromLabel, amountCents, *dueOn, reminder, recurrence)
+	payload.ExtendedProperties = &google.EventExtendedProperties{
+		Private: map[string]string{"evenTaskId": taskID},
+	}
+	var eventID, url string
+	if existingEventID != nil && *existingEventID != "" {
+		eventID, url, err = a.Google.UpdateEvent(ctx, token, calID, *existingEventID, payload)
+	} else {
+		eventID, url, err = a.Google.InsertEvent(ctx, token, calID, payload)
+	}
 	if err != nil {
-		slog.Error("calendar insert", "err", err)
-		return "the calendar event could not be created"
+		slog.Error("calendar publish", "err", err)
+		return a.recordCalendarFailure(ctx, taskID, "the calendar event could not be updated")
 	}
 	if _, err := a.DB.Exec(ctx, `
-		update tasks set google_event_id = $1, google_event_url = $2 where id = $3`,
+		update tasks set google_event_id = $1, google_event_url = $2,
+			calendar_sync_state = 'synced', calendar_last_synced_at = now(), calendar_last_error = null
+		where id = $3`,
 		eventID, url, taskID); err != nil {
 		return "the event was created but could not be recorded"
 	}
 	return ""
+}
+
+func (a *API) recordCalendarFailure(ctx context.Context, taskID, message string) string {
+	_, _ = a.DB.Exec(ctx, `
+		update tasks set calendar_sync_state = 'retry_required', calendar_last_error = $1
+		where id = $2`, message, taskID)
+	return message
+}
+
+// clearTaskCalendarMapping records that a todo is no longer dated. It runs
+// after the remote event has been removed (or when no event existed), so an
+// undated todo cannot remain falsely represented as a Calendar item.
+func (a *API) clearTaskCalendarMapping(ctx context.Context, taskID string) error {
+	_, err := a.DB.Exec(ctx, `
+		update tasks set google_event_id = null, google_event_url = null,
+			calendar_sync_state = 'not_scheduled', calendar_last_synced_at = now(),
+			calendar_last_error = null
+		where id = $1`, taskID)
+	return err
+}
+
+// removeTaskFromCalendar clears an event mapping only after the remote delete
+// succeeds. The task keeps retry_required when Google cannot confirm removal.
+func (a *API) removeTaskFromCalendar(ctx context.Context, m *Membership, taskID string, eventID *string) string {
+	if eventID != nil && *eventID != "" {
+		if err := a.deleteTaskCalendarEvent(ctx, m, *eventID); err != nil {
+			return a.recordCalendarFailure(ctx, taskID, "the calendar event could not be removed")
+		}
+	}
+	if err := a.clearTaskCalendarMapping(ctx, taskID); err != nil {
+		return a.recordCalendarFailure(ctx, taskID, "the Calendar mapping could not be cleared")
+	}
+	return ""
+}
+
+// deleteTaskCalendarEvent removes a previously-published event after the
+// local todo is archived. The local delete wins if Google is temporarily
+// unavailable, avoiding a blocked capture workflow.
+func (a *API) deleteTaskCalendarEvent(ctx context.Context, m *Membership, eventID string) error {
+	if eventID == "" || !a.Google.Configured() {
+		return nil
+	}
+	g, err := a.googleAccount(ctx, m.HouseholdID)
+	if errors.Is(err, pgx.ErrNoRows) || g.CalendarID == "" || g.CalendarID == "primary" {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	token, err := a.Google.AccessToken(ctx, m.HouseholdID, g.RefreshToken, g.ClientKind)
+	if err != nil {
+		return err
+	}
+	return a.Google.DeleteEvent(ctx, token, g.CalendarID, eventID)
 }
 
 // ensureHouseholdCalendar lazily creates the shared "Even — <household>"

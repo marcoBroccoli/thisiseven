@@ -47,17 +47,20 @@ type WeekJSON struct {
 }
 
 type TaskJSON struct {
-	ID             string  `json:"id"`
-	Title          string  `json:"title"`
-	Section        string  `json:"section"`
-	OwnerMemberID  string  `json:"owner_member_id"`
-	Weight         int     `json:"weight"`
-	Recurrence     string  `json:"recurrence"`
-	DueOn          *string `json:"due_on,omitempty"`
-	Done           bool    `json:"done"`
-	DoneByMemberID *string `json:"done_by_member_id,omitempty"`
-	MetaLine       string  `json:"meta_line"`
-	GoogleEventURL *string `json:"google_event_url,omitempty"`
+	ID                   string  `json:"id"`
+	Title                string  `json:"title"`
+	Section              string  `json:"section"`
+	OwnerMemberID        string  `json:"owner_member_id"`
+	Weight               int     `json:"weight"`
+	Recurrence           string  `json:"recurrence"`
+	DueOn                *string `json:"due_on,omitempty"`
+	Done                 bool    `json:"done"`
+	DoneByMemberID       *string `json:"done_by_member_id,omitempty"`
+	MetaLine             string  `json:"meta_line"`
+	GoogleEventURL       *string `json:"google_event_url,omitempty"`
+	CalendarSyncState    string  `json:"calendar_sync_state"`
+	CalendarLastSyncedAt *string `json:"calendar_last_synced_at,omitempty"`
+	CalendarLastError    *string `json:"calendar_last_error,omitempty"`
 }
 
 type DraftJSON struct {
@@ -78,17 +81,21 @@ type DraftJSON struct {
 	Gmail             bool    `json:"gmail"`
 	GmailMessageID    *string `json:"gmail_message_id,omitempty"`
 	Category          string  `json:"category"`
+	NeedsReply        bool    `json:"needs_reply"`
+	SuggestedReply    *string `json:"suggested_reply,omitempty"`
+	ReplyText         *string `json:"reply_text,omitempty"`
+	ReplyStatus       string  `json:"reply_status"`
 }
 
 type FeedItemJSON struct {
 	Kind string `json:"kind"` // "expense" | "settlement"
 	ID   string `json:"id"`
 	// expense fields
-	Title          string  `json:"title,omitempty"`
-	AmountCents    int64   `json:"amount_cents"`
-	PaidByMemberID string  `json:"paid_by_member_id,omitempty"`
-	IncurredOn     string  `json:"incurred_on,omitempty"`
-	Settled        bool    `json:"settled,omitempty"`
+	Title          string `json:"title,omitempty"`
+	AmountCents    int64  `json:"amount_cents"`
+	PaidByMemberID string `json:"paid_by_member_id,omitempty"`
+	IncurredOn     string `json:"incurred_on,omitempty"`
+	Settled        bool   `json:"settled,omitempty"`
 	// settlement fields
 	FromMemberID string `json:"from_member_id,omitempty"`
 	ToMemberID   string `json:"to_member_id,omitempty"`
@@ -125,7 +132,7 @@ func metaLine(originLabel *string, dueOn *time.Time, recurrence string) string {
 	if originLabel != nil && *originLabel != "" {
 		parts = append(parts, strings.ToUpper(*originLabel))
 	}
-	if dueOn != nil {
+	if dueOn != nil && recurrence != "daily" && recurrence != "every_2_days" {
 		t := today()
 		d := int(dueOn.Sub(t).Hours() / 24)
 		switch {

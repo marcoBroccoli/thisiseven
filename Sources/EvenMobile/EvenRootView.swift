@@ -168,8 +168,6 @@ struct MainScaffold: View {
     @AppStorage("even-seen-invite-reveal") private var seenInviteReveal = false
     @AppStorage("even-notif-prompted") private var notifPrompted = false
     @State private var currentExtra: OnboardingExtra?
-    @State private var showProfile = false
-    @State private var todayBrandCollapsed = false
 
     enum OnboardingExtra: Identifiable {
         case inviteReveal, google, notifications
@@ -178,13 +176,18 @@ struct MainScaffold: View {
         }
     }
 
-    private var resetSymbol: String {
-        if #available(iOS 18.0, *) { return "arrow.trianglehead.clockwise" }
-        return "arrow.clockwise"
-    }
-
     var body: some View {
-        tabs
+        TabView(selection: $model.tab) {
+            screen { TodosView(model: model) }
+                .tabItem { Label("Todos", systemImage: "checklist") }
+                .badge(model.pendingReviewCount)
+                .tag(EvenTab.todos)
+
+            screen { CalendarView(model: model) }
+                .tabItem { Label("Schedule", systemImage: "calendar") }
+                .tag(EvenTab.schedule)
+        }
+        .tint(palette.clay)
         .overlay(alignment: .bottom) {
             if let message = model.stampMessage {
                 StampToast(message: message)
@@ -198,11 +201,6 @@ struct MainScaffold: View {
         }
         .animation(.spring(response: 0.4, dampingFraction: 0.6), value: model.stampMessage)
         .task { await model.refreshAll() }
-        .onChange(of: model.tab) { _, tab in
-            if tab == .reset {
-                Task { await model.refreshReset() }
-            }
-        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 Task { await model.refreshAll() }
@@ -214,32 +212,6 @@ struct MainScaffold: View {
                                           set: { if !$0 { currentExtra = nil } })) {
             extraView
         }
-    }
-
-    private var tabs: some View {
-        TabView(selection: $model.tab) {
-            screen(title: nil) { TodayView(model: model, brandCollapsed: $todayBrandCollapsed) }
-                .tabItem { Label("Today", systemImage: "scalemass") }
-                .tag(EvenTab.today)
-
-            screen(title: "Calendar") { CalendarView(model: model) }
-                .tabItem { Label("Calendar", systemImage: "calendar") }
-                .tag(EvenTab.calendar)
-
-            screen(title: "Inbox") { InboxView(model: model) }
-                .tabItem { Label("Inbox", systemImage: "tray") }
-                .badge(model.summary?.pendingDraftCount ?? 0)
-                .tag(EvenTab.inbox)
-
-            screen(title: "Money") { MoneyView(model: model) }
-                .tabItem { Label("Money", systemImage: "eurosign.circle") }
-                .tag(EvenTab.money)
-
-            screen(title: "Reset") { ResetView(model: model) }
-                .tabItem { Label("Reset", systemImage: resetSymbol) }
-                .tag(EvenTab.reset)
-        }
-        .tint(palette.clay)
     }
 
     /// Post-setup onboarding pages (design 06 → 08 → 10), each shown once,
@@ -272,7 +244,7 @@ struct MainScaffold: View {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { advanceExtras() }
             }
         case .notifications:
-            NotificationsPromptView {
+            NotificationsPromptView(model: model) {
                 notifPrompted = true
                 currentExtra = nil
             }
@@ -281,47 +253,50 @@ struct MainScaffold: View {
         }
     }
 
-    /// Each tab: paper ground + a native navigation bar. Named tabs use
-    /// large serif titles that collapse natively; Today's "large header"
-    /// is the brand itself — the principal wordmark fades in only as the
-    /// in-content brand header scrolls away.
-    private func screen<Content: View>(title: String?, @ViewBuilder content: () -> Content) -> some View {
+    /// Each tab: paper ground + a native navigation bar carrying the
+    /// wordmark (leading) and the dark toggle (trailing).
+    private func screen<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         NavigationStack {
             content()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(palette.bg.ignoresSafeArea())
-                .navigationTitle(title ?? "")
-                .largeTitleWhenNamed(title != nil)
-                .toolbar { tabToolbar(showBrand: title == nil) }
-                .sheet(isPresented: $showProfile) {
-                    ProfileView(model: model, isDark: $isDark)
+                .toolbar {
+                    ToolbarItem(placement: leadingPlacement) {
+                        HStack(spacing: 7) {
+                            ScaleGlyph()
+                                .stroke(palette.ink, style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
+                                .frame(width: 15, height: 15)
+                            Text("Even")
+                                .font(EvenFont.serif(18, .semibold, italic: true))
+                                .foregroundStyle(palette.ink)
+                                .fixedSize()
+                        }
+                        .fixedSize()
+                    }
+                    ToolbarItem(placement: trailingPlacement) {
+                        Button {
+                            isDark.toggle()
+                        } label: {
+                            Image(systemName: isDark ? "sun.max" : "moon")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(palette.sub)
+                                .frame(width: 30, height: 30)
+                                .overlay(Circle().stroke(palette.line, lineWidth: 1))
+                                .contentTransition(.symbolEffect(.replace))
+                        }
+                        .buttonStyle(PressScaleStyle(scale: 0.9))
+                        .accessibilityIdentifier("dark-toggle")
+                    }
                 }
+                .paperNavigationBar(palette)
         }
     }
 
-    @ToolbarContentBuilder
-    private func tabToolbar(showBrand: Bool) -> some ToolbarContent {
-        if showBrand {
-            ToolbarItem(placement: .principal) {
-                BrandMark(palette: palette, visible: todayBrandCollapsed)
-            }
-        }
-        ToolbarItem(placement: trailingPlacement) {
-            Button {
-                showProfile = true
-            } label: {
-                OwnerChip(member: model.me, palette: palette, size: 28)
-            }
-            .buttonStyle(PressScaleStyle(scale: 0.9))
-            .accessibilityIdentifier("profile-button")
-        }
-    }
-
-    init(model: AppModel, isDark: Binding<Bool>) {
-        self.model = model
-        self._isDark = isDark
-        #if canImport(UIKit)
-        _ = navAppearanceOnce
+    private var leadingPlacement: ToolbarItemPlacement {
+        #if os(iOS)
+        .topBarLeading
+        #else
+        .navigation
         #endif
     }
 
@@ -330,6 +305,19 @@ struct MainScaffold: View {
         .topBarTrailing
         #else
         .primaryAction
+        #endif
+    }
+}
+
+private extension View {
+    /// Keeps the native bar on the app's paper instead of system material.
+    @ViewBuilder func paperNavigationBar(_ palette: EvenPalette) -> some View {
+        #if os(iOS)
+        self
+            .toolbarBackground(palette.bg, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+        #else
+        self
         #endif
     }
 }

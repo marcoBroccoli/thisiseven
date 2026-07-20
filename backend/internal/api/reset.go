@@ -30,9 +30,18 @@ func (a *API) Reset(w http.ResponseWriter, r *http.Request) {
 	// Completion weight by section for the open week.
 	var choreMe, choreP, adminMe, adminP int64
 	rows, err := a.DB.Query(ctx, `
+		with weighted_completions as (
+			select c.task_id, c.member_id, c.weight
+			from completions c where c.week_id = $1
+			union all
+			select rc.task_id, rc.member_id, rc.weight
+			from recurring_completions rc
+			join tasks task on task.id = rc.task_id
+			where task.household_id = $2 and rc.occurrence_on >= $3 and rc.occurrence_on <= $4
+		)
 		select t.section, c.member_id, coalesce(sum(c.weight), 0)
-		from completions c join tasks t on t.id = c.task_id
-		where c.week_id = $1 group by t.section, c.member_id`, m.WeekID)
+		from weighted_completions c join tasks t on t.id = c.task_id
+		group by t.section, c.member_id`, m.WeekID, m.HouseholdID, m.WeekStart, today())
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "internal", "reset lookup failed")
 		return
@@ -209,8 +218,18 @@ func biggestCarry(myName, partnerName string,
 	return best.sentence
 }
 
-func max64(a, b int64) int64 { if a > b { return a }; return b }
-func min64(a, b int64) int64 { if a < b { return a }; return b }
+func max64(a, b int64) int64 {
+	if a > b {
+		return a
+	}
+	return b
+}
+func min64(a, b int64) int64 {
+	if a < b {
+		return a
+	}
+	return b
+}
 
 // PUT /v1/appreciations/mine — upsert my kind thing for the open week.
 func (a *API) PutAppreciation(w http.ResponseWriter, r *http.Request) {

@@ -31,7 +31,7 @@ var (
 
 	urgentWords = []string{"urgent", "overdue", "final notice", "past due", "last reminder", "action required"}
 	billWords   = []string{"bill", "invoice", "renew"}
-	replyWords  = []string{"reply", "confirm", "respond"}
+	replyWords  = []string{"please reply", "please confirm", "please respond", "reply by", "respond by", "confirm your", "rsvp", "let us know"}
 
 	weekdays = []string{"sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"}
 	months   = []string{"january", "february", "march", "april", "may", "june",
@@ -60,6 +60,34 @@ func Extract(subject, snippet, from string, now time.Time) Extraction {
 		e.DueOn = nil
 	}
 	return e
+}
+
+// CanReply rejects automated addresses before the classifier or fallback
+// creates a reply task. It deliberately uses the raw From header too, where
+// providers often put their no-reply marker.
+func CanReply(from string) bool {
+	lower := strings.ToLower(from)
+	return !strings.Contains(lower, "no-reply") &&
+		!strings.Contains(lower, "noreply") &&
+		!strings.Contains(lower, "do not reply")
+}
+
+// NeedsReply is a deliberately conservative fallback for email analysis. It
+// avoids matching a generic footer's "reply" wording or a no-reply sender.
+func NeedsReply(subject, snippet, from string) bool {
+	if !CanReply(from) {
+		return false
+	}
+	return containsAny(strings.ToLower(subject+" "+snippet), replyWords)
+}
+
+// SuggestedReply is intentionally non-committal. The recipient, subject and
+// body are all made editable in the client before the user opens Gmail.
+func SuggestedReply(subject, snippet, from string) string {
+	if !NeedsReply(subject, snippet, from) {
+		return ""
+	}
+	return "Hello,\n\nThanks for your message. We're reviewing this and will get back to you shortly.\n\nBest,"
 }
 
 func amountCents(text string) *int64 {

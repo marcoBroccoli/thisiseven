@@ -18,8 +18,16 @@ func (a *API) Summary(w http.ResponseWriter, r *http.Request) {
 	pebbles := []pebble{}
 	myWeight, partnerWeight := 0, 0
 	rows, err := a.DB.Query(ctx, `
-		select member_id, weight from completions
-		where week_id = $1 order by completed_at`, m.WeekID)
+		select member_id, weight from (
+			select c.member_id, c.weight, c.completed_at
+			from completions c where c.week_id = $1
+			union all
+			select rc.member_id, rc.weight, rc.completed_at
+			from recurring_completions rc
+			join tasks t on t.id = rc.task_id
+			where t.household_id = $2 and rc.occurrence_on >= $3 and rc.occurrence_on <= $4
+		) completions_this_week
+		order by completed_at`, m.WeekID, m.HouseholdID, m.WeekStart, today())
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "internal", "summary failed")
 		return
@@ -62,8 +70,9 @@ func (a *API) Summary(w http.ResponseWriter, r *http.Request) {
 	trows, err := a.DB.Query(ctx, `
 		select `+taskCols+` from tasks t
 		left join completions c on c.task_id = t.id and c.week_id = $1
-		where t.household_id = $2 and t.archived_at is null
-		order by t.created_at`, m.WeekID, m.HouseholdID)
+		left join recurring_completions rc on rc.task_id = t.id and rc.occurrence_on = $2
+		where t.household_id = $3 and t.archived_at is null`+visibleTodayRecurrence+`
+		order by t.created_at`, m.WeekID, today(), m.HouseholdID)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "internal", "summary failed")
 		return

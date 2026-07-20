@@ -352,25 +352,61 @@ func SenderDisplay(from string) string {
 
 // EventPayload mirrors GoogleCalendarPayloadFactory, all-day variant.
 type EventPayload struct {
-	Summary     string        `json:"summary"`
-	Description string        `json:"description"`
-	Start       EventDate     `json:"start"`
-	End         EventDate     `json:"end"`
-	Reminders   EventReminder `json:"reminders"`
+	Summary            string                   `json:"summary"`
+	Description        string                   `json:"description"`
+	Start              EventDate                `json:"start"`
+	End                EventDate                `json:"end"`
+	Reminders          EventReminder            `json:"reminders"`
+	Recurrence         []string                 `json:"recurrence,omitempty"`
+	ExtendedProperties *EventExtendedProperties `json:"extendedProperties,omitempty"`
+}
+
+type EventExtendedProperties struct {
+	Private map[string]string `json:"private,omitempty"`
 }
 
 type EventDate struct {
-	Date string `json:"date"` // YYYY-MM-DD, all-day
+	Date     string `json:"date"`     // YYYY-MM-DD, all-day
+	DateTime string `json:"dateTime"` // RFC3339 for a direct timed event
 }
 
 type EventReminder struct {
-	UseDefault bool              `json:"useDefault"`
+	UseDefault bool               `json:"useDefault"`
 	Overrides  []ReminderOverride `json:"overrides"`
 }
 
 type ReminderOverride struct {
 	Method  string `json:"method"`
 	Minutes int    `json:"minutes"`
+}
+
+// CalendarEvent is the intentionally small subset of a Google event needed
+// to make the shared Calendar authoritative for dated household todos.
+type CalendarEvent struct {
+	ID                 string    `json:"id"`
+	RecurringEventID   string    `json:"recurringEventId"`
+	HTMLLink           string    `json:"htmlLink"`
+	Summary            string    `json:"summary"`
+	Status             string    `json:"status"`
+	Start              EventDate `json:"start"`
+	ExtendedProperties struct {
+		Private map[string]string `json:"private"`
+	} `json:"extendedProperties"`
+}
+
+// DueOn accepts the all-day events Even writes and date-time events created
+// directly in the shared Calendar. The latter keeps its calendar-day value.
+func (e CalendarEvent) DueOn() (string, bool) {
+	if len(e.Start.Date) == len("2006-01-02") {
+		return e.Start.Date, true
+	}
+	if t, err := time.Parse(time.RFC3339, e.Start.DateTime); err == nil {
+		if amsterdam, err := time.LoadLocation("Europe/Amsterdam"); err == nil {
+			return t.In(amsterdam).Format("2006-01-02"), true
+		}
+		return t.Format("2006-01-02"), true
+	}
+	return "", false
 }
 
 // ReminderMinutes maps a draft reminder to popup minutes before the all-day
@@ -389,16 +425,31 @@ func ReminderMinutes(reminder string) int {
 	}
 }
 
-// BuildEvent renders the payload for an approved draft's task.
-func BuildEvent(title, fromLabel string, amountCents *int64, dueOn time.Time, reminder string) EventPayload {
-	desc := "Approved in Even — the household scale."
+func calendarRecurrenceRule(recurrence string) []string {
+	switch recurrence {
+	case "daily":
+		return []string{"RRULE:FREQ=DAILY"}
+	case "every_2_days":
+		return []string{"RRULE:FREQ=DAILY;INTERVAL=2"}
+	case "weekly":
+		return []string{"RRULE:FREQ=WEEKLY"}
+	default:
+		return nil
+	}
+}
+
+// BuildEvent renders the payload for a shared household todo. recurrence is
+// optional for compatibility with one-off callers; repeat values become a
+// Google Calendar RRULE rather than a chain of copied events.
+func BuildEvent(title, fromLabel string, amountCents *int64, dueOn time.Time, reminder string, recurrence ...string) EventPayload {
+	desc := "Managed in Even — shared household todo."
 	if fromLabel != "" {
 		desc += "\nFrom: " + fromLabel
 	}
 	if amountCents != nil {
 		desc += fmt.Sprintf("\nAmount: €%d.%02d", *amountCents/100, *amountCents%100)
 	}
-	return EventPayload{
+	payload := EventPayload{
 		Summary:     title,
 		Description: desc,
 		Start:       EventDate{Date: dueOn.Format("2006-01-02")},
@@ -408,6 +459,10 @@ func BuildEvent(title, fromLabel string, amountCents *int64, dueOn time.Time, re
 			Overrides:  []ReminderOverride{{Method: "popup", Minutes: ReminderMinutes(reminder)}},
 		},
 	}
+	if len(recurrence) > 0 {
+		payload.Recurrence = calendarRecurrenceRule(recurrence[0])
+	}
+	return payload
 }
 
 // CreateCalendar makes a secondary Google calendar (the shared household
@@ -474,6 +529,91 @@ func (c *Client) InsertEvent(ctx context.Context, accessToken, calendarID string
 		return "", "", err
 	}
 	return out.ID, out.HTMLLink, nil
+}
+
+// UpdateEvent replaces the mutable parts of an Even-managed event after a
+// household member edits its todo. Google preserves the event id and link.
+func (c *Client) UpdateEvent(ctx context.Context, accessToken, calendarID, eventID string, payload EventPayload) (string, string, error) {
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return "", "", err
+	}
+	path := "/calendar/v3/calendars/" + url.PathEscape(calendarID) + "/events/" + url.PathEscape(eventID) + "?sendUpdates=none"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, c.APIBase+path, bytes.NewReader(body))
+	if err != nil {
+		return "", "", err
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := c.HTTP.Do(req)
+	if err != nil {
+		return "", "", err
+	}
+	defer resp.Body.Close()
+	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return "", "", fmt.Errorf("calendar update: http %d", resp.StatusCode)
+	}
+	var out struct {
+		ID       string `json:"id"`
+		HTMLLink string `json:"htmlLink"`
+	}
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return "", "", err
+	}
+	return out.ID, out.HTMLLink, nil
+}
+
+// DeleteEvent removes an archived todo from the shared Calendar. Deletion is
+// best-effort at the API layer; local archival must never be blocked by a
+// temporary Google outage.
+func (c *Client) DeleteEvent(ctx context.Context, accessToken, calendarID, eventID string) error {
+	path := "/calendar/v3/calendars/" + url.PathEscape(calendarID) + "/events/" + url.PathEscape(eventID) + "?sendUpdates=none"
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, c.APIBase+path, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	resp, err := c.HTTP.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return fmt.Errorf("calendar delete: http %d", resp.StatusCode)
+	}
+	return nil
+}
+
+// ListEvents reads a bounded window from the dedicated shared Calendar.
+// showDeleted is required so direct event deletions become a visible todo
+// state rather than an invisible divergence.
+func (c *Client) ListEvents(ctx context.Context, accessToken, calendarID string, from, to time.Time) ([]CalendarEvent, error) {
+	q := url.Values{
+		"singleEvents": {"true"},
+		"showDeleted":  {"true"},
+		"orderBy":      {"startTime"},
+		"maxResults":   {"2500"},
+		"timeMin":      {from.UTC().Format(time.RFC3339)},
+		"timeMax":      {to.UTC().Format(time.RFC3339)},
+	}
+	var events []CalendarEvent
+	for {
+		path := "/calendar/v3/calendars/" + url.PathEscape(calendarID) + "/events?" + q.Encode()
+		var page struct {
+			Items         []CalendarEvent `json:"items"`
+			NextPageToken string          `json:"nextPageToken"`
+		}
+		if err := c.getJSON(ctx, accessToken, path, &page); err != nil {
+			return nil, err
+		}
+		events = append(events, page.Items...)
+		if page.NextPageToken == "" {
+			break
+		}
+		q.Set("pageToken", page.NextPageToken)
+	}
+	return events, nil
 }
 
 func (c *Client) getJSON(ctx context.Context, accessToken, path string, v any) error {

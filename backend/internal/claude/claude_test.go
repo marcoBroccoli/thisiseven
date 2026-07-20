@@ -29,8 +29,8 @@ func TestClassifyParsesVerdicts(t *testing.T) {
 		}
 		_ = json.NewDecoder(r.Body).Decode(&gotBody)
 		w.Write([]byte(fakeResponse(t, `{"verdicts":[
-			{"id":"m1","actionable":true,"title":"Pay the Vattenfall energy bill","summary":"July invoice, €112.40, due Jul 25","amount_cents":11240,"due_on":"2026-07-25","urgency":2},
-			{"id":"m2","actionable":false,"title":"","summary":"","amount_cents":null,"due_on":null,"urgency":1}
+			{"id":"m1","actionable":true,"title":"Pay the Vattenfall energy bill","summary":"July invoice, €112.40, due Jul 25","amount_cents":11240,"due_on":"2026-07-25","urgency":2,"duplicate_of":null,"category":"bills","needs_reply":false,"suggested_reply":""},
+			{"id":"m2","actionable":false,"title":"","summary":"","amount_cents":null,"due_on":null,"urgency":1,"duplicate_of":null,"category":"other","needs_reply":false,"suggested_reply":""}
 		]}`)))
 	}))
 	defer srv.Close()
@@ -58,6 +58,9 @@ func TestClassifyParsesVerdicts(t *testing.T) {
 	}
 	if _, ok := gotBody["output_config"].(map[string]any); !ok {
 		t.Errorf("output_config missing")
+	}
+	if verdicts[0].NeedsReply || verdicts[0].SuggestedReply != "" {
+		t.Errorf("unexpected reply verdict = %+v", verdicts[0])
 	}
 }
 

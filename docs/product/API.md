@@ -20,10 +20,15 @@ household   {id, name, invite_code, members: [member]}
 week        {id, index, started_on, closed_at?}          // index: 1,2,3…
 task        {id, title, section: "chore"|"admin", owner_member_id, weight: 1|2|3,
              recurrence: "none"|"daily"|"every_2_days"|"weekly", due_on?,
-             done, done_by_member_id?, meta_line}         // done = completion in open week
+             done, done_by_member_id?, meta_line, google_event_url?,
+             calendar_sync_state: "not_scheduled"|"synced"|"external_changed"|
+             "external_deleted"|"retry_required", calendar_last_synced_at?,
+             calendar_last_error?}                         // done = completion in open week
 draft       {id, from_label, subject, summary?, urgency: 1|2|3, title,
              owner_member_id, amount_cents?, due_on?,
-             reminder: "on_day"|"1_day"|"3_days"|"1_week", status, created_by_member_id}
+             reminder: "on_day"|"1_day"|"3_days"|"1_week", status, created_by_member_id,
+             needs_reply, suggested_reply?, reply_text?,
+             reply_status: "none"|"drafted"|"opened_in_gmail"|"sent_manually"|"done"}
 expense     {id, title, amount_cents, paid_by_member_id, incurred_on, settled}
 settlement  {id, from_member_id, to_member_id, amount_cents, created_at}
 appreciation{id, from_member_id, to_member_id, body?, said}
@@ -42,12 +47,24 @@ trade       {id, task_id, task_title, from_member_id, to_member_id, accepted}
   percent_me, percent_partner, caption, sections: [{key:"chore"|"admin", label, tasks:[task]}],
   pending_draft_count}`  // caption per design logic
 - `POST /v1/tasks` `{title, section, owner_member_id, weight, recurrence, due_on?}`
-- `PATCH /v1/tasks/{id}` (same fields) · `DELETE /v1/tasks/{id}` (archives)
+- `PATCH /v1/tasks/{id}` (same fields, plus `clear_due_on?: true` to remove a
+  date and its mapped Calendar event) · `DELETE /v1/tasks/{id}` (archives)
 - `POST /v1/tasks/{id}/toggle` → task — creates/removes open-week completion
+- `POST /v1/tasks/{id}/calendar/resolve` `{action:"acknowledge"|"restore"|"retry"}`
+  → task — acknowledges an imported Calendar edit, recreates an event removed
+  directly in Google Calendar, or retries a failed Calendar write
+- `GET  /v1/calendar?from=YYYY-MM-DD&to=YYYY-MM-DD` → `{from, to, items}` —
+  dated todos in the requested window (maximum 120 days)
+- `POST /v1/calendar/sync` → `{calendar_id, imported, updated, deleted,
+  unchanged, last_synced_at}` — reconciles only the dedicated shared Google
+  Calendar; imports direct events, applies external title/date edits, and marks
+  remote deletions for review without archiving local todos
 - `GET  /v1/drafts?status=pending` → `[draft]`
 - `POST /v1/drafts` `{from_label, subject, summary?, urgency, title?, owner_member_id?,
   amount_cents?, due_on?, reminder?}` (title defaults to subject)
-- `PATCH /v1/drafts/{id}` `{title?, owner_member_id?, amount_cents?, due_on?, reminder?}`
+- `PATCH /v1/drafts/{id}` `{title?, owner_member_id?, amount_cents?, due_on?, reminder?,
+  reply_text?, reply_status?}` — reply text remains editable; the app opens a
+  Gmail compose draft and never sends email through the API.
 - `POST /v1/drafts/{id}/approve` → `{draft, task}` — tx: draft approved +
   admin task (weight 2, owner/due from draft, meta from label+due)
 - `POST /v1/drafts/{id}/dismiss` → draft
@@ -80,3 +97,15 @@ trade       {id, task_id, task_title, from_member_id, to_member_id, accepted}
   access is 404, never 403.
 - Solo household (partner not joined): percent_partner = 0, money endpoints
   usable, trades/appreciations 409 `no_partner`.
+- Google Calendar is read only through the dedicated household calendar, never
+  from a member's primary calendar. A direct Calendar deletion is represented
+  as `external_deleted` until the household restores its local todo to Calendar
+  or archives it. Calendar title/date edits are copied into the todo and remain
+  `external_changed` until acknowledged.
+- Daily and every-two-day todos record a completion for each scheduled date.
+  `due_on` is their optional first occurrence; without it, the capture date is
+  the anchor. Dated recurring todos publish one Google Calendar RRULE.
+- On a phone that enables Even notifications, the app mirrors upcoming dated
+  Calendar occurrences as local 09:00 on-the-day alerts. These alerts are
+  device-local, refreshed from `GET /v1/calendar`, and do not replace Google
+  Calendar's shared reminders.

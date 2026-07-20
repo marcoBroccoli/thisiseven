@@ -102,7 +102,80 @@ public struct BankMatchSuggestion: Identifiable, Equatable, Sendable {
     }
 }
 
+/// A lightweight payment obligation supplied by any product surface. The
+/// reconciler only needs a stable ID, expected amount, and wording to compare
+/// against a read-only transaction; it does not need bank credentials.
+public struct BankPaymentObligation: Identifiable, Equatable, Sendable {
+    public var id: UUID
+    public var title: String
+    public var amount: Decimal
+    public var referenceDate: Date?
+    public var searchText: String
+
+    public init(id: UUID, title: String, amount: Decimal,
+                referenceDate: Date? = nil, searchText: String = "") {
+        self.id = id
+        self.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.amount = amount
+        self.referenceDate = referenceDate
+        self.searchText = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+public struct BankPaymentMatchSuggestion: Identifiable, Equatable, Sendable {
+    public var id: String { "\(obligationID.uuidString)-\(transactionID.uuidString)" }
+    public var obligationID: UUID
+    public var transactionID: UUID
+    public var confidence: Double
+    public var reasons: [String]
+
+    public init(obligationID: UUID, transactionID: UUID, confidence: Double, reasons: [String]) {
+        self.obligationID = obligationID
+        self.transactionID = transactionID
+        self.confidence = confidence
+        self.reasons = reasons
+    }
+}
+
 public enum BankingReconciliation {
+    /// Shared scorer for read-only statement matching. Callers keep their own
+    /// decisions locally by supplying confirmed IDs and dismissed pairs.
+    public static func suggestions(
+        obligations: [BankPaymentObligation],
+        transactions: [BankTransaction],
+        confirmedObligationIDs: Set<UUID> = [],
+        confirmedTransactionIDs: Set<UUID> = [],
+        dismissedPairs: Set<String> = []
+    ) -> [BankPaymentMatchSuggestion] {
+        let eligibleTransactions = transactions.filter { transaction in
+            transaction.isOutgoing && !confirmedTransactionIDs.contains(transaction.id)
+        }
+
+        return obligations.compactMap { obligation in
+            guard !confirmedObligationIDs.contains(obligation.id) else { return nil }
+
+            let candidates = eligibleTransactions.compactMap { transaction -> BankPaymentMatchSuggestion? in
+                guard !dismissedPairs.contains(pairKey(obligationID: obligation.id, transactionID: transaction.id)) else {
+                    return nil
+                }
+                return score(obligation: obligation, transaction: transaction)
+            }
+
+            return candidates.max { left, right in
+                if left.confidence == right.confidence {
+                    return left.transactionID.uuidString < right.transactionID.uuidString
+                }
+                return left.confidence < right.confidence
+            }
+        }
+        .sorted { left, right in
+            if left.confidence == right.confidence {
+                return left.obligationID.uuidString < right.obligationID.uuidString
+            }
+            return left.confidence > right.confidence
+        }
+    }
+
     public static func suggestions(
         drafts: [InboxDraft],
         transactions: [BankTransaction],
@@ -121,33 +194,33 @@ public enum BankingReconciliation {
         let dismissedPairs = Set(
             storedMatches
                 .filter { $0.status == .dismissed }
-                .map { "\($0.draftID.uuidString)-\($0.transactionID.uuidString)" }
+                .map { pairKey(obligationID: $0.draftID, transactionID: $0.transactionID) }
         )
-        let eligibleTransactions = transactions.filter { transaction in
-            transaction.isOutgoing && !confirmedTransactionIDs.contains(transaction.id)
+
+        let obligations = drafts.compactMap { draft -> BankPaymentObligation? in
+            guard isReconciliationEligible(draft), let amount = draft.amount else { return nil }
+            return BankPaymentObligation(
+                id: draft.id,
+                title: draft.title,
+                amount: amount,
+                referenceDate: draft.dueDate ?? draft.source.receivedAt,
+                searchText: [draft.source.from, draft.source.subject].joined(separator: " ")
+            )
         }
-
-        return drafts.compactMap { draft in
-            guard isReconciliationEligible(draft), !confirmedDraftIDs.contains(draft.id) else { return nil }
-
-            let candidates = eligibleTransactions.compactMap { transaction -> BankMatchSuggestion? in
-                let pairID = "\(draft.id.uuidString)-\(transaction.id.uuidString)"
-                guard !dismissedPairs.contains(pairID) else { return nil }
-                return score(draft: draft, transaction: transaction)
-            }
-
-            return candidates.max { left, right in
-                if left.confidence == right.confidence {
-                    return left.transactionID.uuidString < right.transactionID.uuidString
-                }
-                return left.confidence < right.confidence
-            }
-        }
-        .sorted { left, right in
-            if left.confidence == right.confidence {
-                return left.draftID.uuidString < right.draftID.uuidString
-            }
-            return left.confidence > right.confidence
+        return suggestions(
+            obligations: obligations,
+            transactions: transactions,
+            confirmedObligationIDs: confirmedDraftIDs,
+            confirmedTransactionIDs: confirmedTransactionIDs,
+            dismissedPairs: dismissedPairs
+        )
+        .map {
+            BankMatchSuggestion(
+                draftID: $0.obligationID,
+                transactionID: $0.transactionID,
+                confidence: $0.confidence,
+                reasons: $0.reasons
+            )
         }
     }
 
@@ -157,10 +230,8 @@ public enum BankingReconciliation {
             && !DraftSnoozeService.isCurrentlySnoozed(draft)
     }
 
-    private static func score(draft: InboxDraft, transaction: BankTransaction) -> BankMatchSuggestion? {
-        guard let amount = draft.amount else { return nil }
-
-        let expected = absolute(amount)
+    private static func score(obligation: BankPaymentObligation, transaction: BankTransaction) -> BankPaymentMatchSuggestion? {
+        let expected = absolute(obligation.amount)
         let actual = absolute(transaction.amount)
         let difference = absolute(expected - actual)
         let percentageTolerance = expected * Decimal(string: "0.02")!
@@ -182,33 +253,34 @@ public enum BankingReconciliation {
         }
 
         var confidence = amountScore
-        let sharedTerms = matchingTerms(draft: draft, transaction: transaction)
+        let sharedTerms = matchingTerms(obligation: obligation, transaction: transaction)
         if !sharedTerms.isEmpty {
             confidence += 0.20
             reasons.append("Shared detail: \(sharedTerms.prefix(2).joined(separator: ", "))")
         }
 
-        let referenceDate = draft.dueDate ?? draft.source.receivedAt
-        let dayDistance = abs(Calendar.current.dateComponents([.day], from: transaction.bookingDate, to: referenceDate).day ?? 99)
-        if dayDistance <= 7 {
-            confidence += 0.12
-            reasons.append("Close to due date")
-        } else if dayDistance <= 31 {
-            confidence += 0.06
-            reasons.append("Within the payment window")
+        if let referenceDate = obligation.referenceDate {
+            let dayDistance = abs(Calendar.current.dateComponents([.day], from: transaction.bookingDate, to: referenceDate).day ?? 99)
+            if dayDistance <= 7 {
+                confidence += 0.12
+                reasons.append("Close to due date")
+            } else if dayDistance <= 31 {
+                confidence += 0.06
+                reasons.append("Within the payment window")
+            }
         }
 
         guard confidence >= 0.55 else { return nil }
-        return BankMatchSuggestion(
-            draftID: draft.id,
+        return BankPaymentMatchSuggestion(
+            obligationID: obligation.id,
             transactionID: transaction.id,
             confidence: min(confidence, 0.98),
             reasons: reasons
         )
     }
 
-    private static func matchingTerms(draft: InboxDraft, transaction: BankTransaction) -> [String] {
-        let draftTerms = terms(in: [draft.title, draft.source.from, draft.source.subject].joined(separator: " "))
+    private static func matchingTerms(obligation: BankPaymentObligation, transaction: BankTransaction) -> [String] {
+        let draftTerms = terms(in: [obligation.title, obligation.searchText].joined(separator: " "))
         let transactionTerms = terms(in: [transaction.counterparty, transaction.description].joined(separator: " "))
         return Array(draftTerms.intersection(transactionTerms)).sorted()
     }
@@ -225,6 +297,10 @@ public enum BankingReconciliation {
 
     private static func absolute(_ value: Decimal) -> Decimal {
         value < 0 ? -value : value
+    }
+
+    private static func pairKey(obligationID: UUID, transactionID: UUID) -> String {
+        "\(obligationID.uuidString)-\(transactionID.uuidString)"
     }
 }
 

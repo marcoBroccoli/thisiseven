@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func fakeOAuth(t *testing.T, hits *atomic.Int32, refreshOK bool) *httptest.Server {
@@ -182,5 +183,62 @@ func TestGmailListAndMetaAndCalendarInsert(t *testing.T) {
 		BuildEvent("Bill", "VATTENFALL", nil, m.Date, "on_day"))
 	if err != nil || id != "ev1" || link != "https://cal/ev1" {
 		t.Fatalf("insert: %q %q %v", id, link, err)
+	}
+}
+
+func TestCalendarListUpdateAndDelete(t *testing.T) {
+	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.Method {
+		case http.MethodGet:
+			if r.URL.Query().Get("singleEvents") != "true" || r.URL.Query().Get("showDeleted") != "true" {
+				t.Errorf("calendar list query = %s", r.URL.RawQuery)
+			}
+			if r.URL.Query().Get("pageToken") == "next-page" {
+				_, _ = w.Write([]byte(`{"items":[{"id":"gone","status":"cancelled"}]}`))
+				return
+			}
+			_, _ = w.Write([]byte(`{"items":[
+				{"id":"all-day","recurringEventId":"repeat-master","summary":"Wash the dog","status":"confirmed","start":{"date":"2026-07-22"}},
+				{"id":"timed","summary":"Dentist","status":"confirmed","start":{"dateTime":"2026-07-23T23:30:00Z"}}
+			],"nextPageToken":"next-page"}`))
+		case http.MethodPut:
+			if r.URL.Path != "/calendar/v3/calendars/even-cal/events/all-day" {
+				t.Errorf("update path = %s", r.URL.Path)
+			}
+			_, _ = w.Write([]byte(`{"id":"all-day","htmlLink":"https://cal/all-day"}`))
+		case http.MethodDelete:
+			if r.URL.Path != "/calendar/v3/calendars/even-cal/events/all-day" {
+				t.Errorf("delete path = %s", r.URL.Path)
+			}
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer api.Close()
+	c := New("id", "secret", "", "", api.URL)
+
+	events, err := c.ListEvents(context.Background(), "tok", "even-cal",
+		time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC))
+	if err != nil || len(events) != 3 {
+		t.Fatalf("list = %+v, %v", events, err)
+	}
+	if due, ok := events[0].DueOn(); !ok || due != "2026-07-22" {
+		t.Fatalf("all-day due = %q, %t", due, ok)
+	}
+	if events[0].RecurringEventID != "repeat-master" {
+		t.Fatalf("recurring event id = %q", events[0].RecurringEventID)
+	}
+	if due, ok := events[1].DueOn(); !ok || due != "2026-07-24" {
+		t.Fatalf("timed due = %q, %t", due, ok)
+	}
+	if id, link, err := c.UpdateEvent(context.Background(), "tok", "even-cal", "all-day",
+		BuildEvent("Wash the dog", "", nil, time.Date(2026, 7, 22, 0, 0, 0, 0, time.UTC), "on_day")); err != nil || id != "all-day" || link == "" {
+		t.Fatalf("update = %q %q %v", id, link, err)
+	}
+	if err := c.DeleteEvent(context.Background(), "tok", "even-cal", "all-day"); err != nil {
+		t.Fatalf("delete: %v", err)
 	}
 }

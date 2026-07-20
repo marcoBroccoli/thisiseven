@@ -71,7 +71,7 @@ func TestCalendarAgenda(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	// Drafts: in-range pending, out-of-range pending, dismissed in-range.
+	// Gmail suggestions stay in review and never appear on the schedule.
 	mustExec(`insert into drafts (household_id, from_label, subject, urgency, title, owner_member_id,
 		amount_cents, due_on, reminder, created_by, category)
 		values ($1,'VATTENFALL','s',2,'Pay the energy bill',$2, 11240, $3, '3_days', $2, 'bills')`,
@@ -119,13 +119,8 @@ func TestCalendarAgenda(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
 		t.Fatal(err)
 	}
-	if len(resp.Items) != 3 {
-		t.Fatalf("want 3 items, got %d: %+v", len(resp.Items), resp.Items)
-	}
-	// Same due date → drafts sort before tasks.
-	if resp.Items[0].Kind != "draft" || resp.Items[0].Title != "Pay the energy bill" ||
-		resp.Items[0].Category != "bills" || resp.Items[0].AmountCents == nil || *resp.Items[0].AmountCents != 11240 {
-		t.Fatalf("draft item wrong: %+v", resp.Items[0])
+	if len(resp.Items) != 2 {
+		t.Fatalf("want 2 items, got %d: %+v", len(resp.Items), resp.Items)
 	}
 	byTitle := map[string]CalendarItemJSON{}
 	for _, it := range resp.Items {
@@ -136,6 +131,9 @@ func TestCalendarAgenda(t *testing.T) {
 	}
 	if it := byTitle["Water bill paid"]; it.Done == nil || !*it.Done {
 		t.Fatalf("done task wrong: %+v", it)
+	}
+	if _, ok := byTitle["Pay the energy bill"]; ok {
+		t.Fatal("pending Gmail suggestion leaked into the schedule")
 	}
 
 	// Bad inputs.
@@ -215,7 +213,7 @@ func TestSharedCalendarCreation(t *testing.T) {
 
 	m := &Membership{MemberID: member, HouseholdID: hh, Household: "Cal Test"}
 	amount := int64(11240)
-	if msg := a.calendarEventForApproval(ctx, m, taskID, "Pay the bill", "VATTENFALL", &amount, &due, "1_day"); msg != "" {
+	if msg := a.publishTaskToCalendar(ctx, m, taskID, "Pay the bill", "VATTENFALL", &amount, &due, "1_day"); msg != "" {
 		t.Fatalf("approval calendar error: %s", msg)
 	}
 
@@ -243,11 +241,190 @@ func TestSharedCalendarCreation(t *testing.T) {
 		values ($1,'Second bill','admin',$2,2,'none',$3) returning id`, hh, member, due.Format("2006-01-02")).Scan(&task2); err != nil {
 		t.Fatal(err)
 	}
-	if msg := a.calendarEventForApproval(ctx, m, task2, "Second bill", "X", nil, &due, "on_day"); msg != "" {
+	if msg := a.publishTaskToCalendar(ctx, m, task2, "Second bill", "X", nil, &due, "on_day"); msg != "" {
 		t.Fatalf("second approval: %s", msg)
 	}
 	if n := creates.Load().(int); n != 1 {
 		t.Fatalf("calendar created %d times, want 1", n)
 	}
 	fmt.Println("shared calendar create/reuse verified")
+}
+
+func TestUpdateTaskClearsMappedCalendarEvent(t *testing.T) {
+	dbURL := os.Getenv("EVEN_TESTDB")
+	if dbURL == "" {
+		t.Skip("EVEN_TESTDB not set")
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, dbURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+
+	var deletes atomic.Int32
+	mux := http.NewServeMux()
+	mux.HandleFunc("/token", func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{"access_token": "at", "expires_in": 3600})
+	})
+	mux.HandleFunc("/calendar/v3/calendars/even-cal/events/event-1", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete {
+			t.Errorf("method = %s, want DELETE", r.Method)
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		deletes.Add(1)
+		w.WriteHeader(http.StatusNoContent)
+	})
+	fake := httptest.NewServer(mux)
+	defer fake.Close()
+
+	a := &API{DB: pool, Google: google.New("cid", "secret", "", fake.URL, fake.URL)}
+	hh, member, week := seedCalHousehold(t, pool, "Clear calendar test")
+	if _, err := pool.Exec(ctx, `
+		insert into google_accounts (household_id, email, refresh_token, client_kind, connected_by, calendar_id)
+		values ($1, 't@example.com', 'rt', 'desktop', $2, 'even-cal')`, hh, member); err != nil {
+		t.Fatal(err)
+	}
+	var taskID string
+	if err := pool.QueryRow(ctx, `
+		insert into tasks (household_id, title, section, owner_member_id, weight, recurrence,
+			due_on, google_event_id, google_event_url, calendar_sync_state)
+		values ($1, 'Book the dentist', 'admin', $2, 2, 'none', current_date + 7,
+			'event-1', 'https://calendar.google.com/event?eid=event-1', 'synced')
+		returning id`, hh, member).Scan(&taskID); err != nil {
+		t.Fatal(err)
+	}
+
+	body := strings.NewReader(`{"clear_due_on":true}`)
+	req := httptest.NewRequest(http.MethodPatch, "/v1/tasks/"+taskID, body)
+	req.Header.Set("Content-Type", "application/json")
+	m := &Membership{MemberID: member, HouseholdID: hh, Household: "Clear calendar test", WeekID: week}
+	req = req.WithContext(context.WithValue(req.Context(), memberKey{}, m))
+	rec := httptest.NewRecorder()
+	a.UpdateTask(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
+	}
+	if deletes.Load() != 1 {
+		t.Fatalf("calendar deletes = %d, want 1", deletes.Load())
+	}
+	var dueOn, eventID, eventURL *string
+	var state string
+	if err := pool.QueryRow(ctx, `
+		select due_on::text, google_event_id, google_event_url, calendar_sync_state from tasks where id = $1`, taskID).
+		Scan(&dueOn, &eventID, &eventURL, &state); err != nil {
+		t.Fatal(err)
+	}
+	if dueOn != nil || eventID != nil || eventURL != nil || state != "not_scheduled" {
+		t.Fatalf("task calendar mapping not cleared: due=%v event=%v url=%v state=%s", dueOn, eventID, eventURL, state)
+	}
+}
+
+func TestResolveTaskCalendarActions(t *testing.T) {
+	dbURL := os.Getenv("EVEN_TESTDB")
+	if dbURL == "" {
+		t.Skip("EVEN_TESTDB not set")
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, dbURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+
+	var restores, retries atomic.Int32
+	mux := http.NewServeMux()
+	mux.HandleFunc("/token", func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{"access_token": "at", "expires_in": 3600})
+	})
+	mux.HandleFunc("/calendar/v3/calendars/even-cal/events", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("restore method = %s, want POST", r.Method)
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		restores.Add(1)
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"id": "restored-event", "htmlLink": "https://calendar.google.com/restored"})
+	})
+	mux.HandleFunc("/calendar/v3/calendars/even-cal/events/retry-event", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut {
+			t.Errorf("retry method = %s, want PUT", r.Method)
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		retries.Add(1)
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"id": "retry-event", "htmlLink": "https://calendar.google.com/retried"})
+	})
+	fake := httptest.NewServer(mux)
+	defer fake.Close()
+
+	a := &API{DB: pool, Google: google.New("cid", "secret", "", fake.URL, fake.URL)}
+	hh, member, week := seedCalHousehold(t, pool, "Resolve calendar test")
+	if _, err := pool.Exec(ctx, `
+		insert into google_accounts (household_id, email, refresh_token, client_kind, connected_by, calendar_id)
+		values ($1, 't@example.com', 'rt', 'desktop', $2, 'even-cal')`, hh, member); err != nil {
+		t.Fatal(err)
+	}
+	var changedID, deletedID, retryID string
+	if err := pool.QueryRow(ctx, `
+		insert into tasks (household_id, title, section, owner_member_id, weight, recurrence,
+			due_on, google_event_id, calendar_sync_state)
+		values ($1, 'Book the plumber', 'admin', $2, 1, 'none', current_date + 7,
+			'changed-event', 'external_changed') returning id`, hh, member).Scan(&changedID); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `
+		insert into tasks (household_id, title, section, owner_member_id, weight, recurrence,
+			due_on, google_event_id, calendar_sync_state)
+		values ($1, 'Confirm the dentist', 'admin', $2, 1, 'none', current_date + 8,
+			'deleted-event', 'external_deleted') returning id`, hh, member).Scan(&deletedID); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `
+		insert into tasks (household_id, title, section, owner_member_id, weight, recurrence,
+			due_on, google_event_id, calendar_sync_state)
+		values ($1, 'Pay electricity', 'admin', $2, 1, 'none', current_date + 9,
+			'retry-event', 'retry_required') returning id`, hh, member).Scan(&retryID); err != nil {
+		t.Fatal(err)
+	}
+
+	m := &Membership{MemberID: member, HouseholdID: hh, Household: "Resolve calendar test", WeekID: week}
+	resolve := func(taskID, action string) {
+		t.Helper()
+		req := httptest.NewRequest(http.MethodPost, "/v1/tasks/"+taskID+"/calendar/resolve",
+			strings.NewReader(`{"action":"`+action+`"}`))
+		req.Header.Set("Content-Type", "application/json")
+		req = req.WithContext(context.WithValue(req.Context(), memberKey{}, m))
+		rec := httptest.NewRecorder()
+		a.ResolveTaskCalendar(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("resolve %s: status %d: %s", action, rec.Code, rec.Body.String())
+		}
+	}
+
+	resolve(changedID, calendarResolutionAcknowledge)
+	resolve(deletedID, calendarResolutionRestore)
+	resolve(retryID, calendarResolutionRetry)
+
+	var changedState, deletedState, retryState string
+	var deletedEvent string
+	if err := pool.QueryRow(ctx, `select calendar_sync_state from tasks where id = $1`, changedID).Scan(&changedState); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `select calendar_sync_state, google_event_id from tasks where id = $1`, deletedID).
+		Scan(&deletedState, &deletedEvent); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `select calendar_sync_state from tasks where id = $1`, retryID).Scan(&retryState); err != nil {
+		t.Fatal(err)
+	}
+	if changedState != "synced" || deletedState != "synced" || deletedEvent != "restored-event" || retryState != "synced" {
+		t.Fatalf("unexpected states changed=%s deleted=%s event=%s retry=%s", changedState, deletedState, deletedEvent, retryState)
+	}
+	if restores.Load() != 1 || retries.Load() != 1 {
+		t.Fatalf("Google calls restores=%d retries=%d", restores.Load(), retries.Load())
+	}
 }

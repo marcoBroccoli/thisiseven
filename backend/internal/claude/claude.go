@@ -67,6 +67,10 @@ type Verdict struct {
 	DuplicateOf *string `json:"duplicate_of"`
 	// Category groups the inbox: bills, appointments, subscriptions, admin, other.
 	Category string `json:"category"`
+	// NeedsReply marks messages where the sender is genuinely waiting for a
+	// household response. SuggestedReply is always an editable draft.
+	NeedsReply     bool   `json:"needs_reply"`
+	SuggestedReply string `json:"suggested_reply"`
 }
 
 const systemPrompt = `You classify emails for "Even", a two-person household app. An email is ACTIONABLE only when the couple genuinely must act on it for the household: a bill or invoice to pay, an appointment to confirm or attend, a renewal or contract decision, a delivery needing action, an official/government/admin letter, a repair or maintenance task. Hold a high bar — when in doubt, it is NOT actionable. NOT actionable: newsletters, marketing and promotions, receipts or confirmations of already-completed payments, shipping notifications needing nothing, social or personal correspondence, product updates, security notices needing nothing, and anything merely informational.
@@ -83,8 +87,10 @@ For each actionable email, rewrite it in Even's product voice — warm, plain, i
 - "due_on": the due/appointment date as YYYY-MM-DD if one is stated or clearly implied, else null. Resolve relative dates against the provided today's date.
 - "urgency": 3 = overdue, final notice, or due within 3 days; 2 = due within ~2 weeks or needs a reply; 1 = informational deadline further out.
 - "category": exactly one of "bills" (money owed, failed or upcoming payments), "appointments" (things to confirm or attend), "subscriptions" (renewals, price changes, plan decisions), "admin" (official letters, paperwork, home upkeep), "other".
+- "needs_reply": true only when the sender explicitly expects a reply or confirmation. Never set it for no-reply/automated messages, invoices that only need payment, or informational mail.
+- "suggested_reply": when needs_reply is true, write a short, neutral, editable response. Do not invent facts or make commitments. Otherwise use "".
 
-For non-actionable emails set actionable=false, title and summary to "", amount_cents and due_on to null, urgency to 1, category to "other". Return one verdict per input email, same "id", same order.`
+For non-actionable emails set actionable=false, title and summary to "", amount_cents and due_on to null, urgency to 1, category to "other", needs_reply to false, and suggested_reply to "". Return one verdict per input email, same "id", same order.`
 
 var outputSchema = map[string]any{
 	"type": "object",
@@ -94,17 +100,19 @@ var outputSchema = map[string]any{
 			"items": map[string]any{
 				"type": "object",
 				"properties": map[string]any{
-					"id":           map[string]any{"type": "string"},
-					"actionable":   map[string]any{"type": "boolean"},
-					"title":        map[string]any{"type": "string"},
-					"summary":      map[string]any{"type": "string"},
-					"amount_cents": map[string]any{"type": []string{"integer", "null"}},
-					"due_on":       map[string]any{"type": []string{"string", "null"}},
-					"urgency":      map[string]any{"type": "integer", "enum": []int{1, 2, 3}},
-					"duplicate_of": map[string]any{"type": []string{"string", "null"}},
-					"category":     map[string]any{"type": "string", "enum": []string{"bills", "appointments", "subscriptions", "admin", "other"}},
+					"id":              map[string]any{"type": "string"},
+					"actionable":      map[string]any{"type": "boolean"},
+					"title":           map[string]any{"type": "string"},
+					"summary":         map[string]any{"type": "string"},
+					"amount_cents":    map[string]any{"type": []string{"integer", "null"}},
+					"due_on":          map[string]any{"type": []string{"string", "null"}},
+					"urgency":         map[string]any{"type": "integer", "enum": []int{1, 2, 3}},
+					"duplicate_of":    map[string]any{"type": []string{"string", "null"}},
+					"category":        map[string]any{"type": "string", "enum": []string{"bills", "appointments", "subscriptions", "admin", "other"}},
+					"needs_reply":     map[string]any{"type": "boolean"},
+					"suggested_reply": map[string]any{"type": "string"},
 				},
-				"required":             []string{"id", "actionable", "title", "summary", "amount_cents", "due_on", "urgency", "duplicate_of", "category"},
+				"required":             []string{"id", "actionable", "title", "summary", "amount_cents", "due_on", "urgency", "duplicate_of", "category", "needs_reply", "suggested_reply"},
 				"additionalProperties": false,
 			},
 		},

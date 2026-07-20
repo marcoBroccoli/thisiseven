@@ -1,8 +1,7 @@
 import SwiftUI
 import EvenCore
 
-// Today — the balance scale over the week's completed work, then the task
-// sections. Beam math per design: rot = clamp((50 − me%) · 0.5, ±8°).
+// Reusable task row and capture sheet used by the unified Todo workspace.
 
 struct TodayView: View {
     @Bindable var model: AppModel
@@ -174,6 +173,7 @@ struct TaskRow: View {
     @Bindable var model: AppModel
     let task: HouseholdTask
     @Environment(\.palette) private var palette
+    @State private var editing = false
 
     var body: some View {
         let owner = model.member(task.ownerMemberId)
@@ -185,25 +185,55 @@ struct TaskRow: View {
                 Task { await model.toggle(task) }
             }
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(task.title)
                     .font(EvenFont.serif(15))
                     .strikethrough(task.done, color: palette.ink)
                     .foregroundStyle(palette.ink)
-                Text(task.metaLine.uppercased())
-                    .capsLabel(8.5, tracking: 0.5)
-                    .foregroundStyle(palette.sub)
+                HStack(spacing: 5) {
+                    Text(task.googleEventUrl == nil ? "MANUAL" : "CALENDAR")
+                        .capsLabel(8, tracking: 0.7, weight: .bold)
+                        .foregroundStyle(task.googleEventUrl == nil ? palette.sub : palette.clay)
+                    if !task.metaLine.isEmpty {
+                        Text(task.metaLine.uppercased())
+                            .capsLabel(8.5, tracking: 0.5)
+                            .foregroundStyle(palette.sub)
+                            .lineLimit(1)
+                    }
+                    if let state = task.calendarSyncState,
+                       state != .synced && state != .notScheduled {
+                        Text(state.label.uppercased())
+                            .capsLabel(8, tracking: 0.45, weight: .bold)
+                            .foregroundStyle(state == .retryRequired ? palette.clay : palette.ink)
+                            .lineLimit(1)
+                    }
+                }
             }
             .opacity(task.done ? 0.42 : 1)
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            HeftDots(weight: task.weight, color: ownerColor)
-            OwnerChip(member: owner, palette: palette)
+            HStack(spacing: 4) {
+                OwnerChip(member: owner, palette: palette)
+                Button { editing = true } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(palette.sub)
+                        .frame(width: 26, height: 26)
+                        .contentShape(Circle())
+                }
+                .buttonStyle(PressScaleStyle(scale: 0.88))
+                .accessibilityLabel("Edit \(task.title)")
+            }
         }
         .padding(.vertical, 11)
         .overlay(alignment: .bottom) { palette.faint.frame(height: 1) }
         .animation(.easeOut(duration: 0.2), value: task.done)
         .contextMenu {
+            Button {
+                editing = true
+            } label: {
+                Label("Edit todo", systemImage: "pencil")
+            }
             if let urlString = task.googleEventUrl, let url = URL(string: urlString) {
                 Link(destination: url) {
                     Label("Open calendar event", systemImage: "calendar")
@@ -211,17 +241,106 @@ struct TaskRow: View {
             }
             Button(role: .destructive) {
                 Task {
-                    try? await model.api.deleteTask(id: task.id)
-                    await model.refreshAll()
+                    await model.archive(task)
                 }
             } label: {
                 Label("Archive task", systemImage: "archivebox")
             }
         }
+        .sheet(isPresented: $editing) {
+            EditTaskSheet(model: model, task: task)
+        }
     }
 }
 
-// MARK: - Quick add
+// MARK: - Create and edit
+
+struct EditTaskSheet: View {
+    @Bindable var model: AppModel
+    let task: HouseholdTask
+    @Environment(\.palette) private var palette
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var title = ""
+    @State private var ownerId: UUID?
+    @State private var recurrence: Recurrence = .none
+    @State private var hasDue = false
+    @State private var dueDate = Date()
+    @State private var saving = false
+    @State private var confirmArchive = false
+
+    var body: some View {
+        SheetChrome(title: "EDIT TODO") {
+            TodoEditorFields(title: $title, ownerId: $ownerId, recurrence: $recurrence,
+                             hasDue: $hasDue, dueDate: $dueDate,
+                             members: model.household?.members ?? [])
+
+            if let state = task.calendarSyncState,
+               state != .synced && state != .notScheduled {
+                Label(state.label, systemImage: "exclamationmark.triangle")
+                    .font(EvenFont.sans(11.5, .semibold))
+                    .foregroundStyle(palette.clay)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            PrimaryButton(title: saving ? "Saving…" : "Save changes",
+                          enabled: canSave && !saving) {
+                guard let ownerId else { return }
+                saving = true
+                Task {
+                    let ok = await model.updateTask(id: task.id, .init(
+                        title: normalizedTitle,
+                        section: task.section,
+                        ownerMemberId: ownerId,
+                        weight: task.weight,
+                        recurrence: recurrence,
+                        dueOn: hasDue ? TodoDate.dayString(dueDate) : nil,
+                        clearDueOn: !hasDue))
+                    saving = false
+                    if ok { dismiss() }
+                }
+            }
+
+            Button(role: .destructive) {
+                confirmArchive = true
+            } label: {
+                Label("Archive todo", systemImage: "archivebox")
+                    .font(EvenFont.sans(12, .semibold))
+                    .foregroundStyle(palette.clay)
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 4)
+            }
+            .disabled(saving)
+        }
+        .onAppear {
+            title = task.title
+            ownerId = task.ownerMemberId
+            recurrence = task.recurrence
+            hasDue = task.dueOn != nil
+            if let dueOn = task.dueOn, let parsed = TodoDate.date(from: dueOn) {
+                dueDate = parsed
+            }
+        }
+        .confirmationDialog("Archive this todo?", isPresented: $confirmArchive, titleVisibility: .visible) {
+            Button("Archive todo", role: .destructive) {
+                Task {
+                    await model.archive(task)
+                    dismiss()
+                }
+            }
+        } message: {
+            Text("It will be removed from the household list and shared Calendar.")
+        }
+    }
+
+    private var normalizedTitle: String {
+        title.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var canSave: Bool {
+        !normalizedTitle.isEmpty && ownerId != nil
+    }
+}
 
 struct QuickAddSheet: View {
     @Bindable var model: AppModel
@@ -229,58 +348,19 @@ struct QuickAddSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var title = ""
-    @State private var section: TaskSection = .chore
     @State private var ownerId: UUID?
-    @State private var weight = 1
     @State private var recurrence: Recurrence = .none
     @State private var hasDue = false
     @State private var dueDate = Date()
     @State private var saving = false
 
     var body: some View {
-        SheetChrome(title: "NEW WORK — GOES ON THE SCALE") {
-            UnderlineField(placeholder: "What needs doing?", text: $title, id: "task-title")
+        SheetChrome(title: "NEW TODO") {
+            TodoEditorFields(title: $title, ownerId: $ownerId, recurrence: $recurrence,
+                             hasDue: $hasDue, dueDate: $dueDate,
+                             members: model.household?.members ?? [])
 
-            optionRow("SECTION") {
-                SelectPill(label: "CHORE", selected: section == .chore) { section = .chore }
-                SelectPill(label: "THE ADMIN", selected: section == .admin) { section = .admin }
-            }
-
-            optionRow("OWNER") {
-                ForEach(model.household?.members ?? []) { member in
-                    SelectPill(label: member.displayName.uppercased(),
-                               selected: ownerId == member.id,
-                               tint: palette.member(member.color)) {
-                        ownerId = member.id
-                    }
-                }
-            }
-
-            optionRow("HEFT") {
-                ForEach(1...3, id: \.self) { w in
-                    SelectPill(label: ["LIGHT", "SOLID", "HEAVY"][w - 1],
-                               selected: weight == w) { weight = w }
-                }
-            }
-
-            optionRow("REPEATS") {
-                ForEach(Recurrence.allCases, id: \.self) { r in
-                    SelectPill(label: r.label.uppercased(), selected: recurrence == r) { recurrence = r }
-                }
-            }
-
-            HStack(spacing: 10) {
-                SelectPill(label: hasDue ? "DUE \(EvenFormat.capsDate(dueString))" : "NO DUE DATE",
-                           selected: hasDue) { hasDue.toggle() }
-                if hasDue {
-                    DatePicker("", selection: $dueDate, displayedComponents: .date)
-                        .labelsHidden()
-                        .tint(palette.clay)
-                }
-                Spacer()
-            }
-
-            PrimaryButton(title: saving ? "Adding…" : "Add to the week",
+            PrimaryButton(title: saving ? "Adding…" : "Add todo",
                           enabled: !title.trimmingCharacters(in: .whitespaces).isEmpty
                                    && ownerId != nil && !saving) {
                 guard let ownerId else { return }
@@ -288,11 +368,11 @@ struct QuickAddSheet: View {
                 Task {
                     let ok = await model.createTask(.init(
                         title: title.trimmingCharacters(in: .whitespaces),
-                        section: section,
+                        section: .chore,
                         ownerMemberId: ownerId,
-                        weight: weight,
+                        weight: 1,
                         recurrence: recurrence,
-                        dueOn: hasDue ? dueString : nil))
+                        dueOn: hasDue ? TodoDate.dayString(dueDate) : nil))
                     saving = false
                     if ok { dismiss() }
                 }
@@ -302,11 +382,48 @@ struct QuickAddSheet: View {
         }
         .onAppear { ownerId = model.me?.id }
     }
+}
 
-    private var dueString: String {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd"
-        return f.string(from: dueDate)
+private struct TodoEditorFields: View {
+    @Environment(\.palette) private var palette
+    @Binding var title: String
+    @Binding var ownerId: UUID?
+    @Binding var recurrence: Recurrence
+    @Binding var hasDue: Bool
+    @Binding var dueDate: Date
+    let members: [Member]
+
+    var body: some View {
+        UnderlineField(placeholder: "What needs doing?", text: $title, id: "task-title")
+
+        optionRow("OWNER") {
+            ForEach(members) { member in
+                SelectPill(label: member.displayName.uppercased(),
+                           selected: ownerId == member.id,
+                           tint: palette.member(member.color)) {
+                    ownerId = member.id
+                }
+            }
+        }
+
+        optionRow("REPEAT") {
+            ForEach(Recurrence.allCases, id: \.self) { option in
+                SelectPill(label: option.label.uppercased(), selected: recurrence == option) {
+                    recurrence = option
+                }
+            }
+        }
+
+        HStack(spacing: 10) {
+            SelectPill(label: hasDue ? "DUE \(EvenFormat.capsDate(TodoDate.dayString(dueDate)))" : "ADD A DUE DATE",
+                       selected: hasDue) { hasDue.toggle() }
+            if hasDue {
+                DatePicker("", selection: $dueDate, displayedComponents: .date)
+                    .labelsHidden()
+                    .tint(palette.clay)
+            }
+            Spacer()
+        }
     }
 
     @ViewBuilder
@@ -318,6 +435,19 @@ struct QuickAddSheet: View {
             }
         }
     }
+}
+
+private enum TodoDate {
+    private static let formatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
+
+    static func dayString(_ date: Date) -> String { formatter.string(from: date) }
+    static func date(from string: String) -> Date? { formatter.date(from: string) }
 }
 
 /// Bottom-sheet scaffold shared by Quick Add / propose / review sheets.

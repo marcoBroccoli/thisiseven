@@ -3,7 +3,67 @@ import Observation
 import EvenCore
 
 enum EvenTab: String, CaseIterable {
-    case today, calendar, inbox, money, reset
+    case todos, schedule
+}
+
+/// The mobile app deliberately presents one household object: a todo. Gmail
+/// suggestions need a quick review; saved work can be completed and, when it
+/// has a date, lives in the shared Google Calendar.
+struct TodoItem: Identifiable {
+    enum State: Int {
+        case needsReview = 0
+        case open = 1
+        case done = 2
+    }
+
+    enum Source: String {
+        case gmail, calendar, manual
+
+        var label: String {
+            switch self {
+            case .gmail: return "GMAIL"
+            case .calendar: return "CALENDAR"
+            case .manual: return "MANUAL"
+            }
+        }
+    }
+
+    let id: UUID
+    let title: String
+    let ownerMemberId: UUID
+    let dueOn: String?
+    let amountCents: Int?
+    let state: State
+    let source: Source
+    let urgency: Int
+    let task: HouseholdTask?
+    let draft: Draft?
+
+    init(task: HouseholdTask) {
+        id = task.id
+        title = task.title
+        ownerMemberId = task.ownerMemberId
+        dueOn = task.dueOn
+        amountCents = nil
+        state = task.done ? .done : .open
+        source = task.googleEventUrl == nil ? .manual : .calendar
+        urgency = 0
+        self.task = task
+        draft = nil
+    }
+
+    init(draft: Draft) {
+        id = draft.id
+        title = draft.title.isEmpty ? draft.subject : draft.title
+        ownerMemberId = draft.ownerMemberId
+        dueOn = draft.dueOn
+        amountCents = draft.amountCents
+        state = .needsReview
+        source = draft.isFromGmail ? .gmail : .manual
+        urgency = draft.urgency
+        task = nil
+        self.draft = draft
+    }
 }
 
 /// Screen-facing store over the evend API. Everything here is real server
@@ -13,15 +73,20 @@ enum EvenTab: String, CaseIterable {
 final class AppModel {
     let session: SessionStore
 
-    var tab: EvenTab = .today
+    var tab: EvenTab = .todos
     var summary: Summary?
     var drafts: [Draft] = []
     var money: Money?
     var googleStatus: GoogleStatus?
     var gmailSyncing = false
+    var calendarSyncing = false
     var calendarMonthItems: [CalendarItem] = []
     var calendarUpcoming: [CalendarItem] = []
     var calendarInfo: GoogleCalendarInfo?
+    var calendarRevision = 0
+    var resolvingCalendarTaskID: UUID?
+    var todoReminderStatus: TodoReminderNotificationState = .needsPermission
+    var todoReminderScheduling = false
     var reset: ResetSummary?
     var resetStep: Int = 0
     var lastClosedWeekIndex: Int?
@@ -31,6 +96,7 @@ final class AppModel {
     var isLoading = false
 
     private var stampTask: Task<Void, Never>?
+    private let todoReminderNotifications = TodoReminderNotificationCoordinator()
 
     init(session: SessionStore) {
         self.session = session
@@ -40,6 +106,33 @@ final class AppModel {
     var household: Household? { session.me?.household }
     var me: Member? { household?.me }
     var partner: Member? { household?.partner }
+
+    var todos: [TodoItem] {
+        let taskItems = (summary?.sections ?? [])
+            .flatMap(\.tasks)
+            .map(TodoItem.init(task:))
+        let suggestedItems = drafts.map(TodoItem.init(draft:))
+        return (suggestedItems + taskItems).sorted { lhs, rhs in
+            if lhs.state.rawValue != rhs.state.rawValue {
+                return lhs.state.rawValue < rhs.state.rawValue
+            }
+            if lhs.state == .needsReview, lhs.urgency != rhs.urgency {
+                return lhs.urgency > rhs.urgency
+            }
+            let lhsDate = lhs.dueOn ?? "9999-12-31"
+            let rhsDate = rhs.dueOn ?? "9999-12-31"
+            if lhsDate != rhsDate { return lhsDate < rhsDate }
+            return lhs.title.localizedCaseInsensitiveCompare(rhs.title) == .orderedAscending
+        }
+    }
+
+    var pendingReviewCount: Int { todos.filter { $0.state == .needsReview }.count }
+    var scheduledTodoCount: Int { todos.filter { $0.source == .calendar }.count }
+    var calendarIssueCount: Int {
+        (summary?.sections ?? []).flatMap(\.tasks)
+            .filter { $0.calendarSyncState?.requiresResolution == true }
+            .count
+    }
 
     func member(_ id: UUID?) -> Member? {
         household?.members.first(where: { $0.id == id })
@@ -52,14 +145,13 @@ final class AppModel {
         defer { isLoading = false }
         async let s = try? api.summary()
         async let d = try? api.pendingDrafts()
-        async let m = try? api.money()
         async let g = try? api.googleStatus()
-        let (summary, drafts, money, google) = await (s, d, m, g)
+        let (summary, drafts, google) = await (s, d, g)
         if let summary { self.summary = summary }
         if let drafts { self.drafts = drafts }
-        if let money { self.money = money }
         if let google { self.googleStatus = google }
-        if summary == nil && drafts == nil && money == nil {
+        await refreshTodoReminders()
+        if summary == nil && drafts == nil && google == nil {
             errorMessage = "Can't reach the house server."
         }
     }
@@ -93,6 +185,7 @@ final class AppModel {
             let updated = try await api.toggleTask(id: task.id)
             setTask(updated)
             self.summary = try await api.summary()
+            await refreshTodoReminders()
         } catch {
             setTask(task)
             surface(error)
@@ -113,6 +206,62 @@ final class AppModel {
         do {
             _ = try await api.createTask(body)
             summary = try await api.summary()
+            calendarRevision += 1
+            await refreshTodoReminders()
+            return true
+        } catch {
+            surface(error)
+            return false
+        }
+    }
+
+    func updateTask(id: UUID, _ body: EvenAPIClient.TaskDraftBody) async -> Bool {
+        do {
+            _ = try await api.updateTask(id: id, body)
+            summary = try await api.summary()
+            calendarRevision += 1
+            await refreshTodoReminders()
+            stamp(body.clearDueOn ? "REMOVED FROM CALENDAR" : "TODO UPDATED")
+            return true
+        } catch {
+            surface(error)
+            return false
+        }
+    }
+
+    func archive(_ task: HouseholdTask) async {
+        do {
+            try await api.deleteTask(id: task.id)
+            summary = try await api.summary()
+            calendarRevision += 1
+            await refreshTodoReminders()
+            stamp("TODO ARCHIVED")
+        } catch {
+            surface(error)
+        }
+    }
+
+    func resolveCalendarIssue(_ task: HouseholdTask,
+                              action: EvenAPIClient.CalendarResolutionAction) async -> Bool {
+        guard resolvingCalendarTaskID == nil else { return false }
+        resolvingCalendarTaskID = task.id
+        defer { resolvingCalendarTaskID = nil }
+        do {
+            let updated = try await api.resolveTaskCalendar(id: task.id, action: action)
+            setTask(updated)
+            summary = try? await api.summary()
+            calendarRevision += 1
+            await refreshTodoReminders()
+
+            if updated.calendarSyncState == .synced {
+                switch action {
+                case .acknowledge: stamp("CALENDAR CHANGE CONFIRMED")
+                case .restore: stamp("RESTORED TO CALENDAR")
+                case .retry: stamp("CALENDAR RETRIED")
+                }
+            } else {
+                stamp("CALENDAR STILL NEEDS ATTENTION")
+            }
             return true
         } catch {
             surface(error)
@@ -149,6 +298,8 @@ final class AppModel {
             _ = try await api.approveDraft(id: draft.id)
             drafts.removeAll { $0.id == draft.id }
             summary = try await api.summary()
+            calendarRevision += 1
+            await refreshTodoReminders()
             stamp("ON THE CALENDAR ✓")
         } catch {
             surface(error)
@@ -222,6 +373,75 @@ final class AppModel {
         if let monthResp { calendarMonthItems = monthResp.items }
         if let weekResp { calendarUpcoming = weekResp.items }
         calendarInfo = info   // nil when not connected / not shared yet
+    }
+
+    /// Pull direct edits from the dedicated shared Calendar. This never reads
+    /// a user's primary calendar and always refreshes local Todo state after
+    /// a successful reconciliation pass.
+    func syncCalendar() async {
+        guard !calendarSyncing else { return }
+        calendarSyncing = true
+        defer { calendarSyncing = false }
+        do {
+            let result = try await api.syncCalendar()
+            await refreshAll()
+            calendarRevision += 1
+            await loadCalendar(month: Date())
+            let changed = result.imported + result.updated + result.deleted
+            stamp(changed == 0 ? "CALENDAR — UP TO DATE" : "CALENDAR — \(changed) UPDATED")
+        } catch {
+            if (error as? APIError)?.code == "google_reconnect_required" {
+                await refreshAll()
+            }
+            surface(error)
+        }
+    }
+
+    // MARK: Phone reminders
+
+    /// Refreshes local due-day alerts from the same Calendar occurrence feed
+    /// shown in Schedule. No notification is sent until the user grants iOS
+    /// permission, and no data is written outside the household API.
+    func refreshTodoReminders() async {
+        guard !todoReminderScheduling else { return }
+        todoReminderScheduling = true
+        defer { todoReminderScheduling = false }
+
+        let permission = await todoReminderNotifications.status()
+        guard permission.isAuthorized else {
+            todoReminderStatus = permission
+            return
+        }
+        guard let items = await upcomingReminderItems() else {
+            todoReminderStatus = .unavailable("Couldn't load upcoming todos.")
+            return
+        }
+        todoReminderStatus = await todoReminderNotifications.replaceScheduledReminders(items: items)
+    }
+
+    func enableTodoReminders() async {
+        guard !todoReminderScheduling else { return }
+        todoReminderScheduling = true
+        defer { todoReminderScheduling = false }
+
+        let permission = await todoReminderNotifications.requestAuthorization()
+        guard permission.isAuthorized else {
+            todoReminderStatus = permission
+            return
+        }
+        guard let items = await upcomingReminderItems() else {
+            todoReminderStatus = .unavailable("Couldn't load upcoming todos.")
+            return
+        }
+        todoReminderStatus = await todoReminderNotifications.replaceScheduledReminders(items: items)
+    }
+
+    private func upcomingReminderItems() async -> [CalendarItem]? {
+        let calendar = Foundation.Calendar.autoupdatingCurrent
+        let from = Self.dayFormat.string(from: calendar.startOfDay(for: Date()))
+        let end = calendar.date(byAdding: .day, value: 30, to: Date()) ?? Date()
+        let to = Self.dayFormat.string(from: end)
+        return try? await api.calendar(from: from, to: to).items
     }
 
     // MARK: Money
