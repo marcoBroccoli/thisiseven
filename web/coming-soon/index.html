@@ -1,688 +1,811 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dc-nojs">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Even — money, settled weekly</title>
-<meta name="description" content="Even — money, settled weekly. A calmer way to keep things fair with the people you share life with. No spreadsheets, no awkward reminders.">
+<title>Even — the household's shared memory</title>
+<meta name="description" content="Even is the shared memory for a household — the bills, replies, appointments and chores that pile up on one person become drafts you both approve, one shared list, one calendar, and a fairness beam so nothing falls through and neither of you carries it alone.">
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://thisiseven.app/">
-<meta property="og:title" content="Even — money, settled weekly">
-<meta property="og:description" content="A calmer way to keep things fair with the people you share life with.">
+<meta property="og:title" content="Even — the household's shared memory">
+<meta property="og:description" content="The bills, replies, appointments and chores that pile up on one person become something you both can see. Nothing falls through. Neither of you carries it alone.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://thisiseven.app">
 <meta name="theme-color" content="#E9E1D2">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23E9E1D2'/%3E%3Crect x='10' y='15' width='4' height='9' rx='1.5' fill='%23A6552F'/%3E%3Crect x='18' y='9' width='4' height='15' rx='1.5' fill='%2337756D'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..600;1,6..72,400..500&family=Source+Sans+3:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..600&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
 <style>
-  :root{
-    --paper:#E9E1D2; --paper-hi:#F6F1E6; --paper-card:#FBF7EE;
-    --ink:#26201A; --ink-soft:#6E6353; --muted:#8A7D69; --hair:#D8CDB8;
-    --terra:#A6552F; --terra-deep:#7A3A1D; --pine:#37756D;
-    --gap:clamp(88px,14vh,140px);
-  }
-  *{box-sizing:border-box}
-  html{scroll-behavior:smooth}
-  body{
-    margin:0; background:var(--paper); color:var(--ink);
-    font-family:'Source Sans 3',system-ui,sans-serif;
-    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
-    position:relative; overflow-x:hidden;
-  }
-  /* soft radial warmth + paper grain (brand atmosphere) */
-  body::before{
-    content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
-    background:radial-gradient(120% 70% at 50% 0%, var(--paper-hi), transparent 55%);
-  }
-  body::after{
-    content:""; position:fixed; inset:0; pointer-events:none; opacity:.45; mix-blend-mode:multiply; z-index:0;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.42'/%3E%3C/svg%3E");
-  }
-  .wrap{position:relative; z-index:1; width:min(1060px,90vw); margin:0 auto}
-
-  /* ── intro settle (CSS-only, JS-independent) ── */
-  .item{opacity:0; animation:settle .9s cubic-bezier(.2,.8,.24,1) forwards}
-  .d1{animation-delay:.15s}.d2{animation-delay:.30s}.d3{animation-delay:.46s}.d4{animation-delay:.62s}.d5{animation-delay:.80s}.d6{animation-delay:.96s}
-  @keyframes settle{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
-
-  /* ── HERO ── */
-  .hero{min-height:100dvh; display:grid; place-items:center; text-align:center; padding:64px 0 40px}
-  .hero .inner{width:min(700px,100%)}
-  /* the "evening out" motif — two bars level off (brand signature) */
-  .scale{display:flex; gap:9px; align-items:flex-end; justify-content:center; height:46px; margin:0 auto 30px}
-  .scale i{width:11px; border-radius:4px 4px 2px 2px; display:block}
-  .scale i:nth-child(1){background:var(--terra); height:16px; animation:evenA 1.6s cubic-bezier(.5,.05,.2,1) .5s both}
-  .scale i:nth-child(2){background:var(--pine);  height:44px; animation:evenB 1.6s cubic-bezier(.5,.05,.2,1) .5s both}
-  @keyframes evenA{0%{height:16px}60%{height:32px}100%{height:30px}}
-  @keyframes evenB{0%{height:44px}60%{height:28px}100%{height:30px}}
-  .brand{font-family:'Newsreader',Georgia,serif; font-weight:500; font-size:22px; letter-spacing:.01em}
-  .brand .dot{color:var(--terra)}
-  h1{
-    font-family:'Newsreader',Georgia,serif; font-weight:500;
-    font-size:clamp(40px,9vw,78px); line-height:1.02; letter-spacing:-.015em;
-    margin:20px 0 0; text-wrap:balance;
-  }
-  h1 em{font-style:italic; color:var(--terra)}
-  .sub{
-    font-size:clamp(16px,2.4vw,19px); color:var(--ink-soft); line-height:1.6;
-    max-width:38ch; margin:20px auto 0; text-wrap:pretty;
-  }
-  .cue{
-    margin-top:44px; display:inline-flex; flex-direction:column; align-items:center; gap:8px;
-    font-size:11px; letter-spacing:.22em; text-transform:uppercase; color:var(--muted);
-  }
-  .cue span{width:1px; height:34px; background:linear-gradient(var(--hair),transparent); position:relative; overflow:hidden}
-  .cue span::after{content:""; position:absolute; inset:0; background:var(--terra); transform:translateY(-100%); animation:cueRun 2.2s cubic-bezier(.6,.05,.3,1) infinite}
+  body{margin:0;background:#E9E1D2;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  a{color:#A6552F;text-decoration:underline;text-underline-offset:2px}
+  a:hover{color:#7A3A1D}
+  ::selection{background:#37756D;color:#F6F1E6}
+  @keyframes chaosJitter{0%,100%{transform:translate(0,0) rotate(var(--r,0deg))}50%{transform:translate(4px,-5px) rotate(calc(var(--r,0deg) + 2deg))}}
   @keyframes cueRun{0%{transform:translateY(-100%)}55%{transform:translateY(100%)}100%{transform:translateY(100%)}}
-
-  /* ── CTA (interest signal) ── */
-  .cta-row{margin-top:36px; display:flex; flex-direction:column; align-items:center; gap:12px}
-  .cta{
-    appearance:none; border:0; cursor:pointer; font:inherit; font-weight:600;
-    font-size:15px; letter-spacing:.01em; color:var(--paper-hi);
-    background:var(--terra); padding:14px 26px; border-radius:999px; will-change:transform;
-    box-shadow:0 1px 0 rgba(255,255,255,.25) inset, 0 12px 26px rgba(122,58,29,.22);
-    transition:transform .35s cubic-bezier(.2,.8,.24,1), background-color .35s ease, box-shadow .35s ease;
+  @keyframes softDrift{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+  @media (prefers-reduced-motion: reduce){
+    [data-jitter]{animation:none!important}
   }
-  .cta:hover{background:var(--terra-deep); box-shadow:0 1px 0 rgba(255,255,255,.25) inset, 0 16px 32px rgba(122,58,29,.28)}
-  .cta:active{transform:translateY(1px)}
-  .cta:focus-visible{outline:2px solid var(--pine); outline-offset:3px}
-  .cta[data-done="1"]{background:var(--pine); pointer-events:none}
-  .cta .arw{display:inline-block; margin-left:8px; transition:transform .35s cubic-bezier(.2,.8,.24,1)}
-  .cta:hover .arw{transform:translateX(4px)}
-  .cta-note{font-size:13px; color:var(--muted); letter-spacing:.01em; min-height:1.2em; transition:opacity .3s ease}
-
-  /* ── eyebrow / section heads ── */
-  .eyebrow{
-    display:flex; align-items:center; gap:12px; justify-content:center;
-    font-size:12px; font-weight:600; letter-spacing:.2em; text-transform:uppercase;
-    color:var(--muted); margin-bottom:14px;
-  }
-  .eyebrow::before,.eyebrow::after{content:""; height:1px; width:36px; background:var(--hair)}
-
-  /* ── SHOWCASE (pinned scroll-scrubbed product demo) ── */
-  .showcase{padding:var(--gap) 0 0}
-  .show-head{text-align:center; margin-bottom:clamp(40px,7vh,80px)}
-  .show-head h2{
-    font-family:'Newsreader',Georgia,serif; font-weight:500;
-    font-size:clamp(28px,5vw,46px); line-height:1.08; letter-spacing:-.01em;
-    margin:0 auto; max-width:18ch;
-  }
-  .show-head h2 em{font-style:italic; color:var(--pine)}
-  /* two-bar "evening out" motif that levels on enter */
-  .levelbars{display:flex; gap:8px; align-items:flex-end; justify-content:center; height:34px; margin:22px auto 0}
-  .levelbars i{width:9px; border-radius:3px 3px 2px 2px; display:block; transform-origin:bottom}
-  .levelbars i:nth-child(1){background:var(--terra); height:34px}
-  .levelbars i:nth-child(2){background:var(--pine);  height:34px}
-
-  .showcase-stage{position:relative}
-  .stage-inner{
-    display:flex; flex-direction:column; gap:clamp(72px,11vh,120px);
-    align-items:center; will-change:transform;
-  }
-  .beat{
-    display:grid; grid-template-columns:1fr; gap:30px; align-items:center;
-    justify-items:center; text-align:center; width:min(560px,100%);
-  }
-  .beat-caption{max-width:40ch}
-  .beat-no{
-    font-family:'Newsreader',serif; font-style:italic; color:var(--terra);
-    font-size:19px; margin-bottom:10px;
-  }
-  .beat-caption h3{
-    font-family:'Newsreader',Georgia,serif; font-weight:500;
-    font-size:clamp(25px,3.6vw,36px); line-height:1.1; letter-spacing:-.01em; margin:0 0 14px;
-  }
-  .beat-caption p{font-size:clamp(15px,1.9vw,17.5px); color:var(--ink-soft); line-height:1.62; margin:0}
-
-  /* ── phone frame (rebuilt from the app's iPhone bezel) ── */
-  .phone{
-    --sw:min(300px,74vw); --sh:calc(var(--sw) * 1120 / 515);
-    --bez:calc(var(--sh) * .0125); --rad:calc(var(--sh) * .0686);
-    position:relative; flex:none; padding:var(--bez);
-    width:calc(var(--sw) + var(--bez)*2); border-radius:calc(var(--rad) + var(--bez));
-    background:#0B0A09; will-change:transform;
-    box-shadow:inset 0 0 0 3px #57534C, inset 0 0 0 5px #17150F,
-      0 30px 60px rgba(38,32,26,.30), 0 6px 14px rgba(38,32,26,.14);
-  }
-  .phone .screen{
-    width:var(--sw); height:var(--sh); border-radius:var(--rad);
-    overflow:hidden; position:relative; background:var(--paper-hi);
-  }
-  .phone .island{
-    position:absolute; top:calc(var(--sh)*.014); left:50%; transform:translateX(-50%);
-    width:calc(var(--sh)*.144); height:calc(var(--sh)*.0427); border-radius:999px; background:#000; z-index:6;
-  }
-  .phone .glare{
-    position:absolute; inset:0; border-radius:var(--rad); pointer-events:none; z-index:7;
-    background:linear-gradient(118deg, rgba(255,255,255,.10) 0%, rgba(255,255,255,.02) 17%, transparent 30%);
-  }
-  .phone .btn{position:absolute; width:3px; border-radius:2px; background:#57534C}
-  .phone .btn.l1{left:-3px; top:23%; height:4.5%}
-  .phone .btn.l2{left:-3px; top:31%; height:7.5%}
-  .phone .btn.r1{right:-3px; top:27%; height:10%}
-
-  /* ── in-screen app UI ── */
-  .scr{position:absolute; inset:0; background:var(--paper-hi); overflow:hidden}
-  .scr.paper{background:var(--paper)}
-  .scr-in{padding:0 20px}
-  .scr-stat{display:flex; justify-content:space-between; align-items:center; padding:14px 20px 0}
-  .scr-stat time{font-weight:700; font-size:13px; color:var(--ink); font-variant-numeric:tabular-nums}
-  /* tabular figures so prices align and the count-to-zero doesn't jitter width */
-  .ci-a,.bal-amt,.settle-amt,.reset-amt{font-variant-numeric:tabular-nums}
-  .scr-stat .sig{display:flex; gap:5px; align-items:center}
-  .scr-stat .sig i{width:12px; height:9px; border-radius:2px; border:1.3px solid var(--ink); display:block}
-  .scr-stat .sig i.f{width:17px; background:var(--ink)}
-  .scr-top{display:flex; justify-content:space-between; align-items:center; padding:14px 20px 0}
-  .pill{
-    display:inline-flex; align-items:center; gap:6px; font-family:'Newsreader',Georgia,serif; font-style:italic;
-    font-weight:600; font-size:15px; color:var(--ink); background:var(--paper-hi);
-    border:1px solid var(--hair); border-radius:999px; padding:6px 13px;
-  }
-  .scr.paper .pill{background:var(--paper-hi)}
-  .ava-sm{width:30px; height:30px; border-radius:999px; background:var(--paper-hi); border:1px solid var(--hair)}
-
-  .beamwrap{display:flex; justify-content:center; padding:4px 0 0}
-  .beamwrap svg{width:min(280px,86%); height:auto; display:block}
-  .beamnote{font-family:'Newsreader',Georgia,serif; font-style:italic; font-size:13.5px; color:var(--muted); text-align:center; margin-top:-4px}
-
-  .lst-h{font-size:10.5px; font-weight:700; letter-spacing:.09em; color:var(--muted); margin:14px 0 2px}
-  .ci{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:11px 0; border-bottom:1px solid rgba(38,32,26,.08)}
-  .ci-t{font-family:'Newsreader',Georgia,serif; font-size:16.5px; color:var(--ink); line-height:1.15}
-  .ci-s{font-size:11px; color:var(--muted); margin-top:2px; letter-spacing:.01em}
-  .ci-a{font-family:'Newsreader',Georgia,serif; font-size:16px; color:var(--ink); white-space:nowrap}
-  .ci-a.owe{color:var(--terra)}
-  .bal{
-    display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:14px;
-    background:var(--paper-card); border:1px solid var(--hair); border-radius:14px; padding:13px 15px;
-  }
-  .bal-k{font-size:10.5px; font-weight:700; letter-spacing:.09em; color:var(--muted)}
-  .bal-v{font-family:'Newsreader',Georgia,serif; font-size:15.5px; color:var(--ink); margin-top:3px}
-  .bal-amt{font-family:'Newsreader',Georgia,serif; font-size:26px; color:var(--terra); line-height:1}
-
-  .scr-kick{font-size:10.5px; font-weight:700; letter-spacing:.11em; color:var(--pine); padding:26px 20px 0}
-  .scr-kick.clay{color:var(--terra)}
-  .scr-h{
-    font-family:'Newsreader',Georgia,serif; font-weight:500; font-size:30px; line-height:1.08;
-    color:var(--ink); margin:8px 0 0; padding:0 20px;
-  }
-  .settle-card{
-    margin:22px 20px 0; background:var(--paper-card); border:1px solid var(--hair); border-radius:18px;
-    padding:20px 18px; text-align:center;
-  }
-  .settle-who{display:flex; align-items:center; justify-content:center; gap:12px}
-  .ava{width:38px; height:38px; border-radius:999px; color:#fff; font-weight:700; font-size:15px;
-    display:flex; align-items:center; justify-content:center}
-  .ava.clay{background:var(--terra)} .ava.pine{background:var(--pine)}
-  .settle-who .arrow{color:var(--muted); font-size:18px}
-  .settle-dir{font-size:11.5px; font-weight:700; letter-spacing:.09em; color:var(--muted); margin-top:14px}
-  .settle-amt{font-family:'Newsreader',Georgia,serif; font-size:42px; color:var(--ink); line-height:1; margin-top:4px}
-  .scr-note{font-family:'Newsreader',Georgia,serif; font-style:italic; font-size:14px; color:var(--muted); text-align:center; margin:18px 20px 0; line-height:1.5}
-  .scr-btn{
-    margin:20px 20px 0; border-radius:14px; padding:15px 0; text-align:center;
-    font-family:'Newsreader',Georgia,serif; font-size:18px; color:#fff; background:var(--ink);
-  }
-  .scr-btn.pine{background:var(--pine)}
-  .scr-sub{font-size:11.5px; color:var(--muted); text-align:center; margin-top:12px; letter-spacing:.02em}
-
-  .reset-big{text-align:center; margin-top:6px}
-  .reset-amt{font-family:'Newsreader',Georgia,serif; font-size:46px; color:var(--pine); line-height:1}
-  .reset-lbl{font-size:12px; font-weight:700; letter-spacing:.08em; color:var(--muted); margin-top:6px}
-
-  /* ── ETHOS band ── */
-  .ethos{padding:var(--gap) 0; text-align:center}
-  .ethos .inner{width:min(680px,100%); margin:0 auto}
-  .ethos-statement{
-    font-family:'Newsreader',Georgia,serif; font-weight:400; font-style:italic;
-    font-size:clamp(22px,3.4vw,32px); line-height:1.34; letter-spacing:-.005em; color:var(--ink); margin:0;
-  }
-  .ethos-statement b{font-style:normal; font-weight:500; color:var(--terra)}
-  .values{display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top:34px}
-  .values span{
-    font-size:12.5px; font-weight:600; letter-spacing:.04em; color:var(--ink-soft);
-    background:var(--paper-card); border:1px solid var(--hair); border-radius:999px; padding:9px 16px;
-  }
-  .values span b{color:var(--pine); font-weight:700}
-
-  /* ── CLOSING ── */
-  .close{padding:0 0 calc(var(--gap) + 10px); text-align:center}
-  .close .inner{width:min(640px,100%); margin:0 auto}
-  .close blockquote{
-    font-family:'Newsreader',Georgia,serif; font-style:italic; font-weight:400;
-    font-size:clamp(24px,4.2vw,40px); line-height:1.22; letter-spacing:-.01em;
-    margin:0 0 30px; color:var(--ink);
-  }
-  .close blockquote span{color:var(--terra)}
-
-  footer{
-    position:relative; z-index:1; text-align:center; padding:34px 0 40px;
-    font-size:12.5px; color:var(--muted); letter-spacing:.02em; border-top:1px solid var(--hair);
-    margin-top:20px;
-  }
-  footer a{color:var(--muted); text-decoration:none}
-  footer a:focus-visible{outline:2px solid var(--pine); outline-offset:3px; border-radius:3px}
-  .pulse{width:8px;height:8px;border-radius:50%;background:var(--pine); display:inline-block; vertical-align:middle; margin-right:7px;
-    box-shadow:0 0 0 0 rgba(55,117,109,.5); animation:pulse 2.4s ease-out infinite}
-  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(55,117,109,.45)}70%{box-shadow:0 0 0 9px rgba(55,117,109,0)}100%{box-shadow:0 0 0 0 rgba(55,117,109,0)}}
-
-  /* ── ENHANCED (JS + motion): pinned single-stage crossfade ── */
-  html.js-motion .showcase-stage{height:100vh; min-height:560px}
-  html.js-motion .stage-inner{
-    position:absolute; inset:0; display:block; gap:0;
-  }
-  html.js-motion .beat{
-    position:absolute; inset:0; width:auto;
-    grid-template-columns:1fr 1fr; gap:clamp(40px,6vw,84px);
-    align-items:center; text-align:left; justify-items:stretch;
-    margin:0 auto; padding:0 clamp(24px,6vw,72px); max-width:1060px; left:0; right:0;
-  }
-  html.js-motion .beat .beat-caption{justify-self:end; max-width:32ch}
-  html.js-motion .beat .phone{justify-self:start;
-    --sw:min(300px, calc(74vh * 515 / 1120));
-  }
-  @media (max-width:760px){
-    html.js-motion .showcase-stage{height:100svh}
-    html.js-motion .beat{grid-template-columns:1fr; text-align:center; justify-items:center;
-      gap:22px; padding:0 22px; align-content:center}
-    html.js-motion .beat .beat-caption{justify-self:center; order:-1; max-width:34ch}
-    html.js-motion .beat .phone{justify-self:center; --sw:min(58vw, calc(52vh * 515 / 1120))}
-    html.js-motion .beat-caption h3{font-size:clamp(22px,6vw,30px)}
-    html.js-motion .beat-caption p{display:none}
-  }
-
-  @media (max-width:760px){
-    .beat{gap:26px}
-    .show-head h2{max-width:15ch}
-  }
-  @media (prefers-reduced-motion:reduce){
-    .item,.scale i,.pulse,.cta .arw,.cue span::after{animation:none!important; opacity:1!important; transform:none!important}
+</style>
+<style>
+  /* vanilla port: hover / active / focus states (from the design's inline interaction props) */
+  .dc-cta-hero:hover{background:#7A3A1D}
+  .dc-cta-hero:active{transform:translateY(1px)}
+  .dc-trade:hover{background:rgba(38,32,26,.06)}
+  .dc-settle:hover{background:#7A3A1D}
+  .dc-submit:hover{background:#7A3A1D}
+  button:focus-visible, input:focus-visible, a:focus-visible{outline:2px solid #37756D !important; outline-offset:3px}
+  /* graceful degradation: if JS/GSAP never runs, the reveal scene stays visible (never permanently hidden) */
+  html.dc-nojs #dc-reveal{opacity:1 !important; transform:none !important}
+  @media (prefers-reduced-motion: reduce){
     html{scroll-behavior:auto}
   }
 </style>
 </head>
 <body>
-  <!-- HERO -->
-  <header class="hero">
-    <div class="wrap inner">
-      <div class="scale item d1" aria-hidden="true"><i></i><i></i></div>
-      <div class="brand item d2">Even<span class="dot">.</span></div>
-      <h1 class="item d3">Money, settled <em>weekly</em>.</h1>
-      <p class="sub item d4">A calmer way to keep things fair with the people you share life with — no spreadsheets, no awkward reminders.</p>
-      <div class="cta-row item d5">
-        <button class="cta" id="cta-hero" data-placement="hero" type="button">Count me in<span class="arw" aria-hidden="true">→</span></button>
-        <span class="cta-note" id="note-hero" aria-live="polite"></span>
-      </div>
-      <div class="cue item d6" aria-hidden="true">See it settle<span></span></div>
+
+<!-- ═══════════════════ HERO ═══════════════════ -->
+<section data-section-id="hero" id="dc-sec-hero" style="position:relative; min-height:100vh; overflow:hidden; background:#E9E1D2; display:flex; align-items:center; justify-content:center; padding:80px 24px;">
+  <div style="position:absolute; inset:0; overflow:hidden; pointer-events:none;">
+    <div data-jitter style="--r:-7deg; position:absolute; left:6%; top:16%; background:#FBF7EE; border:1px solid rgba(38,32,26,.14); border-radius:10px; padding:10px 14px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:12.5px; color:#6E6353; box-shadow:0 8px 18px rgba(38,32,26,.08); animation:chaosJitter 4.2s ease-in-out infinite;">Energy bill · due Fri</div>
+    <div data-jitter style="--r:5deg; position:absolute; left:74%; top:12%; background:#FBF7EE; border:1px solid rgba(38,32,26,.14); border-radius:10px; padding:10px 14px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:12.5px; color:#6E6353; box-shadow:0 8px 18px rgba(38,32,26,.08); animation:chaosJitter 3.6s ease-in-out infinite .3s;">Dentist · Tue 2:30</div>
+    <div data-jitter style="--r:4deg; position:absolute; left:12%; top:68%; background:#FBF7EE; border:1px solid rgba(38,32,26,.14); border-radius:10px; padding:10px 14px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:12.5px; color:#6E6353; box-shadow:0 8px 18px rgba(38,32,26,.08); animation:chaosJitter 3.9s ease-in-out infinite .6s;">Two events, same time Sat</div>
+    <div data-jitter style="--r:-4deg; position:absolute; left:80%; top:70%; background:#FBF7EE; border:1px solid rgba(38,32,26,.14); border-radius:10px; padding:10px 14px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:12.5px; color:#6E6353; box-shadow:0 8px 18px rgba(38,32,26,.08); animation:chaosJitter 4.6s ease-in-out infinite .9s;">Renewal in 4 days</div>
+    <div data-jitter style="--r:8deg; position:absolute; left:44%; top:8%; background:#FBF7EE; border:1px solid rgba(38,32,26,.14); border-radius:10px; padding:10px 14px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:12.5px; color:#6E6353; box-shadow:0 8px 18px rgba(38,32,26,.08); animation:chaosJitter 3.4s ease-in-out infinite 1.1s;">Recycling — still out</div>
+    <div data-jitter style="--r:-6deg; position:absolute; left:4%; top:42%; background:#FBF7EE; border:1px solid rgba(38,32,26,.14); border-radius:10px; padding:10px 14px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:12.5px; color:#6E6353; box-shadow:0 8px 18px rgba(38,32,26,.08); animation:chaosJitter 4.9s ease-in-out infinite .2s;">"Did you deal with the—"</div>
+    <div data-jitter style="--r:6deg; position:absolute; left:86%; top:42%; background:#FBF7EE; border:1px solid rgba(38,32,26,.14); border-radius:10px; padding:10px 14px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:12.5px; color:#6E6353; box-shadow:0 8px 18px rgba(38,32,26,.08); animation:chaosJitter 4.1s ease-in-out infinite .7s;">Insurance — reply needed</div>
+    <div data-jitter style="--r:-3deg; position:absolute; left:48%; top:86%; background:#FBF7EE; border:1px solid rgba(38,32,26,.14); border-radius:10px; padding:10px 14px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:12.5px; color:#6E6353; box-shadow:0 8px 18px rgba(38,32,26,.08); animation:chaosJitter 3.7s ease-in-out infinite 1.3s;">Vet — Thu, unconfirmed</div>
+  </div>
+  <div style="position:relative; z-index:1; width:min(680px,100%); text-align:center;">
+    <div style="display:inline-flex; align-items:center; gap:7px; font-family:'Newsreader',Georgia,serif; font-style:italic; font-weight:600; font-size:20px; color:#26201A; margin-bottom:28px;">
+      <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><line x1="1.5" y1="6.8" x2="14.5" y2="4.6" stroke="#26201A" stroke-width="1.6" stroke-linecap="round"></line><path d="M8 6.4 L10.6 10.6 H5.4 Z" fill="none" stroke="#26201A" stroke-width="1.5" stroke-linejoin="round"></path><line x1="4.5" y1="13.4" x2="11.5" y2="13.4" stroke="#26201A" stroke-width="1.4" stroke-linecap="round"></line></svg>
+      Even
     </div>
-  </header>
-
-  <!-- SHOWCASE — scroll-driven product demo -->
-  <section class="showcase" aria-label="How Even works">
-    <div class="wrap show-head">
-      <div class="eyebrow">How it works</div>
-      <h2 data-split>Watch a week settle <em>itself</em>.</h2>
-      <div class="levelbars" aria-hidden="true"><i></i><i></i></div>
+    <h1 id="dc-hero-headline" style="font-family:'Newsreader',Georgia,serif; font-weight:500; font-size:clamp(32px,6vw,54px); line-height:1.14; letter-spacing:-.01em; color:#26201A; margin:0; text-wrap:balance;">Somewhere between the energy bill and the dentist reminder, you became the household's memory.</h1>
+    <p id="dc-hero-sub" style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:clamp(15px,2vw,17px); color:#6E6353; line-height:1.6; max-width:38ch; margin:22px auto 0; text-wrap:pretty;">Not because you're organized. Because someone had to be.</p>
+    <button id="dc-hero-cta" class="dc-cta-hero" type="button" style="margin-top:38px; appearance:none; border:0; cursor:pointer; font-family:'Source Sans 3',system-ui,sans-serif; font-weight:600; font-size:15px; color:#F6F1E6; background:#A6552F; padding:15px 30px; border-radius:999px; box-shadow:0 12px 26px rgba(122,58,29,.22); transition:background .3s ease, transform .2s ease;"><span id="dc-hero-cta-label">Fall in</span> <span aria-hidden="true">↓</span></button>
+    <div aria-hidden="true" style="margin-top:46px; display:inline-flex; flex-direction:column; align-items:center; gap:8px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:11px; letter-spacing:.22em; text-transform:uppercase; color:#8A7D69;">
+      <span style="width:1px; height:34px; background:linear-gradient(#D8CDB8,transparent); position:relative; overflow:hidden; display:block;"><span style="content:''; position:absolute; inset:0; background:#A6552F; animation:cueRun 2.2s cubic-bezier(.6,.05,.3,1) infinite; display:block;"></span></span>
     </div>
-
-    <div class="showcase-stage">
-      <div class="stage-inner">
-
-        <!-- BEAT 1 — the running balance -->
-        <article class="beat" data-beat="0">
-          <div class="beat-caption">
-            <div class="beat-no">01</div>
-            <h3 data-cap>Always know where you stand.</h3>
-            <p>Every shared cost lands in one running balance — no mental math, no “who paid last time”. Just a clear, honest number for each of you.</p>
-          </div>
-          <div class="phone" role="img" aria-label="The Even app showing this week's shared costs and a running balance: Beste owes Umur nineteen euros ten.">
-            <div class="screen">
-              <div class="island"></div><div class="glare"></div>
-              <div class="scr">
-                <div class="scr-stat"><time>12:21</time><div class="sig" aria-hidden="true"><i></i><i class="f"></i></div></div>
-                <div class="scr-top">
-                  <span class="pill">
-                    <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true"><line x1="1.5" y1="6.8" x2="14.5" y2="4.6" stroke="#26201A" stroke-width="1.6" stroke-linecap="round"/><path d="M8 6.4 L10.6 10.6 H5.4 Z" fill="none" stroke="#26201A" stroke-width="1.4" stroke-linejoin="round"/><line x1="4.5" y1="13.4" x2="11.5" y2="13.4" stroke="#26201A" stroke-width="1.3" stroke-linecap="round"/></svg>
-                    Even</span>
-                  <span class="ava-sm"></span>
-                </div>
-                <div class="beamwrap">
-                  <svg viewBox="0 0 460 250" aria-hidden="true">
-                    <line x1="230" y1="92" x2="230" y2="222" stroke="#26201A" stroke-width="2.2"/>
-                    <line x1="186" y1="222" x2="274" y2="222" stroke="#26201A" stroke-width="2.2" stroke-linecap="round"/>
-                    <g transform="rotate(-8 230 92)">
-                      <line x1="72" y1="92" x2="388" y2="92" stroke="#26201A" stroke-width="3" stroke-linecap="round"/>
-                      <line x1="72" y1="92" x2="30" y2="136" stroke="#26201A" stroke-width="1.6"/>
-                      <line x1="72" y1="92" x2="114" y2="136" stroke="#26201A" stroke-width="1.6"/>
-                      <line x1="30" y1="136" x2="114" y2="136" stroke="#26201A" stroke-width="1.6" stroke-linecap="round"/>
-                      <line x1="388" y1="92" x2="346" y2="136" stroke="#26201A" stroke-width="1.6"/>
-                      <line x1="388" y1="92" x2="430" y2="136" stroke="#26201A" stroke-width="1.6"/>
-                      <line x1="346" y1="136" x2="430" y2="136" stroke="#26201A" stroke-width="1.6" stroke-linecap="round"/>
-                      <circle cx="230" cy="92" r="4.5" fill="#26201A"/>
-                      <circle cx="60" cy="126" r="7" fill="#A6552F"/>
-                    </g>
-                    <text x="72" y="60" text-anchor="middle" font-family="Newsreader, Georgia, serif" font-size="38" fill="#A6552F">57</text>
-                    <text x="388" y="60" text-anchor="middle" font-family="Newsreader, Georgia, serif" font-size="38" fill="#37756D">43</text>
-                    <text x="72" y="162" text-anchor="middle" font-family="'Source Sans 3', sans-serif" font-size="13" font-weight="700" letter-spacing="1" fill="#A6552F">UMUR</text>
-                    <text x="388" y="162" text-anchor="middle" font-family="'Source Sans 3', sans-serif" font-size="13" font-weight="700" letter-spacing="1" fill="#37756D">BESTE</text>
-                  </svg>
-                </div>
-                <div class="beamnote">Leaning Umur — dinner tipped it.</div>
-                <div class="scr-in">
-                  <div class="lst-h">THIS WEEK · SHARED</div>
-                  <div class="ci"><div><div class="ci-t">Groceries</div><div class="ci-s">Albert Heijn · Umur paid</div></div><div class="ci-a">€54.60</div></div>
-                  <div class="ci"><div><div class="ci-t">Energy</div><div class="ci-s">Vattenfall · Umur paid</div></div><div class="ci-a">€31.60</div></div>
-                  <div class="ci"><div><div class="ci-t">Dinner</div><div class="ci-s">Toscanini · Beste paid</div></div><div class="ci-a">€48.00</div></div>
-                  <div class="bal">
-                    <div><div class="bal-k">RUNNING BALANCE</div><div class="bal-v">Beste owes Umur</div></div>
-                    <div class="bal-amt">€19.10</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="btn l1" aria-hidden="true"></div><div class="btn l2" aria-hidden="true"></div><div class="btn r1" aria-hidden="true"></div>
-        </article>
-
-        <!-- BEAT 2 — the weekly settle-up nudge -->
-        <article class="beat" data-beat="1">
-          <div class="beat-caption">
-            <div class="beat-no">02</div>
-            <h3 data-cap>One gentle nudge a week.</h3>
-            <p>Even sums the week and sends a single, friendly settle-up. No chasing, no awkward texts — you both square up at the same calm moment.</p>
-          </div>
-          <div class="phone" role="img" aria-label="The Even app's Sunday settle-up: this week evened out to nineteen euros ten from Beste to Umur, with one Settle up button.">
-            <div class="screen">
-              <div class="island"></div><div class="glare"></div>
-              <div class="scr paper">
-                <div class="scr-stat"><time>18:04</time><div class="sig" aria-hidden="true"><i></i><i class="f"></i></div></div>
-                <div class="scr-kick">SUNDAY · SETTLE-UP</div>
-                <div class="scr-h">This week<br>evened out.</div>
-                <div class="settle-card">
-                  <div class="settle-who">
-                    <span class="ava pine">B</span>
-                    <span class="arrow" aria-hidden="true">→</span>
-                    <span class="ava clay">U</span>
-                  </div>
-                  <div class="settle-dir">BESTE PAYS UMUR</div>
-                  <div class="settle-amt">€19.10</div>
-                </div>
-                <p class="scr-note">One tap and you’re square. It’s the only money message you’ll get all week.</p>
-                <div class="scr-btn">Settle up €19.10</div>
-                <div class="scr-sub">or remind me tomorrow</div>
-              </div>
-            </div>
-          </div>
-          <div class="btn l1" aria-hidden="true"></div><div class="btn l2" aria-hidden="true"></div><div class="btn r1" aria-hidden="true"></div>
-        </article>
-
-        <!-- BEAT 3 — reset to zero -->
-        <article class="beat" data-beat="2">
-          <div class="beat-caption">
-            <div class="beat-no">03</div>
-            <h3 data-cap>Every week starts clean.</h3>
-            <p>Once you’re settled, the slate resets to zero. Debts never pile into a scary spreadsheet — the balance stays small, current, and fair.</p>
-          </div>
-          <div class="phone" role="img" aria-label="The Even app after settling: the balance is level again at zero euros. You're even.">
-            <div class="screen">
-              <div class="island"></div><div class="glare"></div>
-              <div class="scr paper">
-                <div class="scr-stat"><time>18:05</time><div class="sig" aria-hidden="true"><i></i><i class="f"></i></div></div>
-                <div class="scr-kick clay">RESET · SUNDAY RITUAL</div>
-                <div class="beamwrap" style="margin-top:6px">
-                  <svg viewBox="0 0 460 250" aria-hidden="true">
-                    <line x1="230" y1="92" x2="230" y2="222" stroke="#26201A" stroke-width="2.2"/>
-                    <line x1="186" y1="222" x2="274" y2="222" stroke="#26201A" stroke-width="2.2" stroke-linecap="round"/>
-                    <g id="beam3">
-                      <line x1="72" y1="92" x2="388" y2="92" stroke="#26201A" stroke-width="3" stroke-linecap="round"/>
-                      <line x1="72" y1="92" x2="30" y2="136" stroke="#26201A" stroke-width="1.6"/>
-                      <line x1="72" y1="92" x2="114" y2="136" stroke="#26201A" stroke-width="1.6"/>
-                      <line x1="30" y1="136" x2="114" y2="136" stroke="#26201A" stroke-width="1.6" stroke-linecap="round"/>
-                      <line x1="388" y1="92" x2="346" y2="136" stroke="#26201A" stroke-width="1.6"/>
-                      <line x1="388" y1="92" x2="430" y2="136" stroke="#26201A" stroke-width="1.6"/>
-                      <line x1="346" y1="136" x2="430" y2="136" stroke="#26201A" stroke-width="1.6" stroke-linecap="round"/>
-                      <circle cx="230" cy="92" r="4.5" fill="#26201A"/>
-                    </g>
-                    <text x="72" y="60" text-anchor="middle" font-family="Newsreader, Georgia, serif" font-size="38" fill="#A6552F">50</text>
-                    <text x="388" y="60" text-anchor="middle" font-family="Newsreader, Georgia, serif" font-size="38" fill="#37756D">50</text>
-                    <text x="72" y="162" text-anchor="middle" font-family="'Source Sans 3', sans-serif" font-size="13" font-weight="700" letter-spacing="1" fill="#A6552F">UMUR</text>
-                    <text x="388" y="162" text-anchor="middle" font-family="'Source Sans 3', sans-serif" font-size="13" font-weight="700" letter-spacing="1" fill="#37756D">BESTE</text>
-                  </svg>
-                </div>
-                <div class="reset-big">
-                  <div class="reset-amt" id="settleNum">€0.00</div>
-                  <div class="reset-lbl">YOU’RE EVEN ✓</div>
-                </div>
-                <div class="scr-btn pine">Even again ✓</div>
-                <p class="scr-note">Phones down. See you next Sunday.</p>
-              </div>
-            </div>
-          </div>
-          <div class="btn l1" aria-hidden="true"></div><div class="btn l2" aria-hidden="true"></div><div class="btn r1" aria-hidden="true"></div>
-        </article>
-
-      </div>
-    </div>
-  </section>
-
-  <!-- ETHOS -->
-  <section class="ethos">
-    <div class="wrap inner">
-      <div class="eyebrow">Why Even</div>
-      <p class="ethos-statement" data-split>Sharing a home shouldn’t mean keeping score. Even remembers the small stuff so you don’t have to — and hands you back one <b>easy, honest number</b> once a week.</p>
-      <div class="values">
-        <span><b>Fair</b> by design</span>
-        <span><b>One</b> weekly moment</span>
-        <span><b>Always</b> back to zero</span>
-      </div>
-    </div>
-  </section>
-
-  <!-- CLOSING -->
-  <section class="close">
-    <div class="wrap inner">
-      <blockquote data-split>Fairness shouldn’t feel like <span>bookkeeping</span>.</blockquote>
-      <div class="cta-row">
-        <button class="cta" id="cta-foot" data-placement="footer" type="button">Count me in<span class="arw" aria-hidden="true">→</span></button>
-        <span class="cta-note" id="note-foot" aria-live="polite"></span>
-      </div>
-    </div>
-  </section>
-
-  <footer>
-    <span class="pulse" aria-hidden="true"></span>Coming soon · <a href="https://thisiseven.app">thisiseven.app</a> · © 2026 Even
-  </footer>
+  </div>
+</section>
 
 <script>
-/* ══ interest CTA + analytics — PRESERVED EXACTLY (do not alter) ══ */
+/* variant applied inline (right after hero) so bucket-B visitors get no copy flash */
 (function(){
-  // ── reveal-on-scroll: content is visible by default; this only enhances ──
-  var root=document.documentElement;
-  if(!matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window){
-    root.classList.add('js');
-    var io=new IntersectionObserver(function(es){es.forEach(function(e){
-      if(e.isIntersecting){e.target.classList.add('in'); io.unobserve(e.target);}});},
-      {rootMargin:'0px 0px -8% 0px', threshold:.12});
-    document.querySelectorAll('.reveal').forEach(function(el){io.observe(el);});
-  }
-
-  // ── analytics (PostHog) — demand measurement for the interest CTA + A/B ──
-  // NOTE(Root 2026-07-20): key defaults to the known EU project; a DEDICATED
-  // thisiseven PostHog project key is recommended so demand data isn't mixed.
-  var POSTHOG_KEY = "phc_AM2NcPD9gZuexgZddQFxp67CbDP6gN4QFJKYM4WcVALJ";
-  var POSTHOG_HOST = "https://eu.posthog.com";
-
-  // lightweight A/B bucket (sticky), sent with every event so variants segment cleanly
-  var variant = localStorage.getItem("even_variant");
-  if(!variant){ variant = Math.random() < 0.5 ? "A" : "B"; localStorage.setItem("even_variant", variant); }
-
-  var PH = null;
-  try{
-    !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.async=!0,p.src=s.api_host+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init capture register register_once register_for_session unregister unregister_for_session getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey getNextSurveyStep identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty createPersonProfile opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing debug".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
-    window.posthog.init(POSTHOG_KEY,{api_host:POSTHOG_HOST, person_profiles:"identified_only", capture_pageview:true});
-    window.posthog.register({site:"thisiseven.app", ab_variant:variant});
-    PH = window.posthog;
-  }catch(e){ /* analytics must never break the page */ }
-
-  // ── interest CTA: fire the demand event, morph to a calm confirmation ──
-  function wire(btnId, noteId){
-    var b=document.getElementById(btnId), n=document.getElementById(noteId);
-    if(!b) return;
-    b.addEventListener("click", function(){
-      var placement=b.getAttribute("data-placement")||"unknown";
-      try{ if(PH) PH.capture("early_access_interest",{placement:placement, ab_variant:variant}); }catch(e){}
-      b.setAttribute("data-done","1");
-      b.innerHTML='You’re counted ✓';
-      if(n) n.textContent="Nice — we’ll make it worth the wait.";
-      // mirror to the other CTA so both reflect the state
-      document.querySelectorAll('.cta').forEach(function(o){ if(o!==b){o.setAttribute("data-done","1"); o.innerHTML='You’re counted ✓';} });
-    });
-  }
-  wire("cta-hero","note-hero");
-  wire("cta-foot","note-foot");
-
-  // if a returning visitor already signalled, reflect it
-  if(localStorage.getItem("even_interest")==="1"){
-    document.querySelectorAll('.cta').forEach(function(o){o.setAttribute("data-done","1"); o.innerHTML='You’re counted ✓';});
-  }
-  document.querySelectorAll('.cta').forEach(function(o){o.addEventListener("click",function(){localStorage.setItem("even_interest","1");});});
+  var v = null;
+  try{ v = localStorage.getItem('even_variant'); }catch(e){}
+  if(!v){ v = Math.random() < 0.5 ? 'A' : 'B'; try{ localStorage.setItem('even_variant', v); }catch(e){} }
+  var q = null;
+  try{ q = new URLSearchParams(location.search).get('variant'); }catch(e){}
+  var hv = (q === 'money' || q === 'household') ? q : (v === 'B' ? 'money' : 'household');
+  window.__even = { bucket: v, heroVariant: hv };
+  var variants = {
+    household: { headline: "Somewhere between the energy bill and the dentist reminder, you became the household's memory.", sub: "Not because you're organized. Because someone had to be.", cta: 'Fall in' },
+    money: { headline: 'Money, settled weekly.', sub: 'A calmer way to keep things fair with the people you share life with.', cta: 'Count me in' }
+  };
+  var c = variants[hv] || variants.household;
+  var h = document.getElementById('dc-hero-headline'); if (h) h.textContent = c.headline;
+  var s = document.getElementById('dc-hero-sub'); if (s) s.textContent = c.sub;
+  var l = document.getElementById('dc-hero-cta-label'); if (l) l.textContent = c.cta;
 })();
 </script>
 
-<!-- GSAP (free, pinned to version, cdnjs) — loaded after the CTA so analytics never depends on it -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.0/gsap.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.0/ScrollTrigger.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.0/SplitText.min.js"></script>
+<!-- ═══════════════════ PROBLEM / AGITATE ═══════════════════ -->
+<section data-section-id="problem" id="dc-sec-problem" style="position:relative; background:#E9E1D2; padding:clamp(80px,12vh,130px) 24px; overflow:hidden;">
+  <div style="max-width:620px; margin:0 auto; text-align:center; position:relative; z-index:1;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:12px; font-weight:600; letter-spacing:.2em; text-transform:uppercase; color:#8A7D69; margin-bottom:16px;">The pile</div>
+    <h2 style="font-family:'Newsreader',Georgia,serif; font-weight:500; font-size:clamp(26px,4.4vw,42px); line-height:1.14; letter-spacing:-.01em; color:#26201A; margin:0;">The pile you carry that no one can see.</h2>
+  </div>
+
+  <div style="max-width:900px; margin:56px auto 0; position:relative; z-index:1;">
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:18px 22px;">
+      <div style="transform:rotate(-2deg); background:#FBF7EE; border:1px solid rgba(38,32,26,.14); border-radius:12px; padding:18px 20px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:14.5px; line-height:1.5; color:#26201A; box-shadow:0 8px 20px rgba(38,32,26,.06);">A bill that needs a reply, not just a payment.</div>
+      <div style="transform:rotate(1.5deg); background:#FBF7EE; border:1px solid rgba(38,32,26,.14); border-radius:12px; padding:18px 20px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:14.5px; line-height:1.5; color:#26201A; box-shadow:0 8px 20px rgba(38,32,26,.06);">A renewal that auto-charges — unless somebody remembers.</div>
+      <div style="transform:rotate(-1deg); background:#FBF7EE; border:1px solid rgba(38,32,26,.14); border-radius:12px; padding:18px 20px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:14.5px; line-height:1.5; color:#26201A; box-shadow:0 8px 20px rgba(38,32,26,.06);">An appointment confirmed by email — but never confirmed to each other.</div>
+      <div style="transform:rotate(2.5deg); background:#FBF7EE; border:1px solid rgba(38,32,26,.14); border-radius:12px; padding:18px 20px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:14.5px; line-height:1.5; color:#26201A; box-shadow:0 8px 20px rgba(38,32,26,.06);">A chore that gets done by whoever cracks first.</div>
+      <div style="transform:rotate(-3deg); background:#FBF7EE; border:1px solid rgba(38,32,26,.14); border-radius:12px; padding:18px 20px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:14.5px; line-height:1.5; color:#26201A; box-shadow:0 8px 20px rgba(38,32,26,.06);">"Did you deal with the—" on top of the thing itself.</div>
+      <div style="transform:rotate(1deg); background:#FBF7EE; border:1px solid rgba(38,32,26,.14); border-radius:12px; padding:18px 20px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:14.5px; line-height:1.5; color:#26201A; box-shadow:0 8px 20px rgba(38,32,26,.06);">Nobody's lazy. There's just no single shared object you can both point to.</div>
+    </div>
+  </div>
+
+  <div style="max-width:620px; margin:64px auto 0; text-align:center; position:relative; z-index:1;">
+    <p style="font-family:'Newsreader',Georgia,serif; font-style:italic; font-weight:400; font-size:clamp(22px,3.2vw,30px); line-height:1.32; color:#26201A; margin:0;">Everything above is yours. Alone. All the time.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════ PORTAL ═══════════════════ -->
+<div id="dc-portal-wrap" data-section-id="portal_complete" style="position:relative; height:340vh;">
+  <div id="dc-portal-stage" style="position:sticky; top:0; height:100vh; overflow:hidden; background:#26201A;">
+
+    <div id="dc-frag-0" data-frag style="position:absolute; left:10%; top:20%; background:#FBF7EE; border-radius:10px; padding:10px 14px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:12.5px; color:#6E6353;">Energy bill · due Fri</div>
+    <div id="dc-frag-1" data-frag style="position:absolute; left:70%; top:16%; background:#FBF7EE; border-radius:10px; padding:10px 14px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:12.5px; color:#6E6353;">Dentist · Tue 2:30</div>
+    <div id="dc-frag-2" data-frag style="position:absolute; left:16%; top:64%; background:#FBF7EE; border-radius:10px; padding:10px 14px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:12.5px; color:#6E6353;">Two events, same time</div>
+    <div id="dc-frag-3" data-frag style="position:absolute; left:76%; top:66%; background:#FBF7EE; border-radius:10px; padding:10px 14px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:12.5px; color:#6E6353;">Renewal in 4 days</div>
+    <div id="dc-frag-4" data-frag style="position:absolute; left:42%; top:12%; background:#FBF7EE; border-radius:10px; padding:10px 14px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:12.5px; color:#6E6353;">Recycling — still out</div>
+    <div id="dc-frag-5" data-frag style="position:absolute; left:6%; top:42%; background:#FBF7EE; border-radius:10px; padding:10px 14px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:12.5px; color:#6E6353;">"Did you deal with the—"</div>
+    <div id="dc-frag-6" data-frag style="position:absolute; left:82%; top:40%; background:#FBF7EE; border-radius:10px; padding:10px 14px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:12.5px; color:#6E6353;">Insurance — reply needed</div>
+    <div id="dc-frag-7" data-frag style="position:absolute; left:46%; top:82%; background:#FBF7EE; border-radius:10px; padding:10px 14px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:12.5px; color:#6E6353;">Vet — unconfirmed</div>
+    <div id="dc-frag-8" data-frag style="position:absolute; left:30%; top:36%; background:#FBF7EE; border-radius:10px; padding:10px 14px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:12.5px; color:#6E6353;">Permit — expires soon</div>
+    <div id="dc-frag-9" data-frag style="position:absolute; left:58%; top:52%; background:#FBF7EE; border-radius:10px; padding:10px 14px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:12.5px; color:#6E6353;">Rent — due the 1st</div>
+
+    <div id="dc-aperture" style="position:absolute; left:50%; top:50%; width:250vmax; height:250vmax; margin-left:-125vmax; margin-top:-125vmax; border-radius:50%; background:radial-gradient(circle,#17130E 0%,#211B15 55%,#26201A 100%); transform:scale(0.01); will-change:transform;"></div>
+
+    <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; padding:0 24px;">
+      <div id="dc-portal-line" style="opacity:0; font-family:'Newsreader',Georgia,serif; font-style:italic; font-size:clamp(20px,3.2vw,30px); color:#F6F1E6; text-align:center;">Then, everything lets go.</div>
+    </div>
+
+    <div id="dc-reveal" style="position:absolute; inset:0; opacity:0; transform:scale(1.08); background:#211B15; overflow:hidden;">
+      <div style="position:absolute; inset:0; background:linear-gradient(180deg,#211B15 0%,#39301F 55%,#F6F1E6 100%);"></div>
+      <svg id="dc-layer-back" viewBox="0 0 720 220" preserveAspectRatio="none" style="position:absolute; left:0; right:0; bottom:0; width:100%; height:48%;">
+        <path d="M0,100 C 100,50 200,130 320,80 C 440,30 560,120 720,70 L720,220 L0,220 Z" fill="#D8CDB8" opacity="0.55"></path>
+      </svg>
+      <svg id="dc-layer-mid" viewBox="0 0 720 220" preserveAspectRatio="none" style="position:absolute; left:0; right:0; bottom:0; width:100%; height:34%;">
+        <path d="M0,120 C 90,160 220,70 340,120 C 460,170 600,80 720,120 L720,220 L0,220 Z" fill="#B8AC99" opacity="0.7"></path>
+      </svg>
+      <svg id="dc-layer-front" viewBox="0 0 720 220" preserveAspectRatio="none" style="position:absolute; left:0; right:0; bottom:0; width:100%; height:20%;">
+        <path d="M0,150 C 120,100 260,170 400,130 C 540,90 640,160 720,130 L720,220 L0,220 Z" fill="#26201A"></path>
+      </svg>
+      <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
+        <div style="display:inline-flex; align-items:center; gap:9px; font-family:'Newsreader',Georgia,serif; font-style:italic; font-weight:600; font-size:28px; color:#F6F1E6;">
+          <svg width="20" height="20" viewBox="0 0 16 16" aria-hidden="true"><line x1="1.5" y1="6.8" x2="14.5" y2="4.6" stroke="#F6F1E6" stroke-width="1.6" stroke-linecap="round"></line><path d="M8 6.4 L10.6 10.6 H5.4 Z" fill="none" stroke="#F6F1E6" stroke-width="1.5" stroke-linejoin="round"></path><line x1="4.5" y1="13.4" x2="11.5" y2="13.4" stroke="#F6F1E6" stroke-width="1.4" stroke-linecap="round"></line></svg>
+          Even
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ REVEAL ═══════════════════ -->
+<section data-section-id="reveal" id="dc-sec-reveal" style="position:relative; background:#F6F1E6; padding:clamp(70px,10vh,110px) 24px;">
+  <div style="max-width:640px; margin:0 auto; text-align:center;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:12px; font-weight:600; letter-spacing:.2em; text-transform:uppercase; color:#8A7D69; margin-bottom:16px;">What even means</div>
+    <p style="font-family:'Newsreader',Georgia,serif; font-style:italic; font-weight:400; font-size:clamp(24px,3.8vw,36px); line-height:1.28; color:#26201A; margin:0;">Even means nothing falls through — and neither of you carries it alone.</p>
+  </div>
+
+  <div style="max-width:420px; margin:56px auto 0; background:#FBF7EE; border:1px solid rgba(38,32,26,.14); border-radius:22px; padding:22px 22px 26px; box-shadow:0 24px 50px rgba(38,32,26,.10);">
+    <div style="display:flex; justify-content:space-between; align-items:baseline;">
+      <h3 style="font-family:'Newsreader',Georgia,serif; font-weight:500; font-size:24px; margin:0; color:#26201A;">Today</h3>
+      <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:11px; font-weight:600; letter-spacing:.1em; color:#8A7D69;">TUE · JUL 21</span>
+    </div>
+
+    <div style="margin-top:16px; background:#F6F1E6; border:1px solid rgba(38,32,26,.10); border-radius:14px; padding:14px 16px;">
+      <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9.5px; font-weight:700; letter-spacing:.14em; color:#A6552F;">NEXT UP</div>
+      <div style="margin-top:4px; font-family:'Newsreader',Georgia,serif; font-size:16.5px; color:#26201A;">Confirm dentist — 2:30pm</div>
+      <div style="margin-top:2px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:11px; color:#8A7D69;">Needs reply · owned by B</div>
+    </div>
+
+    <div style="margin-top:18px;">
+      <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:700; letter-spacing:.13em; color:#8A7D69;">OVERDUE</div>
+      <div style="display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid rgba(38,32,26,.08);">
+        <span style="flex:none; width:22px; height:22px; border-radius:999px; background:#37756D; color:#FBF7EE; display:flex; align-items:center; justify-content:center; font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:700;">B</span>
+        <div style="flex:1; min-width:0; text-align:left;">
+          <div style="font-family:'Newsreader',Georgia,serif; font-size:15px; color:#26201A;">Pay water bill — Q2</div>
+          <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; color:#8A7D69; margin-top:1px;">Gmail · €84.30 · 2 days over</div>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:18px;">
+      <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:700; letter-spacing:.13em; color:#8A7D69;">DUE TODAY</div>
+      <div style="display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid rgba(38,32,26,.08);">
+        <span style="flex:none; width:22px; height:22px; border-radius:999px; background:#A6552F; color:#FBF7EE; display:flex; align-items:center; justify-content:center; font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:700;">A</span>
+        <div style="flex:1; min-width:0; text-align:left;">
+          <div style="font-family:'Newsreader',Georgia,serif; font-size:15px; color:#26201A;">Decide insurance renewal</div>
+          <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; color:#8A7D69; margin-top:1px;">Gmail · due today</div>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid rgba(38,32,26,.08);">
+        <span style="flex:none; width:22px; height:22px; border-radius:999px; background:#37756D; color:#FBF7EE; display:flex; align-items:center; justify-content:center; font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:700;">B</span>
+        <div style="flex:1; min-width:0; text-align:left;">
+          <div style="font-family:'Newsreader',Georgia,serif; font-size:15px; color:#26201A;">Dishes tonight</div>
+          <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; color:#8A7D69; margin-top:1px;">Chore · daily</div>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:18px;">
+      <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:700; letter-spacing:.13em; color:#8A7D69;">WAITING</div>
+      <div style="display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid rgba(38,32,26,.08);">
+        <span style="flex:none; width:22px; height:22px; border-radius:999px; background:#A6552F; color:#FBF7EE; display:flex; align-items:center; justify-content:center; font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:700;">A</span>
+        <div style="flex:1; min-width:0; text-align:left;">
+          <div style="font-family:'Newsreader',Georgia,serif; font-size:15px; color:#26201A;">Vet booster — 4:30pm</div>
+          <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; color:#8A7D69; margin-top:1px;">Calendar · today</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ MECHANISM 1 — INBOX ═══════════════════ -->
+<section data-section-id="inbox" id="dc-sec-inbox" style="position:relative; background:#E9E1D2; padding:clamp(80px,11vh,120px) 24px;">
+  <div style="max-width:620px; margin:0 auto; text-align:center;">
+    <p style="font-family:'Newsreader',Georgia,serif; font-style:italic; font-size:17px; color:#6E6353; margin:0 0 14px;">That bill that needed a reply, not just a payment —</p>
+    <h2 style="font-family:'Newsreader',Georgia,serif; font-weight:500; font-size:clamp(26px,4vw,38px); line-height:1.16; letter-spacing:-.01em; color:#26201A; margin:0;">Gmail becomes drafts. Drafts need your tap.</h2>
+    <p style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:15px; line-height:1.6; color:#6E6353; max-width:44ch; margin:18px auto 0;">Point Even at a Gmail label you create, or let it search for likely household mail on its own — that's a one-time setup, not invisible magic. Either way, what it finds becomes a draft, never a task, until you approve it.</p>
+  </div>
+
+  <div style="max-width:460px; margin:44px auto 0; display:flex; flex-direction:column; gap:12px;">
+    <button id="dc-draft-d1" data-draft="d1" type="button" style="all:unset; box-sizing:border-box; cursor:pointer; text-align:left; background:#FBF7EE; border:1.5px solid rgba(38,32,26,.14); border-radius:14px; padding:16px 18px; transition:background .35s ease, opacity .35s ease, transform .35s ease; opacity:1; transform:scale(1); max-height:140px; overflow:hidden;">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; gap:10px;">
+        <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:700; letter-spacing:.1em; color:#8A7D69;">RIVERSIDE ENERGY</span>
+        <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:700; letter-spacing:.08em; color:#A6552F;">DUE IN 3 DAYS</span>
+      </div>
+      <div style="margin-top:5px; font-family:'Newsreader',Georgia,serif; font-size:16.5px; color:#26201A;">Your July energy bill is ready</div>
+      <div style="margin-top:8px; display:flex; align-items:center; gap:8px;">
+        <span class="dc-check" style="flex:none; width:20px; height:20px; border-radius:999px; border:1.5px solid rgba(38,32,26,.25); background:transparent; display:flex; align-items:center; justify-content:center;">
+          <svg class="dc-check-svg" width="10" height="10" viewBox="0 0 14 14" style="display:none;"><path d="M2.8 7.4l2.9 2.9L11.3 4.4" stroke="#FBF7EE" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </span>
+        <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:11.5px; color:#6E6353;">Pay Riverside Energy — €112.40</span>
+      </div>
+    </button>
+    <button id="dc-draft-d2" data-draft="d2" type="button" style="all:unset; box-sizing:border-box; cursor:pointer; text-align:left; background:#FBF7EE; border:1.5px solid rgba(38,32,26,.14); border-radius:14px; padding:16px 18px; transition:background .35s ease, opacity .35s ease, transform .35s ease; opacity:1; transform:scale(1); max-height:140px; overflow:hidden;">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; gap:10px;">
+        <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:700; letter-spacing:.1em; color:#8A7D69;">BRIGHT SMILE DENTAL</span>
+        <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:700; letter-spacing:.08em; color:#A6552F;">NEEDS REPLY</span>
+      </div>
+      <div style="margin-top:5px; font-family:'Newsreader',Georgia,serif; font-size:16.5px; color:#26201A;">Please confirm your appointment</div>
+      <div style="margin-top:8px; display:flex; align-items:center; gap:8px;">
+        <span class="dc-check" style="flex:none; width:20px; height:20px; border-radius:999px; border:1.5px solid rgba(38,32,26,.25); background:transparent; display:flex; align-items:center; justify-content:center;">
+          <svg class="dc-check-svg" width="10" height="10" viewBox="0 0 14 14" style="display:none;"><path d="M2.8 7.4l2.9 2.9L11.3 4.4" stroke="#FBF7EE" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </span>
+        <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:11.5px; color:#6E6353;">Confirm dentist — Thu 2:30pm</span>
+      </div>
+    </button>
+    <button id="dc-draft-d3" data-draft="d3" type="button" style="all:unset; box-sizing:border-box; cursor:pointer; text-align:left; background:#FBF7EE; border:1.5px solid rgba(38,32,26,.14); border-radius:14px; padding:16px 18px; transition:background .35s ease, opacity .35s ease, transform .35s ease; opacity:1; transform:scale(1); max-height:140px; overflow:hidden;">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; gap:10px;">
+        <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:700; letter-spacing:.1em; color:#8A7D69;">CITY PARKING OFFICE</span>
+        <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:700; letter-spacing:.08em; color:#A6552F;">RENEWS AUTOMATICALLY</span>
+      </div>
+      <div style="margin-top:5px; font-family:'Newsreader',Georgia,serif; font-size:16.5px; color:#26201A;">Your permit renews in 5 days</div>
+      <div style="margin-top:8px; display:flex; align-items:center; gap:8px;">
+        <span class="dc-check" style="flex:none; width:20px; height:20px; border-radius:999px; border:1.5px solid rgba(38,32,26,.25); background:transparent; display:flex; align-items:center; justify-content:center;">
+          <svg class="dc-check-svg" width="10" height="10" viewBox="0 0 14 14" style="display:none;"><path d="M2.8 7.4l2.9 2.9L11.3 4.4" stroke="#FBF7EE" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </span>
+        <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:11.5px; color:#6E6353;">Review parking permit renewal</span>
+      </div>
+    </button>
+  </div>
+
+  <div style="max-width:460px; margin:18px auto 0; text-align:center;">
+    <div id="dc-inbox-pending" style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:11px; color:#8A7D69;">3 drafts pending</div>
+    <p style="margin:10px 0 0; font-family:'Newsreader',Georgia,serif; font-style:italic; font-size:14px; color:#6E6353;">Even can draft the reply. It never sends one without you.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════ MECHANISM 2 — SHARED TASKS ═══════════════════ -->
+<section data-section-id="tasks" id="dc-sec-tasks" style="position:relative; background:#F6F1E6; padding:clamp(80px,11vh,120px) 24px;">
+  <div style="max-width:620px; margin:0 auto; text-align:center;">
+    <p style="font-family:'Newsreader',Georgia,serif; font-style:italic; font-size:17px; color:#6E6353; margin:0 0 14px;">And the "did you deal with the—" that followed it —</p>
+    <h2 style="font-family:'Newsreader',Georgia,serif; font-weight:500; font-size:clamp(26px,4vw,38px); line-height:1.16; letter-spacing:-.01em; color:#26201A; margin:0;">One list. Both of you on it.</h2>
+    <p style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:15px; line-height:1.6; color:#6E6353; max-width:44ch; margin:18px auto 0;">Chores and admin sit on the same list, ownership visible at a glance, recurring items handled automatically. If the week looks lopsided, trade in one tap.</p>
+  </div>
+
+  <div style="max-width:520px; margin:44px auto 0; background:#FBF7EE; border:1px solid rgba(38,32,26,.14); border-radius:18px; padding:8px 20px;">
+    <div style="display:flex; align-items:center; gap:12px; padding:13px 0; border-bottom:1px solid rgba(38,32,26,.08);">
+      <span id="dc-task-av-t1" style="flex:none; width:24px; height:24px; border-radius:999px; background:#A6552F; color:#FBF7EE; display:flex; align-items:center; justify-content:center; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:700;">A</span>
+      <div style="flex:1; min-width:0;">
+        <div style="font-family:'Newsreader',Georgia,serif; font-size:16px; color:#26201A;">Laundry — towels &amp; bedding</div>
+        <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; color:#8A7D69; margin-top:2px;">TODAY · WEEKLY</div>
+      </div>
+      <button id="dc-task-trade-t1" data-task="t1" class="dc-trade" type="button" style="flex:none; border:1px solid rgba(38,32,26,.14); background:transparent; border-radius:999px; padding:6px 12px; cursor:pointer; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.05em; color:#6E6353; transition:background .2s ease;">Trade</button>
+    </div>
+    <div style="display:flex; align-items:center; gap:12px; padding:13px 0; border-bottom:1px solid rgba(38,32,26,.08);">
+      <span id="dc-task-av-t2" style="flex:none; width:24px; height:24px; border-radius:999px; background:#37756D; color:#FBF7EE; display:flex; align-items:center; justify-content:center; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:700;">B</span>
+      <div style="flex:1; min-width:0;">
+        <div style="font-family:'Newsreader',Georgia,serif; font-size:16px; color:#26201A;">Pay water bill</div>
+        <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; color:#8A7D69; margin-top:2px;">GMAIL · DUE TODAY</div>
+      </div>
+      <button id="dc-task-trade-t2" data-task="t2" class="dc-trade" type="button" style="flex:none; border:1px solid rgba(38,32,26,.14); background:transparent; border-radius:999px; padding:6px 12px; cursor:pointer; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.05em; color:#6E6353; transition:background .2s ease;">Trade</button>
+    </div>
+    <div style="display:flex; align-items:center; gap:12px; padding:13px 0; border-bottom:1px solid rgba(38,32,26,.08);">
+      <span id="dc-task-av-t3" style="flex:none; width:24px; height:24px; border-radius:999px; background:#A6552F; color:#FBF7EE; display:flex; align-items:center; justify-content:center; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:700;">A</span>
+      <div style="flex:1; min-width:0;">
+        <div style="font-family:'Newsreader',Georgia,serif; font-size:16px; color:#26201A;">Water the balcony plants</div>
+        <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; color:#8A7D69; margin-top:2px;">SAT · WEEKLY</div>
+      </div>
+      <button id="dc-task-trade-t3" data-task="t3" class="dc-trade" type="button" style="flex:none; border:1px solid rgba(38,32,26,.14); background:transparent; border-radius:999px; padding:6px 12px; cursor:pointer; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.05em; color:#6E6353; transition:background .2s ease;">Trade</button>
+    </div>
+    <div style="display:flex; align-items:center; gap:12px; padding:13px 0; border-bottom:1px solid rgba(38,32,26,.08);">
+      <span id="dc-task-av-t4" style="flex:none; width:24px; height:24px; border-radius:999px; background:#37756D; color:#FBF7EE; display:flex; align-items:center; justify-content:center; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:700;">B</span>
+      <div style="flex:1; min-width:0;">
+        <div style="font-family:'Newsreader',Georgia,serif; font-size:16px; color:#26201A;">Vet booster appointment</div>
+        <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; color:#8A7D69; margin-top:2px;">CALENDAR · 4:30PM</div>
+      </div>
+      <button id="dc-task-trade-t4" data-task="t4" class="dc-trade" type="button" style="flex:none; border:1px solid rgba(38,32,26,.14); background:transparent; border-radius:999px; padding:6px 12px; cursor:pointer; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.05em; color:#6E6353; transition:background .2s ease;">Trade</button>
+    </div>
+  </div>
+  <p style="max-width:460px; margin:20px auto 0; text-align:center; font-family:'Newsreader',Georgia,serif; font-style:italic; font-size:14px; color:#6E6353;">No more "I thought you had it."</p>
+</section>
+
+<!-- ═══════════════════ MECHANISM 3 — CALENDAR ═══════════════════ -->
+<section data-section-id="calendar" id="dc-sec-calendar" style="position:relative; background:#E9E1D2; padding:clamp(80px,11vh,120px) 24px;">
+  <div style="max-width:620px; margin:0 auto; text-align:center;">
+    <p style="font-family:'Newsreader',Georgia,serif; font-style:italic; font-size:17px; color:#6E6353; margin:0 0 14px;">Confirmed by email, but never confirmed to each other —</p>
+    <h2 style="font-family:'Newsreader',Georgia,serif; font-weight:500; font-size:clamp(26px,4vw,38px); line-height:1.16; letter-spacing:-.01em; color:#26201A; margin:0;">One calendar. Nothing gets lost.</h2>
+    <p style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:15px; line-height:1.6; color:#6E6353; max-width:44ch; margin:18px auto 0;">Once you approve a draft, it lands on one shared Google Calendar automatically, reminders included. If something changes on the calendar itself, Even brings it back to you to reconcile — your call, every time.</p>
+  </div>
+
+  <div style="max-width:560px; margin:44px auto 0; background:#FBF7EE; border:1px solid rgba(38,32,26,.14); border-radius:18px; padding:20px; display:grid; grid-template-columns:repeat(7,1fr); gap:8px;">
+    <div style="text-align:center;">
+      <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9.5px; font-weight:700; letter-spacing:.08em; color:#8A7D69;">MON</div>
+      <div style="margin-top:6px; font-family:'Newsreader',Georgia,serif; font-size:15px; color:#26201A;">20</div>
+      <div style="margin-top:8px; display:flex; flex-direction:column; align-items:center; gap:4px; min-height:26px;">
+        <span style="width:7px; height:7px; border-radius:999px; background:#A6552F;"></span>
+      </div>
+    </div>
+    <div style="text-align:center;">
+      <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9.5px; font-weight:700; letter-spacing:.08em; color:#8A7D69;">TUE</div>
+      <div style="margin-top:6px; font-family:'Newsreader',Georgia,serif; font-size:15px; color:#26201A;">21</div>
+      <div style="margin-top:8px; display:flex; flex-direction:column; align-items:center; gap:4px; min-height:26px;">
+        <span style="width:7px; height:7px; border-radius:999px; background:#37756D;"></span>
+        <span style="width:7px; height:7px; border-radius:999px; background:#A6552F;"></span>
+      </div>
+    </div>
+    <div style="text-align:center;">
+      <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9.5px; font-weight:700; letter-spacing:.08em; color:#8A7D69;">WED</div>
+      <div style="margin-top:6px; font-family:'Newsreader',Georgia,serif; font-size:15px; color:#26201A;">22</div>
+      <div style="margin-top:8px; display:flex; flex-direction:column; align-items:center; gap:4px; min-height:26px;"></div>
+    </div>
+    <div style="text-align:center;">
+      <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9.5px; font-weight:700; letter-spacing:.08em; color:#8A7D69;">THU</div>
+      <div style="margin-top:6px; font-family:'Newsreader',Georgia,serif; font-size:15px; color:#26201A;">23</div>
+      <div style="margin-top:8px; display:flex; flex-direction:column; align-items:center; gap:4px; min-height:26px;">
+        <span style="width:7px; height:7px; border-radius:999px; background:#A6552F;"></span>
+      </div>
+    </div>
+    <div style="text-align:center;">
+      <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9.5px; font-weight:700; letter-spacing:.08em; color:#8A7D69;">FRI</div>
+      <div style="margin-top:6px; font-family:'Newsreader',Georgia,serif; font-size:15px; color:#26201A;">24</div>
+      <div style="margin-top:8px; display:flex; flex-direction:column; align-items:center; gap:4px; min-height:26px;">
+        <span style="width:7px; height:7px; border-radius:999px; background:#37756D;"></span>
+      </div>
+    </div>
+    <div style="text-align:center;">
+      <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9.5px; font-weight:700; letter-spacing:.08em; color:#8A7D69;">SAT</div>
+      <div style="margin-top:6px; font-family:'Newsreader',Georgia,serif; font-size:15px; color:#26201A;">25</div>
+      <div style="margin-top:8px; display:flex; flex-direction:column; align-items:center; gap:4px; min-height:26px;"></div>
+    </div>
+    <div style="text-align:center;">
+      <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9.5px; font-weight:700; letter-spacing:.08em; color:#8A7D69;">SUN</div>
+      <div style="margin-top:6px; font-family:'Newsreader',Georgia,serif; font-size:15px; color:#26201A;">26</div>
+      <div style="margin-top:8px; display:flex; flex-direction:column; align-items:center; gap:4px; min-height:26px;">
+        <span style="width:7px; height:7px; border-radius:999px; background:#A6552F;"></span>
+        <span style="width:7px; height:7px; border-radius:999px; background:#37756D;"></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ THE SCALE ═══════════════════ -->
+<section id="dc-scale-wrap" data-section-id="scale" style="position:relative; background:#F6F1E6; padding:clamp(90px,13vh,140px) 24px; overflow:hidden;">
+  <div style="max-width:560px; margin:0 auto; text-align:center;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:12px; font-weight:600; letter-spacing:.2em; text-transform:uppercase; color:#8A7D69; margin-bottom:16px;">The scale</div>
+    <h2 style="font-family:'Newsreader',Georgia,serif; font-weight:500; font-size:clamp(26px,4.2vw,40px); line-height:1.14; letter-spacing:-.01em; color:#26201A; margin:0;">See fairness. Don't argue about it.</h2>
+    <p style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:15px; line-height:1.6; color:#6E6353; max-width:42ch; margin:18px auto 0;">Every finished chore and approved admin item adds weight to a real balance beam — heavier jobs, heavier pebbles. The beam does the arithmetic so the two of you don't have to.</p>
+  </div>
+
+  <div style="max-width:460px; margin:56px auto 0; position:relative;">
+    <svg width="400" height="260" viewBox="0 0 400 260" style="display:block; width:100%; height:auto; overflow:visible;">
+      <line x1="200" y1="40" x2="200" y2="150" stroke="#26201A" stroke-width="3"></line>
+      <line x1="200" y1="150" x2="164" y2="180" stroke="#26201A" stroke-width="3" stroke-linecap="round"></line>
+      <line x1="200" y1="150" x2="236" y2="180" stroke="#26201A" stroke-width="3" stroke-linecap="round"></line>
+      <line x1="150" y1="180" x2="250" y2="180" stroke="#26201A" stroke-width="3" stroke-linecap="round"></line>
+
+      <g id="dc-beamLine">
+        <line x1="66" y1="40" x2="334" y2="40" stroke="#26201A" stroke-width="4.5" stroke-linecap="round"></line>
+        <circle cx="200" cy="40" r="6.5" fill="#26201A"></circle>
+      </g>
+
+      <g id="dc-leftPan">
+        <line x1="66" y1="40" x2="41" y2="96" stroke="#26201A" stroke-width="1.5"></line>
+        <line x1="66" y1="40" x2="91" y2="96" stroke="#26201A" stroke-width="1.5"></line>
+        <path d="M41,96 L91,96 Q91,124 66,124 Q41,124 41,96 Z" fill="#FBF7EE" stroke="#A6552F" stroke-width="2"></path>
+        <text x="66" y="150" text-anchor="middle" font-family="Source Sans 3, system-ui, sans-serif" font-size="12" font-weight="700" letter-spacing="1.5" fill="#A6552F">A</text>
+      </g>
+
+      <g id="dc-rightPan">
+        <line x1="334" y1="40" x2="309" y2="96" stroke="#26201A" stroke-width="1.5"></line>
+        <line x1="334" y1="40" x2="359" y2="96" stroke="#26201A" stroke-width="1.5"></line>
+        <path d="M309,96 L359,96 Q359,124 334,124 Q309,124 309,96 Z" fill="#FBF7EE" stroke="#37756D" stroke-width="2"></path>
+        <text x="334" y="150" text-anchor="middle" font-family="Source Sans 3, system-ui, sans-serif" font-size="12" font-weight="700" letter-spacing="1.5" fill="#37756D">B</text>
+      </g>
+
+      <circle id="dc-pebble-0" cx="55" cy="108" r="7.5" fill="#A6552F"></circle>
+      <circle id="dc-pebble-1" cx="70" cy="103" r="9.5" fill="#A6552F"></circle>
+      <circle id="dc-pebble-2" cx="82" cy="110" r="6.5" fill="#A6552F"></circle>
+      <circle id="dc-pebble-3" cx="321" cy="107" r="6.5" fill="#37756D"></circle>
+      <circle id="dc-pebble-4" cx="335" cy="102" r="8.5" fill="#37756D"></circle>
+      <circle id="dc-pebble-5" cx="347" cy="109" r="7" fill="#37756D"></circle>
+    </svg>
+  </div>
+</section>
+
+<!-- ═══════════════════ RESET RITUAL ═══════════════════ -->
+<section data-section-id="reset" id="dc-sec-reset" style="position:relative; background:#FBF7EE; padding:clamp(90px,13vh,140px) 24px;">
+  <div style="max-width:560px; margin:0 auto; text-align:center;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:12px; font-weight:600; letter-spacing:.2em; text-transform:uppercase; color:#8A7D69; margin-bottom:16px;">Sunday · 10 minutes</div>
+    <h2 style="font-family:'Newsreader',Georgia,serif; font-weight:500; font-size:clamp(26px,4.2vw,40px); line-height:1.14; letter-spacing:-.01em; color:#26201A; margin:0;">The weekly reset.</h2>
+    <p style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:15px; line-height:1.6; color:#6E6353; max-width:44ch; margin:18px auto 0;">A short ritual, together, once a week — no equivalent in any to-do app. Look at the week honestly. Say one appreciative thing. Trade what isn't working. Close it clean.</p>
+  </div>
+
+  <div style="max-width:640px; margin:48px auto 0; display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:16px;">
+    <div style="background:#F6F1E6; border-radius:16px; padding:20px;">
+      <div style="font-family:'Newsreader',Georgia,serif; font-style:italic; color:#A6552F; font-size:16px;">01</div>
+      <div style="margin-top:8px; font-family:'Newsreader',Georgia,serif; font-size:17px; color:#26201A;">Review, honestly</div>
+      <div style="margin-top:6px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:12.5px; color:#8A7D69; line-height:1.5;">Look at who carried what. No blame, just the picture.</div>
+    </div>
+    <div style="background:#F6F1E6; border-radius:16px; padding:20px;">
+      <div style="font-family:'Newsreader',Georgia,serif; font-style:italic; color:#A6552F; font-size:16px;">02</div>
+      <div style="margin-top:8px; font-family:'Newsreader',Georgia,serif; font-size:17px; color:#26201A;">Say one kind thing</div>
+      <div style="margin-top:6px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:12.5px; color:#8A7D69; line-height:1.5;">Out loud. The app can't do this part for you.</div>
+    </div>
+    <div style="background:#F6F1E6; border-radius:16px; padding:20px;">
+      <div style="font-family:'Newsreader',Georgia,serif; font-style:italic; color:#A6552F; font-size:16px;">03</div>
+      <div style="margin-top:8px; font-family:'Newsreader',Georgia,serif; font-size:17px; color:#26201A;">Trade, don't tally</div>
+      <div style="margin-top:6px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:12.5px; color:#8A7D69; line-height:1.5;">Swap a task if next week looks lopsided.</div>
+    </div>
+    <div style="background:#F6F1E6; border-radius:16px; padding:20px;">
+      <div style="font-family:'Newsreader',Georgia,serif; font-style:italic; color:#A6552F; font-size:16px;">04</div>
+      <div style="margin-top:8px; font-family:'Newsreader',Georgia,serif; font-size:17px; color:#26201A;">Close the week</div>
+      <div style="margin-top:6px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:12.5px; color:#8A7D69; line-height:1.5;">The pans pour out. Monday starts even.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ TRUST & CONTROL ═══════════════════ -->
+<section data-section-id="trust" id="dc-sec-trust" style="position:relative; background:#E9E1D2; padding:clamp(70px,10vh,110px) 24px;">
+  <div style="max-width:520px; margin:0 auto; display:flex; flex-direction:column; gap:22px; text-align:center;">
+    <p style="font-family:'Newsreader',Georgia,serif; font-size:17px; line-height:1.5; color:#26201A; margin:0;">Nothing is shared, scheduled, or replied to without your approval.</p>
+    <p style="font-family:'Newsreader',Georgia,serif; font-size:17px; line-height:1.5; color:#26201A; margin:0;">Even can draft a reply. It never sends one.</p>
+    <p style="font-family:'Newsreader',Georgia,serif; font-size:17px; line-height:1.5; color:#26201A; margin:0;">No bank connection, ever — banking is an optional CSV you upload, on your device.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════ MONEY (minor) ═══════════════════ -->
+<section data-section-id="money" id="dc-sec-money" style="position:relative; background:#F6F1E6; padding:clamp(56px,8vh,80px) 24px;">
+  <div style="max-width:320px; margin:0 auto; text-align:center;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; text-transform:uppercase; color:#8A7D69; margin-bottom:10px;">Oh — and the money</div>
+    <div style="background:#FBF7EE; border:1px solid rgba(38,32,26,.14); border-radius:14px; padding:16px 18px;">
+      <div style="display:flex; justify-content:space-between; font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:600; letter-spacing:.1em; color:#8A7D69;">
+        <span>BALANCE</span><span>50/50</span>
+      </div>
+      <div style="margin-top:6px; font-family:'Newsreader',Georgia,serif; font-size:26px; color:#26201A;">B owes A €19.10</div>
+      <button class="dc-settle" type="button" style="margin-top:12px; width:100%; border:none; background:#A6552F; color:#F6F1E6; border-radius:8px; padding:10px 0; font-family:'Newsreader',Georgia,serif; font-size:14.5px; cursor:pointer; transition:background .2s ease;">Settle up</button>
+    </div>
+    <p style="margin:14px 0 0; font-family:'Source Sans 3',system-ui,sans-serif; font-size:12.5px; color:#8A7D69; line-height:1.55;">Add what you fronted, split down the middle, one tap on Sunday and you're even.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════ CTA ═══════════════════ -->
+<section data-section-id="cta" id="dc-sec-cta" style="position:relative; background:#26201A; padding:clamp(90px,13vh,140px) 24px;">
+  <div style="max-width:480px; margin:0 auto; text-align:center;">
+    <h2 style="font-family:'Newsreader',Georgia,serif; font-weight:500; font-size:clamp(26px,4.2vw,38px); line-height:1.2; letter-spacing:-.01em; color:#F6F1E6; margin:0;">Not live everywhere yet. But we're keeping a list.</h2>
+    <p style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:14.5px; color:#B8AC99; margin:16px 0 0;">One household at a time, for now. Tell us you're in and we'll reach out.</p>
+
+    <div id="dc-cta-success" style="display:none; margin-top:30px; font-family:'Newsreader',Georgia,serif; font-style:italic; font-size:18px; color:#F6F1E6;">You're on the list ✓ — we'll make it worth the wait.</div>
+
+    <div id="dc-cta-form-wrap">
+      <form id="dc-form" style="margin-top:30px; display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+        <input id="dc-email" type="email" required placeholder="you@example.com" aria-label="Your email address" style="flex:1; min-width:220px; box-sizing:border-box; border:1px solid rgba(246,241,230,.25); background:rgba(246,241,230,.06); border-radius:999px; padding:13px 18px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:14.5px; color:#F6F1E6;">
+        <button id="dc-submit" class="dc-submit" type="submit" style="border:none; background:#A6552F; color:#F6F1E6; border-radius:999px; padding:13px 24px; font-family:'Source Sans 3',system-ui,sans-serif; font-weight:600; font-size:14.5px; cursor:pointer; transition:background .2s ease;"><span id="dc-submit-label">Count us in</span></button>
+      </form>
+      <div style="margin-top:18px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+        <button id="dc-pill-inbox" data-pill="inbox" type="button" style="border:1px solid rgba(246,241,230,.25); background:transparent; color:#B8AC99; border-radius:999px; padding:8px 16px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:11.5px; cursor:pointer;">What drew you in — the inbox</button>
+        <button id="dc-pill-fairness" data-pill="fairness" type="button" style="border:1px solid rgba(246,241,230,.25); background:transparent; color:#B8AC99; border-radius:999px; padding:8px 16px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:11.5px; cursor:pointer;">or the fairness</button>
+        <button id="dc-pill-both" data-pill="both" type="button" style="border:1px solid rgba(246,241,230,.25); background:transparent; color:#B8AC99; border-radius:999px; padding:8px 16px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:11.5px; cursor:pointer;">both</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ FOOTER ═══════════════════ -->
+<footer style="position:relative; background:#26201A; padding:34px 24px 44px; text-align:center; border-top:1px solid rgba(246,241,230,.1);">
+  <div style="display:inline-flex; align-items:center; gap:7px; font-family:'Newsreader',Georgia,serif; font-style:italic; font-weight:600; font-size:16px; color:#F6F1E6;">
+    <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><line x1="1.5" y1="6.8" x2="14.5" y2="4.6" stroke="#F6F1E6" stroke-width="1.6" stroke-linecap="round"></line><path d="M8 6.4 L10.6 10.6 H5.4 Z" fill="none" stroke="#F6F1E6" stroke-width="1.5" stroke-linejoin="round"></path><line x1="4.5" y1="13.4" x2="11.5" y2="13.4" stroke="#F6F1E6" stroke-width="1.4" stroke-linecap="round"></line></svg>
+    Even
+  </div>
+  <div style="margin-top:8px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:12px; color:#8A7D69;">Nothing falls through. Neither of you carries it alone.</div>
+  <div style="margin-top:14px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:12px; color:#8A7D69;">
+    <a href="#" style="color:#B8AC99;">Privacy</a> · <a href="mailto:hello@thisiseven.app" style="color:#B8AC99;">Contact</a> · thisiseven.app
+  </div>
+</footer>
+
 <script>
-/* ══ motion layer — fully guarded; content is visible without any of this ══ */
-(function(){
-  if(!window.gsap || !window.ScrollTrigger) return;      // CDN blocked → static page stands
-  gsap.registerPlugin(ScrollTrigger);
-  var hasSplit = !!window.SplitText;
-  if(hasSplit) gsap.registerPlugin(SplitText);
+/* ══════════════ Even landing — vanilla port of the Claude Design component ══════════════ */
+(function () {
+  var even = window.__even || { bucket: 'A', heroVariant: 'household' };
+  var BUCKET = even.bucket;             // sticky A/B bucket (localStorage even_variant)
+  var HERO_VARIANT = even.heroVariant;  // household | money
 
-  var mm = gsap.matchMedia();
+  /* ── analytics (PostHog) — reused verbatim init from the money-positioned page ── */
+  var POSTHOG_KEY = "phc_AM2NcPD9gZuexgZddQFxp67CbDP6gN4QFJKYM4WcVALJ";
+  var POSTHOG_HOST = "https://eu.posthog.com";
+  var PH = null;
+  try {
+    !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.async=!0,p.src=s.api_host+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init capture register register_once register_for_session unregister unregister_for_session getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey getNextSurveyStep identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty createPersonProfile opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing debug".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+    window.posthog.init(POSTHOG_KEY, { api_host: POSTHOG_HOST, person_profiles: "identified_only", capture_pageview: true });
+    window.posthog.register({ site: "thisiseven.app", ab_variant: BUCKET, hero_variant: HERO_VARIANT });
+    PH = window.posthog;
+  } catch (e) { /* analytics must never break the page */ }
 
-  // Only choreograph when the visitor is OK with motion.
-  mm.add("(prefers-reduced-motion: no-preference)", function(){
-    var ctx;
-    document.fonts.ready.then(function(){
-      document.documentElement.classList.add("js-motion");   // switch showcase to pinned single-stage
-      // let layout settle after the class swap, then measure/build
-      requestAnimationFrame(function(){
-        ctx = gsap.context(build);
-        ScrollTrigger.refresh();
+  function track(name, extra) {
+    var payload = Object.assign({ variant: HERO_VARIANT, ab_variant: BUCKET }, extra || {});
+    try { if (PH) PH.capture(name, payload); } catch (e) {}
+  }
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* ── section_viewed observer (≥50%) ── */
+  var tracked = {};
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting && e.intersectionRatio >= 0.5) {
+          var id = e.target.getAttribute('data-section-id');
+          if (id && !tracked[id]) { tracked[id] = true; track('section_viewed', { section_id: id }); }
+        }
       });
-    });
-    return function(){ if(ctx) ctx.revert(); document.documentElement.classList.remove("js-motion"); };
+    }, { threshold: [0.5] });
+    document.querySelectorAll('[data-section-id]').forEach(function (el) { io.observe(el); });
+  }
+
+  /* ── hero CTA ── */
+  var heroCta = $('dc-hero-cta');
+  if (heroCta) heroCta.addEventListener('click', function () {
+    track('hero_cta_click', {});
+    var p = $('dc-sec-problem');
+    if (p) p.scrollIntoView({ behavior: 'smooth' });
   });
 
-  function build(){
-    /* ---- per-line heading reveals (SplitText, aria preserved automatically) ---- */
-    if(hasSplit){
-      document.querySelectorAll("[data-split]").forEach(function(el){
-        SplitText.create(el, {
-          type:"lines", mask:"lines", autoSplit:true, linesClass:"sl-line",
-          onSplit:function(self){
-            return gsap.from(self.lines, {
-              yPercent:112, opacity:0, duration:.9, ease:"power3.out", stagger:.13,
-              scrollTrigger:{ trigger:el, start:"top 85%", once:true }
-            });
-          }
-        });
-      });
-    }
+  /* ── inbox: approve drafts ── */
+  var pending = 3;
+  function approveDraft(id) {
+    var btn = $('dc-draft-' + id);
+    if (!btn || btn.getAttribute('data-approved') === '1') return;
+    btn.setAttribute('data-approved', '1');
+    track('inbox_demo_interacted', { draft_id: id });
+    btn.style.background = '#F1EDE0';
+    btn.style.border = '1.5px solid rgba(55,117,109,.35)';
+    btn.style.opacity = '0.55';
+    btn.style.transform = 'scale(0.98)';
+    var check = btn.querySelector('.dc-check');
+    if (check) { check.style.border = '1.5px solid #37756D'; check.style.background = '#37756D'; }
+    var svg = btn.querySelector('.dc-check-svg');
+    if (svg) svg.style.display = 'block';
+    pending = Math.max(0, pending - 1);
+    var pn = $('dc-inbox-pending');
+    if (pn) pn.textContent = pending + (pending === 1 ? ' draft pending' : ' drafts pending');
+  }
+  ['d1', 'd2', 'd3'].forEach(function (id) {
+    var b = $('dc-draft-' + id);
+    if (b) b.addEventListener('click', function () { approveDraft(id); });
+  });
 
-    /* ---- the two-bar "evening out" motif levels off on enter ---- */
-    var bars = document.querySelectorAll(".levelbars i");
-    if(bars.length===2){
-      // terra bar rises to meet the pine bar — the two levelling off (brand motif)
-      gsap.fromTo(bars[0], {scaleY:0.42}, {
-        scaleY:1, duration:1, ease:"power2.inOut",
-        scrollTrigger:{ trigger:".show-head", start:"top 80%", once:true }
-      });
-    }
+  /* ── shared tasks: trade owner ── */
+  var taskOwners = { t1: 'A', t2: 'B', t3: 'A', t4: 'B' };
+  function tradeTask(id) {
+    var owner = taskOwners[id] === 'A' ? 'B' : 'A';
+    taskOwners[id] = owner;
+    var av = $('dc-task-av-' + id);
+    if (av) { av.textContent = owner; av.style.background = owner === 'A' ? '#A6552F' : '#37756D'; }
+  }
+  ['t1', 't2', 't3', 't4'].forEach(function (id) {
+    var b = $('dc-task-trade-' + id);
+    if (b) b.addEventListener('click', function () { tradeTask(id); });
+  });
 
-    /* ---- showcase captions: paused line-reveals, played at scroll thresholds ---- */
-    var caps = [];
-    document.querySelectorAll("[data-cap]").forEach(function(el){
-      if(hasSplit){
-        var st = SplitText.create(el, {type:"lines", mask:"lines"});
-        caps.push(gsap.from(st.lines, {yPercent:112, opacity:0, duration:.7, ease:"power3.out", stagger:.12, paused:true}));
-      } else {
-        caps.push(gsap.from(el, {y:24, opacity:0, duration:.6, ease:"power3.out", paused:true}));
-      }
+  /* ── CTA state machine: email + motivation pills + submit ── */
+  var motivation = null;
+  var submitted = false;
+  var waitlistViewed = false;
+  var pillColors = { inbox: '#A6552F', fairness: '#37756D', both: '#6E6353' };
+  function setMotivation(m) {
+    motivation = m;
+    ['inbox', 'fairness', 'both'].forEach(function (k) {
+      var el = $('dc-pill-' + k);
+      if (!el) return;
+      if (k === m) { el.style.border = '1px solid ' + pillColors[k]; el.style.background = pillColors[k]; el.style.color = '#FBF7EE'; }
+      else { el.style.border = '1px solid rgba(246,241,230,.25)'; el.style.background = 'transparent'; el.style.color = '#B8AC99'; }
     });
-    function toggleCap(t, on){
-      if(!t) return;
-      if(on && t._on!==true){ t.play(); t._on=true; }
-      else if(!on && t._on!==false){ t.reverse(); t._on=false; }
-    }
-    if(caps[0]){ caps[0].play(); caps[0]._on=true; }   // beat 1 is on screen at pin-start
+  }
+  ['inbox', 'fairness', 'both'].forEach(function (k) {
+    var el = $('dc-pill-' + k);
+    if (el) el.addEventListener('click', function () { setMotivation(k); });
+  });
 
-    /* ---- the pinned, scrub-linked product demo ---- */
-    var beats = gsap.utils.toArray(".beat");
-    gsap.set([beats[1], beats[2]], {autoAlpha:0});
+  var emailEl = $('dc-email');
+  if (emailEl) emailEl.addEventListener('focus', function () {
+    if (!waitlistViewed) { waitlistViewed = true; track('waitlist_form_viewed', {}); }
+  });
 
-    var settleObj = {v:19.10};
-    var settleEl = document.getElementById("settleNum");
-    var beam3 = document.getElementById("beam3");
+  var form = $('dc-form');
+  if (form) form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var val = emailEl ? emailEl.value.trim() : '';
+    if (!val || submitted) return;
+    track('waitlist_submit_attempt', {});
+    var label = $('dc-submit-label');
+    setTimeout(function () {
+      submitted = true;
+      track('waitlist_submit_success', { motivation: motivation || 'none' });
+      if (label) label.textContent = "You're in ✓";
+      var wrap = $('dc-cta-form-wrap'); if (wrap) wrap.style.display = 'none';
+      var ok = $('dc-cta-success'); if (ok) ok.style.display = 'block';
+    }, 400);
+  });
 
+  /* ══════════════ portal + scale motion (GSAP + Matter) ══════════════ */
+  var els = {
+    portalWrap: $('dc-portal-wrap'),
+    portalStage: $('dc-portal-stage'),
+    aperture: $('dc-aperture'),
+    reveal: $('dc-reveal'),
+    line: $('dc-portal-line'),
+    layerBack: $('dc-layer-back'),
+    layerMid: $('dc-layer-mid'),
+    layerFront: $('dc-layer-front'),
+    scaleWrap: $('dc-scale-wrap'),
+    beamLine: $('dc-beamLine'),
+    leftPan: $('dc-leftPan'),
+    rightPan: $('dc-rightPan')
+  };
+  var frags = [];
+  for (var fi = 0; fi < 10; fi++) frags.push($('dc-frag-' + fi));
+  frags = frags.filter(Boolean);
+  var pebbleEls = [];
+  for (var pi = 0; pi < 6; pi++) pebbleEls.push($('dc-pebble-' + pi));
+
+  function buildPortalScrub() {
+    document.documentElement.classList.remove('dc-nojs');
+    var wrap = els.portalWrap, aperture = els.aperture, reveal = els.reveal, line = els.line;
+    if (!wrap) return;
+    gsap.set(reveal, { opacity: 0, scale: 1.08 });
+    gsap.set(aperture, { scale: 0.01 });
+    gsap.set(line, { opacity: 0 });
+    gsap.set(frags, { scale: 1, opacity: 1, x: 0, y: 0 });
+
+    var portalDone = false;
     var tl = gsap.timeline({
-      defaults:{ ease:"none" },
-      scrollTrigger:{
-        trigger:".showcase-stage",
-        start:"top top",
-        end:"+=280%",
-        scrub:1,
-        pin:true,
-        anticipatePin:1,
-        onUpdate:function(self){
-          var p = self.progress;
-          toggleCap(caps[0], p < 0.40);
-          toggleCap(caps[1], p >= 0.34 && p < 0.72);
-          toggleCap(caps[2], p >= 0.66);
+      scrollTrigger: {
+        trigger: wrap, start: 'top top', end: 'bottom bottom', scrub: 0.6,
+        onUpdate: function (st) {
+          if (st.progress > 0.95 && !portalDone) { portalDone = true; track('portal_transition_complete', {}); }
         }
       }
     });
-
-    // scroll-zoom: the whole stage eases in (transform only)
-    tl.fromTo(".stage-inner", {scale:0.9}, {scale:1, duration:1.1}, 0);
-
-    // beat 1 → beat 2 crossfade
-    tl.to(beats[0],   {autoAlpha:0, duration:1}, 2.2)
-      .fromTo(beats[1], {autoAlpha:0}, {autoAlpha:1, duration:1}, 2.2);
-
-    // beat 2 → beat 3 crossfade + the balance evens out + the debt counts to zero
-    tl.to(beats[1],   {autoAlpha:0, duration:1}, 4.6)
-      .fromTo(beats[2], {autoAlpha:0}, {autoAlpha:1, duration:1}, 4.6);
-
-    if(beam3){
-      tl.fromTo(beam3, {rotation:-8}, {rotation:0, svgOrigin:"230 92", duration:1.6, ease:"power2.out"}, 4.8);
-    }
-    if(settleEl){
-      tl.fromTo(settleObj, {v:19.10}, {
-        v:0, duration:1.6, ease:"power2.out",
-        onUpdate:function(){ settleEl.textContent = "€" + settleObj.v.toFixed(2); }
-      }, 4.8);
-    }
-
-    // small tail so beat 3 holds fully settled at the end of the pin
-    tl.to({}, {duration:1.2});
-
-    /* ---- magnetic CTAs ---- */
-    document.querySelectorAll(".cta").forEach(function(btn){
-      var xTo = gsap.quickTo(btn, "x", {duration:.5, ease:"power3"});
-      var yTo = gsap.quickTo(btn, "y", {duration:.5, ease:"power3"});
-      btn.addEventListener("pointermove", function(e){
-        var r = btn.getBoundingClientRect();
-        xTo((e.clientX - (r.left + r.width/2)) * 0.28);
-        yTo((e.clientY - (r.top + r.height/2)) * 0.42);
-      });
-      btn.addEventListener("pointerleave", function(){ xTo(0); yTo(0); });
+    // portal grows as if the viewer flies toward it (small + distant -> fills the frame)
+    tl.to(aperture, { scale: 1, duration: 0.5, ease: 'expo.in' }, 0);
+    // fragments rush outward past the viewer, staggered so it reads organic
+    var deltas = [
+      { dx: -70, dy: -60 }, { dx: 70, dy: -70 }, { dx: -60, dy: 70 }, { dx: 70, dy: 70 }, { dx: -10, dy: -90 },
+      { dx: -90, dy: 0 }, { dx: 90, dy: -10 }, { dx: 10, dy: 90 }, { dx: -50, dy: -40 }, { dx: 50, dy: 40 }
+    ];
+    frags.forEach(function (f, i) {
+      var delay = 0.03 + (i % 7) * 0.035;
+      var d = deltas[i] || { dx: 0, dy: 0 };
+      tl.to(f, { x: d.dx, y: d.dy, scale: 2.1, opacity: 0, duration: 0.18, ease: 'power2.in' }, delay);
     });
+    tl.fromTo(line, { opacity: 0 }, { opacity: 1, duration: 0.08 }, 0.54)
+      .to(line, { opacity: 0, duration: 0.08 }, 0.66)
+      .to(reveal, { opacity: 1, scale: 1, duration: 0.32, ease: 'power2.out' }, 0.68);
+    // parallax: hill layers drift at different rates as the landscape settles into frame
+    if (els.layerBack) tl.fromTo(els.layerBack, { y: 16 }, { y: -8, duration: 0.32, ease: 'none' }, 0.68);
+    if (els.layerMid) tl.fromTo(els.layerMid, { y: 26 }, { y: -18, duration: 0.32, ease: 'none' }, 0.68);
+    if (els.layerFront) tl.fromTo(els.layerFront, { y: 40 }, { y: -34, duration: 0.32, ease: 'none' }, 0.68);
   }
+
+  function buildStaticPortal() {
+    document.documentElement.classList.remove('dc-nojs');
+    if (els.reveal) gsap.set(els.reveal, { opacity: 1, scale: 1 });
+    gsap.set(frags, { opacity: 0 });
+    if (els.aperture) gsap.set(els.aperture, { opacity: 0 });
+    if (els.line) gsap.set(els.line, { opacity: 0 });
+  }
+
+  /* ── The Scale: spring-driven beam + Matter.js pebbles ── */
+  var scaleTargetDeg = 0, scaleCurrentDeg = 0, scaleAngleVel = 0;
+  var matterEngine = null, pebbles = null, scaleAnimId = null, lastScaleFrame = null;
+  var leftFloor, rightFloor, leftWallL, leftWallR, rightWallL, rightWallR;
+
+  function setupScalePhysics() {
+    if (!els.scaleWrap) return;
+    scaleTargetDeg = 0; scaleCurrentDeg = 0; scaleAngleVel = 0;
+
+    if (window.gsap && window.ScrollTrigger) {
+      window.ScrollTrigger.create({
+        trigger: els.scaleWrap, start: 'top 75%', end: 'bottom 45%',
+        onUpdate: function (st) { scaleTargetDeg = -9 + st.progress * 18; }
+      });
+    }
+
+    var reduced = (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    if (reduced || !window.Matter) return;
+
+    var Matter = window.Matter;
+    var engine = Matter.Engine.create();
+    engine.gravity.y = 1;
+    var world = engine.world;
+
+    function floorBody(x, y) { return Matter.Bodies.rectangle(x, y, 52, 8, { isStatic: true, friction: 0.6 }); }
+    function wallBody(x, y) { return Matter.Bodies.rectangle(x, y, 6, 34, { isStatic: true }); }
+    function pebbleBody(x, y, r) { return Matter.Bodies.circle(x, y, r, { restitution: 0.32, friction: 0.5, frictionAir: 0.012 }); }
+
+    leftFloor = floorBody(66, 110);
+    rightFloor = floorBody(334, 110);
+    leftWallL = wallBody(41, 100);
+    leftWallR = wallBody(91, 100);
+    rightWallL = wallBody(309, 100);
+    rightWallR = wallBody(359, 100);
+
+    pebbles = [
+      { body: pebbleBody(55, 80, 7.5) },
+      { body: pebbleBody(70, 70, 9.5) },
+      { body: pebbleBody(82, 85, 6.5) },
+      { body: pebbleBody(321, 80, 6.5) },
+      { body: pebbleBody(335, 70, 8.5) },
+      { body: pebbleBody(347, 85, 7) }
+    ];
+
+    Matter.World.add(world, [leftFloor, rightFloor, leftWallL, leftWallR, rightWallL, rightWallR].concat(pebbles.map(function (p) { return p.body; })));
+    matterEngine = engine;
+    lastScaleFrame = null;
+    scaleAnimId = requestAnimationFrame(scaleFrame);
+  }
+
+  function scaleFrame(ts) {
+    if (lastScaleFrame == null) lastScaleFrame = ts;
+    var dt = Math.min((ts - lastScaleFrame) / 1000, 0.032);
+    lastScaleFrame = ts;
+
+    var k = 50, c = 12;
+    var targetRad = scaleTargetDeg * Math.PI / 180;
+    var currentRad = scaleCurrentDeg * Math.PI / 180;
+    var accel = k * (targetRad - currentRad) - c * scaleAngleVel;
+    scaleAngleVel += accel * dt;
+    currentRad += scaleAngleVel * dt;
+    scaleCurrentDeg = currentRad * 180 / Math.PI;
+
+    var pivotX = 200, pivotY = 40, halfLen = 134;
+    var leftEnd = { x: pivotX - halfLen * Math.cos(currentRad), y: pivotY - halfLen * Math.sin(currentRad) };
+    var rightEnd = { x: pivotX + halfLen * Math.cos(currentRad), y: pivotY + halfLen * Math.sin(currentRad) };
+
+    if (els.beamLine) els.beamLine.setAttribute('transform', 'rotate(' + scaleCurrentDeg + ' ' + pivotX + ' ' + pivotY + ')');
+    if (els.leftPan) els.leftPan.setAttribute('transform', 'translate(' + (leftEnd.x - 66) + ',' + (leftEnd.y - 40) + ')');
+    if (els.rightPan) els.rightPan.setAttribute('transform', 'translate(' + (rightEnd.x - 334) + ',' + (rightEnd.y - 40) + ')');
+
+    var Matter = window.Matter;
+    if (Matter && matterEngine) {
+      Matter.Body.setPosition(leftFloor, { x: leftEnd.x, y: leftEnd.y + 70 });
+      Matter.Body.setPosition(rightFloor, { x: rightEnd.x, y: rightEnd.y + 70 });
+      Matter.Body.setPosition(leftWallL, { x: leftEnd.x - 25, y: leftEnd.y + 60 });
+      Matter.Body.setPosition(leftWallR, { x: leftEnd.x + 25, y: leftEnd.y + 60 });
+      Matter.Body.setPosition(rightWallL, { x: rightEnd.x - 25, y: rightEnd.y + 60 });
+      Matter.Body.setPosition(rightWallR, { x: rightEnd.x + 25, y: rightEnd.y + 60 });
+
+      Matter.Engine.update(matterEngine, dt * 1000);
+
+      pebbles.forEach(function (p, i) {
+        var el = pebbleEls[i];
+        if (el) { el.setAttribute('cx', p.body.position.x); el.setAttribute('cy', p.body.position.y); }
+      });
+    }
+
+    scaleAnimId = requestAnimationFrame(scaleFrame);
+  }
+
+  function setupGSAP() {
+    if (!window.gsap || !window.ScrollTrigger) return;   // CDN blocked → dc-nojs stays, reveal visible
+    gsap.registerPlugin(ScrollTrigger);
+    var mm = gsap.matchMedia();
+    mm.add('(prefers-reduced-motion: no-preference)', function () { buildPortalScrub(); return function () {}; });
+    mm.add('(prefers-reduced-motion: reduce)', function () { buildStaticPortal(); return function () {}; });
+    setupScalePhysics();
+  }
+
+  setupGSAP();
 })();
 </script>
 </body>
