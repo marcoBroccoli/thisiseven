@@ -157,12 +157,19 @@ struct ThisWeekLargeView: View {
                         .foregroundStyle(p.ink)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
-                    HStack(spacing: 6) {
-                        Circle().fill(WT.ada).frame(width: 6, height: 6)
-                        Text("\(snapshot.adaSide.done) done").font(WidgetFont.sans(11)).foregroundStyle(p.sub)
-                        Text("/").font(WidgetFont.serif(11)).foregroundStyle(p.sub)
-                        Circle().fill(WT.umut.opacity(snapshot.hasPartner ? 1 : 0.4)).frame(width: 6, height: 6)
-                        Text("\(snapshot.umutSide.done)").font(WidgetFont.sans(11)).foregroundStyle(p.sub)
+                    HStack(spacing: 14) {
+                        HStack(spacing: 5) {
+                            Circle().fill(WT.ada).frame(width: 8, height: 8)
+                            Text("\(snapshot.adaSide.name) \(snapshot.adaSide.done) done")
+                                .font(WidgetFont.sans(11)).foregroundStyle(p.sub).lineLimit(1)
+                        }
+                        if snapshot.hasPartner {
+                            HStack(spacing: 5) {
+                                Circle().fill(WT.umut).frame(width: 8, height: 8)
+                                Text("\(snapshot.umutSide.name) \(snapshot.umutSide.done)")
+                                    .font(WidgetFont.sans(11)).foregroundStyle(p.sub).lineLimit(1)
+                            }
+                        }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
