@@ -7,3 +7,4 @@ DerivedData/
 web/coming-soon/.wrangler/
 ios/Even.xcodeproj/xcuserdata/
 ios/build-device/
+ios/build-sim/

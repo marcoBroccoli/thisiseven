@@ -10,6 +10,7 @@
 		11EB501584EEC0179413FDAB /* EvenCaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 485A1F14A32A42EC812D3FEC /* EvenCaptureTests.swift */; };
 		13170EB5F01F31BEFBA32669 /* EvenApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A95A43EE2CE1E45F9972E3E5 /* EvenApp.swift */; };
 		168D82537F06FA083AD66FE7 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1FDF0626C25D9F1D3CE11B6C /* Assets.xcassets */; };
+		19BA6F9E80E5AFB954B0A481 /* EvenDemoWalkTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13C1CDC5FE2BAE5109126544 /* EvenDemoWalkTests.swift */; };
 		821468CA8DC9C28DA7DFF161 /* EvenE2ETests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0AAF5AFC5B42AA346D03E33 /* EvenE2ETests.swift */; };
 		CEDE401B661D23F2C09659D5 /* PhysicsStressTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 931341DE12ABBB762C4D3C5F /* PhysicsStressTests.swift */; };
 		D9A79A3430AED369FE1207BE /* EvenMobile in Frameworks */ = {isa = PBXBuildFile; productRef = C1DC674DFF5C0654B3196823 /* EvenMobile */; };
@@ -26,6 +27,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		13C1CDC5FE2BAE5109126544 /* EvenDemoWalkTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvenDemoWalkTests.swift; sourceTree = "<group>"; };
 		1FDF0626C25D9F1D3CE11B6C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		39DA8231A84CF0BBDCAFC8C5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		42223694485ED1E379B25DCB /* Even.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Even.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -54,6 +56,7 @@
 			isa = PBXGroup;
 			children = (
 				485A1F14A32A42EC812D3FEC /* EvenCaptureTests.swift */,
+				13C1CDC5FE2BAE5109126544 /* EvenDemoWalkTests.swift */,
 				F0AAF5AFC5B42AA346D03E33 /* EvenE2ETests.swift */,
 				931341DE12ABBB762C4D3C5F /* PhysicsStressTests.swift */,
 			);
@@ -198,6 +201,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				11EB501584EEC0179413FDAB /* EvenCaptureTests.swift in Sources */,
+				19BA6F9E80E5AFB954B0A481 /* EvenDemoWalkTests.swift in Sources */,
 				821468CA8DC9C28DA7DFF161 /* EvenE2ETests.swift in Sources */,
 				CEDE401B661D23F2C09659D5 /* PhysicsStressTests.swift in Sources */,
 			);
