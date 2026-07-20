@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<title>Even — playful iteration</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..700&family=Source+Sans+3:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#E9E1D2; -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; }
+  a { color:#A0522D; text-decoration:underline; text-underline-offset:2px; }
+  a:hover { color:#7A3A1D; }
+  input::placeholder, textarea::placeholder { color:#B8AC99; font-style:italic; }
+  input:focus, button:focus, textarea:focus { outline:none; }
+  *::-webkit-scrollbar { width:0; height:0; }
+  [data-grain] { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E"); }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes sheetUp { from { transform:translateY(36px); opacity:0; } to { transform:translateY(0); opacity:1; } }
+  @keyframes scrimIn { from { opacity:0; } to { opacity:1; } }
+  @keyframes pebbleDrop { 0% { transform:translateY(-52px) scale(.6); opacity:0; } 55% { transform:translateY(3px) scale(1.05); opacity:1; } 75% { transform:translateY(-4px) scale(.98); } 100% { transform:translateY(0) scale(1); opacity:1; } }
+  @keyframes stampIn { 0% { transform:translate(-50%,0) scale(1.6) rotate(-6deg); opacity:0; } 60% { transform:translate(-50%,0) scale(.95) rotate(1deg); opacity:1; } 100% { transform:translate(-50%,0) scale(1) rotate(0); opacity:1; } }
+  @keyframes coinSlide { 0% { transform:translateX(0) rotate(0); } 100% { transform:translateX(148px) rotate(360deg); } }
+  @keyframes floatBob { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-3px); } }
+  @keyframes dashDraw { to { stroke-dashoffset:0; } }
+  @media (max-width: 470px) {
+    [data-stage="phone"] { transform:scale(.86); transform-origin:top center; }
+    [data-stage="info"] { padding:28px 24px 0 !important; }
+  }
+</style>
+</helmet>
+<div style="min-height:100vh; box-sizing:border-box; display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:56px; padding:48px 32px 64px; font-family:'Newsreader',Georgia,serif;">
+
+  <div data-stage="info" style="width:290px; max-width:92vw; color:#2A231B; display:flex; flex-direction:column; gap:14px; padding-top:8px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">EVEN · PLAYFUL ITERATION</div>
+    <div style="font-size:31px; line-height:1.14; font-weight:500; letter-spacing:-.01em;">The scale is real now.</div>
+    <div style="font-size:15px; line-height:1.55; color:#6E6353;">Every finished piece of work is a pebble in your pan. Check something off and watch it drop, feel the beam give. Close the week and the pans pour out.</div>
+    <div style="display:flex; flex-direction:column; gap:7px; margin-top:6px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.06em; color:#8B7E6B; line-height:1.5;">
+      <div>TRY —</div>
+      <div>· CHECK A TASK → PEBBLE DROPS, BEAM GIVES</div>
+      <div>· INBOX → APPROVE → INK STAMP</div>
+      <div>· MONEY → SETTLE → THE COIN ROLLS OVER</div>
+      <div>· RESET → CLOSE THE WEEK → PANS EMPTY</div>
+    </div>
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.06em; color:#8B7E6B;">FULL FLOWS → <a href="Household Command Center iOS.dc.html">iPAD + iPHONE</a> · <a href="Household Command Center.dc.html">MAC</a></div>
+  </div>
+
+  <div data-stage="phone" style="flex:none;">
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{isDark}}" hint-size="402px,874px">
+      <div style="--ada:{{hueA}}; --umut:{{hueU}}; --bg:{{cBg}}; --card:{{cCard}}; --ink:{{cInk}}; --sub:{{cSub}}; --line:{{cLine}}; --faint:{{cFaint}}; height:100%; box-sizing:border-box; display:flex; flex-direction:column; position:relative; overflow:hidden; background:var(--bg,#F6F1E6); color:var(--ink,#26201A); font-family:'Newsreader',Georgia,serif; transition:background .35s;">
+        <div data-grain style="position:absolute; inset:0; z-index:50; opacity:.055; pointer-events:none; mix-blend-mode:multiply;"></div>
+
+        <div style="padding:64px 20px 4px; display:flex; align-items:center; justify-content:space-between;">
+          <div style="display:flex; align-items:center; gap:7px;">
+            <svg width="15" height="15" viewBox="0 0 16 16" style="animation:floatBob 4s ease-in-out infinite;"><line x1="1.5" y1="6.8" x2="14.5" y2="4.6" stroke="var(--ink,#26201A)" stroke-width="1.6" stroke-linecap="round"></line><path d="M8 6.4 L10.6 10.6 H5.4 Z" fill="none" stroke="var(--ink,#26201A)" stroke-width="1.5" stroke-linejoin="round"></path><line x1="4.5" y1="13.4" x2="11.5" y2="13.4" stroke="var(--ink,#26201A)" stroke-width="1.4" stroke-linecap="round"></line></svg>
+            <span style="font-size:18px; font-style:italic; font-weight:600;">Even</span>
+          </div>
+          <button onClick="{{toggleDark}}" style-active="transform:scale(.9)" style="width:30px; height:30px; border-radius:999px; border:1px solid var(--line,rgba(38,32,26,.14)); background:transparent; color:var(--sub,#8A7D69); display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0; transition:transform .15s;">
+            <sc-if value="{{showMoon}}" hint-placeholder-val="{{true}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 7 7 0 1 0 20 14.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path></svg></sc-if>
+            <sc-if value="{{isDark}}" hint-placeholder-val="{{false}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"></circle><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5 5l1.7 1.7M17.3 17.3 19 19M19 5l-1.7 1.7M6.7 17.3 5 19"></path></svg></sc-if>
+          </button>
+        </div>
+
+        <div style="flex:1; overflow-y:auto; overflow-x:hidden;">
+
+          <sc-if value="{{showToday}}" hint-placeholder-val="{{true}}">
+            <div data-screen-label="Today" style="padding:0 20px 26px; animation:fadeUp .25s ease both;">
+
+              <div style="position:relative; height:236px; margin:2px -6px 0;">
+                <div style="position:absolute; left:50%; top:196px; width:120px; height:2px; border-radius:1px; background:var(--ink,#26201A); transform:translateX(-50%);"></div>
+                <div style="position:absolute; left:50%; top:64px; width:2px; height:132px; background:var(--ink,#26201A); transform:translateX(-50%);"></div>
+                <div style="position:absolute; left:50%; top:186px; transform:translateX(-50%); font-family:'Source Sans 3',system-ui,sans-serif; font-size:7.5px; font-weight:600; letter-spacing:.3em; color:var(--sub,#8A7D69); background:var(--bg,#F6F1E6); padding:0 6px; z-index:3;">WK 28</div>
+
+                <div style="position:absolute; left:50%; top:64px; width:300px; height:0; transform:translateX(-50%) rotate({{beamRot}}deg); transition:transform 1.2s cubic-bezier(.34,1.7,.4,1); z-index:2;">
+                  <div style="position:absolute; left:0; right:0; top:-1.5px; height:3px; border-radius:2px; background:var(--ink,#26201A);"></div>
+                  <div style="position:absolute; left:50%; top:-4px; width:8px; height:8px; border-radius:99px; background:var(--ink,#26201A); transform:translateX(-50%);"></div>
+
+                  <div style="position:absolute; left:-2px; top:44px; width:0; height:0; transform:rotate({{negRot}}deg); transition:transform 1.2s cubic-bezier(.34,1.7,.4,1);">
+                    <div style="position:absolute; left:-2px; top:-46px; width:4px; height:4px; border-radius:99px; background:var(--ink,#26201A);"></div>
+                    <svg width="96" height="58" viewBox="0 0 96 58" style="position:absolute; left:-48px; top:-45px;">
+                      <path d="M48 2 L12 46 M48 2 L84 46" stroke="var(--ink,#26201A)" stroke-width="1.3" fill="none" opacity=".55"></path>
+                      <path d="M6 46 Q48 66 90 46" stroke="var(--ink,#26201A)" stroke-width="2.2" fill="none" stroke-linecap="round"></path>
+                    </svg>
+                    <div style="position:absolute; left:-39px; top:-26px; width:78px; height:26px; display:flex; flex-wrap:wrap-reverse; align-content:flex-end; justify-content:center; align-items:flex-end; gap:1.5px;">
+                      <sc-for list="{{pebblesA}}" as="p" hint-placeholder-count="8">
+                        <span style="width:{{p.size}}; height:{{p.size}}; border-radius:99px; background:var(--ada,#A6552F); opacity:{{p.op}}; animation:pebbleDrop .5s cubic-bezier(.3,1.4,.5,1) both;"></span>
+                      </sc-for>
+                    </div>
+                    <div style="position:absolute; left:-39px; top:16px; width:78px; text-align:center; font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:600; letter-spacing:.2em; color:var(--ada,#A6552F);">ADA</div>
+                  </div>
+
+                  <div style="position:absolute; right:-2px; top:44px; width:0; height:0; transform:rotate({{negRot}}deg); transition:transform 1.2s cubic-bezier(.34,1.7,.4,1);">
+                    <div style="position:absolute; left:-2px; top:-46px; width:4px; height:4px; border-radius:99px; background:var(--ink,#26201A);"></div>
+                    <svg width="96" height="58" viewBox="0 0 96 58" style="position:absolute; left:-48px; top:-45px;">
+                      <path d="M48 2 L12 46 M48 2 L84 46" stroke="var(--ink,#26201A)" stroke-width="1.3" fill="none" opacity=".55"></path>
+                      <path d="M6 46 Q48 66 90 46" stroke="var(--ink,#26201A)" stroke-width="2.2" fill="none" stroke-linecap="round"></path>
+                    </svg>
+                    <div style="position:absolute; left:-39px; top:-26px; width:78px; height:26px; display:flex; flex-wrap:wrap-reverse; align-content:flex-end; justify-content:center; align-items:flex-end; gap:1.5px;">
+                      <sc-for list="{{pebblesU}}" as="p" hint-placeholder-count="8">
+                        <span style="width:{{p.size}}; height:{{p.size}}; border-radius:99px; background:var(--umut,#37756D); opacity:{{p.op}}; animation:pebbleDrop .5s cubic-bezier(.3,1.4,.5,1) both;"></span>
+                      </sc-for>
+                    </div>
+                    <div style="position:absolute; left:-39px; top:16px; width:78px; text-align:center; font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:600; letter-spacing:.2em; color:var(--umut,#37756D);">UMUT</div>
+                  </div>
+
+                  <div style="position:absolute; left:6px; bottom:14px;">
+                    <div style="font-size:34px; line-height:.9; font-weight:500; color:var(--ada,#A6552F); font-variant-numeric:tabular-nums; transition:all .4s;">{{adaPct}}</div>
+                  </div>
+                  <div style="position:absolute; right:6px; bottom:14px; text-align:right;">
+                    <div style="font-size:34px; line-height:.9; font-weight:500; color:var(--umut,#37756D); font-variant-numeric:tabular-nums; transition:all .4s;">{{umutPct}}</div>
+                  </div>
+                </div>
+              </div>
+              <div style="text-align:center; font-style:italic; font-size:13.5px; color:var(--sub,#8A7D69); margin-top:2px;">{{beamCaption}}</div>
+
+              <sc-for list="{{sectionsMob}}" as="sec" hint-placeholder-count="3">
+                <div style="margin-top:18px;">
+                  <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9.5px; font-weight:600; letter-spacing:.15em; color:var(--sub,#8A7D69);">{{sec.label}}</div>
+                  <sc-for list="{{sec.rows}}" as="t" hint-placeholder-count="3">
+                    <div style="display:flex; gap:10px; align-items:center; padding:11px 0; border-bottom:1px solid var(--faint,rgba(38,32,26,.055));">
+                      <button onClick="{{t.toggle}}" style-active="transform:scale(.85)" style="flex:none; width:27px; height:27px; border-radius:999px; border:1.5px solid {{t.ckBd}}; background:{{t.ckBg}}; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; transition:background .2s ease, border-color .2s ease, transform .15s;">
+                        <svg width="13" height="13" viewBox="0 0 14 14"><path d="M2.8 7.4l2.9 2.9L11.3 4.4" stroke="#FBF7EE" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="stroke-dasharray:13; stroke-dashoffset:{{t.ckDash}}; transition:stroke-dashoffset .25s ease .05s;"></path></svg>
+                      </button>
+                      <div style="flex:1; min-width:0; opacity:{{t.rowOp}}; transition:opacity .2s;">
+                        <div style="font-size:15px; line-height:1.3; text-decoration:{{t.deco}}; text-decoration-thickness:1px;">{{t.title}}</div>
+                        <div style="margin-top:2px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:600; letter-spacing:.06em; color:var(--sub,#8A7D69);">{{t.meta}}</div>
+                      </div>
+                      <div style="flex:none; display:flex; align-items:center; gap:2.5px;" title="heft">
+                        <sc-for list="{{t.heft}}" as="h" hint-placeholder-count="2">
+                          <span style="width:{{h.size}}; height:{{h.size}}; border-radius:99px; background:{{t.ownerColor}}; opacity:.8;"></span>
+                        </sc-for>
+                      </div>
+                      <span style="flex:none; width:20px; height:20px; border-radius:999px; background:{{t.ownerColor}}; color:#FBF7EE; display:flex; align-items:center; justify-content:center; font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:700;">{{t.ownerInit}}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-for>
+              <div style="margin-top:14px; text-align:center; font-style:italic; font-size:12.5px; color:var(--sub,#8A7D69);">Heavier work, heavier pebble. The beam does the arithmetic.</div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{showInbox}}" hint-placeholder-val="{{false}}">
+            <div data-screen-label="Inbox" style="padding:0 20px 26px; animation:fadeUp .25s ease both;">
+              <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.14em; color:var(--sub,#8A7D69);">GMAIL DISCOVERY · 12 SCANNED</div>
+              <h1 style="margin:4px 0 0; font-size:26px; line-height:1.12; font-weight:500; letter-spacing:-.015em;">Approval Inbox</h1>
+              <div style="margin-top:4px; font-style:italic; font-size:12.5px; color:var(--sub,#8A7D69);">Drafts, not tasks. Tap one to review.</div>
+              <sc-if value="{{inboxEmpty}}" hint-placeholder-val="{{false}}">
+                <div style="margin-top:44px; text-align:center;">
+                  <div style="position:relative; width:150px; height:36px; margin:0 auto;">
+                    <div style="position:absolute; left:0; right:0; top:16px; height:2px; border-radius:1px; background:var(--ink,#26201A);"></div>
+                    <div style="position:absolute; left:-2px; top:12px; width:8px; height:8px; border-radius:99px; background:var(--ada,#A6552F);"></div>
+                    <div style="position:absolute; right:-2px; top:12px; width:8px; height:8px; border-radius:99px; background:var(--umut,#37756D);"></div>
+                    <svg width="14" height="10" viewBox="0 0 20 13" style="position:absolute; left:50%; top:19px; transform:translateX(-50%);"><path d="M10 1.2 L18.6 12 H1.4 Z" fill="none" stroke="var(--ink,#26201A)" stroke-width="1.5" stroke-linejoin="round"></path></svg>
+                  </div>
+                  <div style="margin-top:14px; font-style:italic; font-size:14.5px; color:var(--sub,#8A7D69);">Inbox zero. Rare — enjoy it.</div>
+                </div>
+              </sc-if>
+              <div style="display:flex; flex-direction:column; gap:10px; margin-top:14px;">
+                <sc-for list="{{draftList}}" as="d" hint-placeholder-count="4">
+                  <button onClick="{{d.pickMob}}" style-active="transform:scale(.98)" style="text-align:left; width:100%; border:1.5px solid var(--line,rgba(38,32,26,.14)); background:transparent; border-radius:13px; padding:12px 14px; cursor:pointer; font-family:'Newsreader',Georgia,serif; color:var(--ink,#26201A); transition:transform .15s;">
+                    <div style="display:flex; align-items:baseline; gap:8px;">
+                      <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9.5px; font-weight:700; letter-spacing:.08em;">{{d.from}}</span>
+                      <span style="flex:1;"></span>
+                      <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:8px; font-weight:700; letter-spacing:.08em; color:{{d.urgC}};">{{d.urg}}</span>
+                    </div>
+                    <div style="margin-top:3px; font-size:14.5px;">{{d.subject}}</div>
+                    <div style="margin-top:4px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:600; letter-spacing:.04em; color:var(--sub,#8A7D69);">{{d.sum}}</div>
+                  </button>
+                </sc-for>
+              </div>
+              <div style="margin-top:14px; text-align:center; font-style:italic; font-size:12px; color:var(--sub,#8A7D69);">Nothing reaches Calendar until you approve it.</div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{showMoney}}" hint-placeholder-val="{{false}}">
+            <div data-screen-label="Money" style="padding:0 20px 26px; animation:fadeUp .25s ease both;">
+              <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.14em; color:var(--sub,#8A7D69);">{{dateLine}}</div>
+              <h1 style="margin:4px 0 12px; font-size:26px; line-height:1.12; font-weight:500; letter-spacing:-.015em;">Money, settled weekly</h1>
+
+              <div style="background:var(--card,#FBF7EE); border:1px solid var(--line,rgba(38,32,26,.14)); border-radius:16px; padding:16px 18px 18px; position:relative; overflow:hidden;">
+                <div style="display:flex; justify-content:space-between; align-items:baseline;">
+                  <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:600; letter-spacing:.16em; color:var(--sub,#8A7D69);">RUNNING BALANCE</span>
+                  <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:600; letter-spacing:.1em; color:var(--sub,#8A7D69);">SPLIT 50/50</span>
+                </div>
+                <div style="margin-top:7px; font-size:38px; line-height:1; font-weight:500; font-variant-numeric:tabular-nums;">{{owesAmt}}</div>
+                <div style="margin-top:5px; font-style:italic; font-size:13.5px; color:var(--sub,#8A7D69);">{{owesLine}}</div>
+
+                <div style="position:relative; height:58px; margin-top:12px;">
+                  <div style="position:absolute; left:50%; top:26px; width:220px; height:1.5px; background:var(--line,rgba(38,32,26,.14)); transform:translateX(-50%);"></div>
+                  <div style="position:absolute; left:50%; top:6px; transform:translateX(-146px); width:40px; height:40px; border-radius:999px; background:{{umutSoftBg}}; border:1.5px solid var(--umut,#37756D); color:var(--umut,#37756D); display:flex; align-items:center; justify-content:center; font-family:'Source Sans 3',system-ui,sans-serif; font-size:12px; font-weight:700;">U</div>
+                  <div style="position:absolute; left:50%; top:6px; transform:translateX(106px); width:40px; height:40px; border-radius:999px; background:{{adaSoftBg}}; border:1.5px solid var(--ada,#A6552F); color:var(--ada,#A6552F); display:flex; align-items:center; justify-content:center; font-family:'Source Sans 3',system-ui,sans-serif; font-size:12px; font-weight:700;">A</div>
+                  <div style="position:absolute; left:50%; top:14px; transform:translateX(-98px); z-index:2;">
+                    <div style="width:24px; height:24px; border-radius:999px; background:var(--ink,#26201A); color:var(--bg,#F6F1E6); display:flex; align-items:center; justify-content:center; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:700; animation:{{coinAnim}}; animation-fill-mode:both;">€</div>
+                  </div>
+                </div>
+
+                <button onClick="{{settle}}" style-active="transform:scale(.97)" style="width:100%; height:44px; border-radius:10px; border:1px solid {{sBd}}; background:{{sBg}}; color:{{sFg}}; cursor:pointer; font-family:'Newsreader',Georgia,serif; font-size:15px; font-weight:500; transition:background .2s ease, color .2s ease, transform .15s;">{{settleLabel}}</button>
+              </div>
+
+              <div style="margin-top:14px;">
+                <sc-for list="{{expenses}}" as="e" hint-placeholder-count="5">
+                  <div style="display:flex; gap:10px; align-items:center; padding:10px 0; border-bottom:1px solid var(--faint,rgba(38,32,26,.055));">
+                    <span style="flex:none; width:20px; height:20px; border-radius:999px; background:{{e.color}}; color:#FBF7EE; display:flex; align-items:center; justify-content:center; font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:700;">{{e.init}}</span>
+                    <div style="flex:1; min-width:0;">
+                      <div style="font-size:14.5px; line-height:1.25;">{{e.title}}</div>
+                      <div style="margin-top:2px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:600; letter-spacing:.06em; color:var(--sub,#8A7D69);">{{e.sub}}</div>
+                    </div>
+                    <div style="flex:none; font-family:'Source Sans 3',system-ui,sans-serif; font-size:13px; font-weight:600; font-variant-numeric:tabular-nums;">{{e.amt}}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{showReset}}" hint-placeholder-val="{{false}}">
+            <div data-screen-label="Weekly Reset" style="padding:0 20px 26px; animation:fadeUp .25s ease both;">
+              <sc-if value="{{rs0}}" hint-placeholder-val="{{true}}">
+                <div style="padding-top:22px; display:flex; flex-direction:column; min-height:460px;">
+                  <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.18em; color:var(--sub,#8A7D69);">SUNDAY RITUAL · 10 MINUTES</div>
+                  <h1 style="margin:10px 0 0; font-size:34px; line-height:1.08; font-weight:500; letter-spacing:-.02em;">The weekly<br>reset</h1>
+                  <div style="margin-top:14px; font-size:15px; line-height:1.55; max-width:290px;">Look at the pans honestly, say one kind thing each, trade what isn't working — then pour them out and start level.</div>
+                  <div style="margin-top:12px; font-style:italic; font-size:13px; color:var(--sub,#8A7D69);">Together, on one screen. Phones down after.</div>
+                  <div style="flex:1;"></div>
+                  <button onClick="{{startReset}}" style-active="transform:scale(.97)" style="width:100%; height:48px; border-radius:10px; border:none; background:var(--ink,#26201A); color:var(--bg,#F6F1E6); cursor:pointer; font-family:'Newsreader',Georgia,serif; font-size:16px; font-weight:500; transition:transform .15s;">Start the reset</button>
+                </div>
+              </sc-if>
+              <sc-if value="{{rsSteps}}" hint-placeholder-val="{{false}}">
+                <div style="display:flex; align-items:center; justify-content:space-between; padding-top:4px;">
+                  <button onClick="{{prevStep}}" style="border:none; background:transparent; padding:0; cursor:pointer; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.12em; color:var(--sub,#8A7D69);">← BACK</button>
+                  <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.16em; color:var(--sub,#8A7D69);">RESET · {{stepLabel}}</span>
+                </div>
+                <div style="margin-top:10px; height:3px; border-radius:2px; background:var(--faint,rgba(38,32,26,.055)); overflow:hidden;">
+                  <div style="height:100%; width:{{progW}}; background:var(--ink,#26201A); transition:width .3s ease; border-radius:2px;"></div>
+                </div>
+              </sc-if>
+              <sc-if value="{{rs1}}" hint-placeholder-val="{{false}}">
+                <div style="animation:fadeUp .3s ease both;">
+                  <h2 style="margin:20px 0 4px; font-size:24px; font-weight:500; letter-spacing:-.015em;">The week, honestly.</h2>
+                  <div style="font-style:italic; font-size:13px; color:var(--sub,#8A7D69);">No blame in numbers. Just the picture.</div>
+                  <div style="margin:18px 0 6px;">
+                    <sc-for list="{{weekRows}}" as="w" hint-placeholder-count="4">
+                      <div style="padding:11px 0; border-top:1px solid var(--line,rgba(38,32,26,.14));">
+                        <div style="display:flex; align-items:baseline; justify-content:space-between;">
+                          <span style="font-size:15px;">{{w.label}}</span>
+                          <span style="font-size:15px; font-weight:500; font-variant-numeric:tabular-nums;"><span style="color:var(--ada,#A6552F);">{{w.l}}</span><span style="color:var(--sub,#8A7D69);"> · </span><span style="color:var(--umut,#37756D);">{{w.r}}</span></span>
+                        </div>
+                        <div style="margin-top:7px; height:5px; border-radius:3px; background:{{w.grad}};"></div>
+                      </div>
+                    </sc-for>
+                  </div>
+                  <div style="background:var(--faint,rgba(38,32,26,.055)); border-radius:12px; padding:13px 15px;">
+                    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:600; letter-spacing:.16em; color:var(--sub,#8A7D69);">THE BIGGEST CARRY</div>
+                    <div style="margin-top:5px; font-style:italic; font-size:14px; line-height:1.45;">Ada triaged 9 of this week's 12 household emails — before anyone asked.</div>
+                  </div>
+                  <button onClick="{{nextStep}}" style-active="transform:scale(.97)" style="margin-top:20px; width:100%; height:48px; border-radius:10px; border:none; background:var(--ink,#26201A); color:var(--bg,#F6F1E6); cursor:pointer; font-family:'Newsreader',Georgia,serif; font-size:16px; font-weight:500; transition:transform .15s;">Next — say one kind thing</button>
+                </div>
+              </sc-if>
+              <sc-if value="{{rs2}}" hint-placeholder-val="{{false}}">
+                <div style="animation:fadeUp .3s ease both;">
+                  <h2 style="margin:20px 0 4px; font-size:24px; font-weight:500; letter-spacing:-.015em;">Say one kind thing.</h2>
+                  <div style="font-style:italic; font-size:13px; color:var(--sub,#8A7D69);">Out loud. The app can't do this part for you.</div>
+                  <div style="display:flex; flex-direction:column; gap:12px; margin-top:18px;">
+                    <sc-for list="{{apprs}}" as="ap" hint-placeholder-count="2">
+                      <button onClick="{{ap.tap}}" style-active="transform:scale(.98)" style="text-align:left; width:100%; border:1.5px {{ap.bs}} {{ap.bd}}; background:{{ap.bg}}; border-radius:16px; padding:15px 17px; cursor:pointer; font-family:'Newsreader',Georgia,serif; transition:background .2s ease, border-color .2s ease, transform .15s; color:var(--ink,#26201A);">
+                        <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:600; letter-spacing:.18em; color:var(--sub,#8A7D69);">{{ap.label}}</div>
+                        <div style="margin-top:6px; font-style:italic; font-size:15.5px; line-height:1.4;">{{ap.body}}</div>
+                        <div style="margin-top:8px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:600; letter-spacing:.14em; color:{{ap.footC}};">{{ap.foot}}</div>
+                      </button>
+                    </sc-for>
+                  </div>
+                  <button onClick="{{nextStep}}" style-active="transform:scale(.97)" style="margin-top:20px; width:100%; height:48px; border-radius:10px; border:none; background:var(--ink,#26201A); color:var(--bg,#F6F1E6); cursor:pointer; font-family:'Newsreader',Georgia,serif; font-size:16px; font-weight:500; transition:transform .15s;">Next — trade for next week</button>
+                </div>
+              </sc-if>
+              <sc-if value="{{rs3}}" hint-placeholder-val="{{false}}">
+                <div style="animation:fadeUp .3s ease both;">
+                  <h2 style="margin:20px 0 4px; font-size:24px; font-weight:500; letter-spacing:-.015em;">Trade, don't tally.</h2>
+                  <div style="font-style:italic; font-size:13px; color:var(--sub,#8A7D69);">Swap the thinking, not just the doing.</div>
+                  <div style="display:flex; flex-direction:column; gap:12px; margin-top:18px;">
+                    <sc-for list="{{trades}}" as="tr" hint-placeholder-count="2">
+                      <div style="display:flex; align-items:center; gap:12px; border:1.5px solid {{tr.bd}}; background:{{tr.bg}}; border-radius:14px; padding:14px 15px; transition:background .2s ease, border-color .2s ease;">
+                        <div style="flex:1; min-width:0;">
+                          <div style="font-size:15px; line-height:1.3;">{{tr.text}}</div>
+                          <div style="margin-top:3px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:600; letter-spacing:.12em; color:var(--sub,#8A7D69);">{{tr.sub}}</div>
+                        </div>
+                        <button onClick="{{tr.toggle}}" style-active="transform:scale(.85)" style="flex:none; width:28px; height:28px; border-radius:999px; border:1.5px solid {{tr.ckBd}}; background:{{tr.ckBg}}; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; transition:background .2s ease, border-color .2s ease, transform .15s;">
+                          <svg width="13" height="13" viewBox="0 0 14 14"><path d="M2.8 7.4l2.9 2.9L11.3 4.4" stroke="#FBF7EE" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="stroke-dasharray:13; stroke-dashoffset:{{tr.ckDash}}; transition:stroke-dashoffset .2s ease .05s;"></path></svg>
+                        </button>
+                      </div>
+                    </sc-for>
+                  </div>
+                  <button onClick="{{closeWeek}}" style-active="transform:scale(.97)" style="margin-top:20px; width:100%; height:48px; border-radius:10px; border:none; background:var(--ink,#26201A); color:var(--bg,#F6F1E6); cursor:pointer; font-family:'Newsreader',Georgia,serif; font-size:16px; font-weight:500; transition:transform .15s;">Close the week — pour the pans</button>
+                </div>
+              </sc-if>
+              <sc-if value="{{rs4}}" hint-placeholder-val="{{false}}">
+                <div style="padding-top:36px; text-align:center; display:flex; flex-direction:column; align-items:center; animation:fadeUp .4s ease both;">
+                  <div style="position:relative; width:190px; height:60px;">
+                    <div style="position:absolute; left:0; right:0; top:22px; height:2px; border-radius:1px; background:var(--ink,#26201A);"></div>
+                    <div style="position:absolute; left:-2px; top:17px; width:9px; height:9px; border-radius:99px; background:var(--ada,#A6552F);"></div>
+                    <div style="position:absolute; right:-2px; top:17px; width:9px; height:9px; border-radius:99px; background:var(--umut,#37756D);"></div>
+                    <svg width="16" height="11" viewBox="0 0 20 13" style="position:absolute; left:50%; top:25px; transform:translateX(-50%);"><path d="M10 1.2 L18.6 12 H1.4 Z" fill="none" stroke="var(--ink,#26201A)" stroke-width="1.5" stroke-linejoin="round"></path></svg>
+                    <span style="position:absolute; left:20px; top:44px; width:6px; height:6px; border-radius:99px; background:var(--ada,#A6552F); opacity:.4;"></span>
+                    <span style="position:absolute; left:38px; top:52px; width:8px; height:8px; border-radius:99px; background:var(--ada,#A6552F); opacity:.25;"></span>
+                    <span style="position:absolute; right:24px; top:46px; width:7px; height:7px; border-radius:99px; background:var(--umut,#37756D); opacity:.35;"></span>
+                    <span style="position:absolute; right:44px; top:53px; width:5px; height:5px; border-radius:99px; background:var(--umut,#37756D); opacity:.25;"></span>
+                  </div>
+                  <h2 style="margin:22px 0 0; font-size:27px; font-weight:500; letter-spacing:-.015em;">Week 28, poured out.</h2>
+                  <div style="margin-top:10px; font-style:italic; font-size:14px; color:var(--sub,#8A7D69); max-width:250px; line-height:1.5;">Trades locked. The pans start empty on Monday — make it boring.</div>
+                  <div style="margin-top:24px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.2em; color:var(--sub,#8A7D69);">SEE YOU SUNDAY · 6:00 PM</div>
+                  <button onClick="{{reviewAgain}}" style="margin-top:16px; border:none; background:transparent; padding:0; cursor:pointer; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.12em; color:var(--sub,#8A7D69); text-decoration:underline; text-underline-offset:3px;">LOOK AGAIN →</button>
+                </div>
+              </sc-if>
+            </div>
+          </sc-if>
+
+        </div>
+
+        <div style="flex:none; display:flex; border-top:1px solid var(--line,rgba(38,32,26,.14)); background:var(--bg,#F6F1E6); padding:8px 4px 26px; transition:background .35s;">
+          <button onClick="{{goToday}}" style-active="transform:scale(.9)" style="flex:1; border:none; background:transparent; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px; padding:6px 0; color:{{tTodayC}}; transition:color .2s, transform .15s;">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3.5 11.2 20.5 8.4"></path><path d="M12 10.4 14.4 14.4 H9.6 Z" stroke-linejoin="round"></path><path d="M7.5 17.5h9"></path></svg>
+            <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:600; letter-spacing:.1em;">TODAY</span>
+          </button>
+          <button onClick="{{goInbox}}" style-active="transform:scale(.9)" style="flex:1; border:none; background:transparent; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px; padding:6px 0; color:{{tInboxC}}; transition:color .2s, transform .15s;">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13.5 8 5.5h8l4 8"></path><path d="M4 13.5h4.5l1.5 2.5h4l1.5-2.5H20V17a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17Z"></path></svg>
+            <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:600; letter-spacing:.1em;">INBOX · {{inboxCount}}</span>
+          </button>
+          <button onClick="{{goMoney}}" style-active="transform:scale(.9)" style="flex:1; border:none; background:transparent; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px; padding:6px 0; color:{{tMoneyC}}; transition:color .2s, transform .15s;">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="12" r="5.4"></circle><circle cx="15" cy="12" r="5.4"></circle></svg>
+            <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:600; letter-spacing:.1em;">MONEY</span>
+          </button>
+          <button onClick="{{goReset}}" style-active="transform:scale(.9)" style="flex:1; border:none; background:transparent; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px; padding:6px 0; color:{{tResetC}}; transition:color .2s, transform .15s;">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"></path><path d="M19.8 3.5v3.6h-3.6"></path></svg>
+            <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:600; letter-spacing:.1em;">RESET</span>
+          </button>
+        </div>
+
+        <sc-if value="{{showSheet}}" hint-placeholder-val="{{false}}">
+          <div style="position:absolute; inset:0; z-index:60;">
+            <div onClick="{{closeSheet}}" style="position:absolute; inset:0; background:rgba(20,14,7,.45); animation:scrimIn .2s ease both;"></div>
+            <div data-screen-label="Draft sheet" style="position:absolute; left:0; right:0; bottom:0; max-height:78%; overflow-y:auto; background:var(--card,#FBF7EE); border-radius:24px 24px 0 0; padding:14px 20px 34px; animation:sheetUp .28s cubic-bezier(.3,.8,.4,1) both; box-shadow:0 -10px 36px rgba(20,12,5,.16);">
+              <div style="width:36px; height:4px; border-radius:2px; background:var(--line,rgba(38,32,26,.14)); margin:0 auto 12px;"></div>
+              <div style="display:flex; align-items:baseline; justify-content:space-between;">
+                <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9.5px; font-weight:600; letter-spacing:.16em; color:var(--sub,#8A7D69);">REVIEW DRAFT — EVERYTHING EDITABLE</span>
+                <button onClick="{{closeSheet}}" style="border:none; background:transparent; cursor:pointer; padding:4px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:12px; color:var(--sub,#8A7D69);">✕</button>
+              </div>
+              <input type="text" value="{{fTitle}}" onChange="{{setTitle}}" style="margin-top:10px; width:100%; box-sizing:border-box; border:none; border-bottom:1.5px solid var(--line,rgba(38,32,26,.14)); background:transparent; padding:4px 0 8px; font-family:'Newsreader',Georgia,serif; font-size:17px; color:var(--ink,#26201A);">
+              <div style="margin-top:12px; display:flex; align-items:center; gap:8px;">
+                <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:600; letter-spacing:.16em; color:var(--sub,#8A7D69);">OWNER</span>
+                <sc-for list="{{ownerOpts}}" as="o" hint-placeholder-count="2">
+                  <button onClick="{{o.pick}}" style-active="transform:scale(.95)" style="padding:6px 16px; border-radius:999px; border:1.5px solid {{o.bd}}; background:{{o.bg}}; color:{{o.color}}; cursor:pointer; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.08em; transition:transform .15s;">{{o.label}}</button>
+                </sc-for>
+                <span style="flex:1;"></span>
+                <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:11px; font-weight:600; font-variant-numeric:tabular-nums;">{{sheetDueAmt}}</span>
+              </div>
+              <div style="margin-top:12px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:600; letter-spacing:.16em; color:var(--sub,#8A7D69);">CALENDAR REMINDER</div>
+              <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:6px;">
+                <sc-for list="{{remOpts}}" as="o" hint-placeholder-count="4">
+                  <button onClick="{{o.pick}}" style-active="transform:scale(.95)" style="padding:6px 12px; border-radius:999px; border:1.5px solid {{o.bd}}; background:{{o.bg}}; color:{{o.color}}; cursor:pointer; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.08em; transition:transform .15s;">{{o.label}}</button>
+                </sc-for>
+              </div>
+              <div style="display:flex; gap:8px; margin-top:16px;">
+                <button onClick="{{dismiss}}" style-active="transform:scale(.97)" style="flex:1; height:46px; border-radius:10px; border:1px solid var(--line,rgba(38,32,26,.14)); background:transparent; color:var(--sub,#8A7D69); cursor:pointer; font-family:'Newsreader',Georgia,serif; font-size:15px; transition:transform .15s;">Dismiss</button>
+                <button onClick="{{approve}}" style-active="transform:scale(.97)" style="flex:2; height:46px; border-radius:10px; border:none; background:var(--ink,#26201A); color:var(--bg,#F6F1E6); cursor:pointer; font-family:'Newsreader',Georgia,serif; font-size:15px; font-weight:500; transition:transform .15s;">Approve → Calendar</button>
+              </div>
+              <div style="margin-top:8px; text-align:center; font-style:italic; font-size:11.5px; color:var(--sub,#8A7D69);">Approval writes one event with a reminder. Never before.</div>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{showStamp}}" hint-placeholder-val="{{false}}">
+          <div style="position:absolute; left:50%; bottom:110px; transform:translateX(-50%); z-index:70; border:2px solid var(--ink,#26201A); color:var(--ink,#26201A); background:var(--bg,#F6F1E6); border-radius:8px; padding:9px 18px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:11px; font-weight:700; letter-spacing:.14em; box-shadow:0 8px 24px rgba(20,12,5,.18); animation:stampIn .4s cubic-bezier(.3,1.4,.5,1) both; max-width:320px; text-align:center;">{{stampMsg}}</div>
+        </sc-if>
+
+      </div>
+    </x-import>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;duotone&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;Clay &amp; Teal&quot;, &quot;Plum &amp; Olive&quot;, &quot;Rust &amp; Indigo&quot;], &quot;default&quot;: &quot;Clay &amp; Teal&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Look&quot; }
+}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.PAL = {
+      'Clay & Teal':   { la: 'oklch(0.54 0.105 40)',  lu: 'oklch(0.54 0.075 200)', da: 'oklch(0.74 0.09 45)',  du: 'oklch(0.74 0.07 195)' },
+      'Plum & Olive':  { la: 'oklch(0.54 0.09 340)',  lu: 'oklch(0.54 0.08 120)',  da: 'oklch(0.75 0.08 340)', du: 'oklch(0.75 0.08 118)' },
+      'Rust & Indigo': { la: 'oklch(0.54 0.11 55)',   lu: 'oklch(0.54 0.09 275)',  da: 'oklch(0.75 0.09 55)',  du: 'oklch(0.74 0.08 275)' }
+    };
+    // seeded completed work = pebbles already in the pans (58/42-ish by weight)
+    this.SEED = [
+      { w: 'A', p: 3 }, { w: 'A', p: 2 }, { w: 'A', p: 2 }, { w: 'A', p: 3 }, { w: 'A', p: 2 },
+      { w: 'A', p: 1 }, { w: 'A', p: 2 }, { w: 'A', p: 1 }, { w: 'A', p: 1 },
+      { w: 'U', p: 3 }, { w: 'U', p: 3 }, { w: 'U', p: 1 }, { w: 'U', p: 2 },
+      { w: 'U', p: 1 }, { w: 'U', p: 1 }, { w: 'U', p: 2 }
+    ];
+    this.EXP = [
+      { t: 'Weekly groceries \u2014 market run', w: 'A', amt: 86.20, d: 'MON \u00b7 SPLIT 50/50' },
+      { t: 'Internet \u2014 Vodafone', w: 'U', amt: 39.99, d: 'TUE \u00b7 SPLIT 50/50' },
+      { t: 'Cleaning supplies', w: 'A', amt: 18.30, d: 'WED \u00b7 SPLIT 50/50' },
+      { t: 'Dinner out \u2014 \u00c7i\u00e7ek B\u00fcfe', w: 'U', amt: 64.00, d: 'WED \u00b7 SPLIT 50/50' },
+      { t: 'Pharmacy', w: 'A', amt: 22.90, d: 'THU \u00b7 SPLIT 50/50' }
+    ];
+    this.state = {
+      dark: false, tab: 'today', sheet: false, stamp: null, selDraft: 'd1',
+      settled: false, resetStep: 0, saidA: false, saidB: false, weekClosed: false,
+      trades: [
+        { text: 'Umut takes email triage', sub: 'FROM ADA \u00b7 THE ADMIN', acc: false },
+        { text: 'Ada takes bins & recycling', sub: 'FROM UMUT \u00b7 CHORES', acc: false }
+      ],
+      tasks: [
+        { id: 'a1', sec: 'chores', t: 'Laundry \u2014 towels & bedding', owner: 'A', p: 2, meta: 'TODAY \u00b7 WEEKLY', done: false },
+        { id: 'u1', sec: 'chores', t: 'Dishes tonight', owner: 'U', p: 1, meta: 'TODAY \u00b7 DAILY', done: false },
+        { id: 'u2', sec: 'chores', t: 'Clean Miso\u2019s litter tray', owner: 'U', p: 1, meta: 'TODAY \u00b7 EVERY 2 DAYS', done: false },
+        { id: 'a2', sec: 'chores', t: 'Water the balcony plants', owner: 'A', p: 1, meta: 'SAT \u00b7 WEEKLY', done: false },
+        { id: 'ad1', sec: 'admin', t: 'Pay Waternet water bill \u2014 Q2', owner: 'U', p: 2, meta: 'GMAIL \u00b7 \u20ac84.30 \u00b7 2 DAYS OVER', done: false },
+        { id: 'ad2', sec: 'admin', t: 'Decide health-insurance renewal', owner: 'A', p: 3, meta: 'GMAIL \u00b7 DUE TODAY', done: false },
+        { id: 'ad3', sec: 'admin', t: 'Miso \u2014 vet booster, 16:30', owner: 'A', p: 2, meta: 'CALENDAR \u00b7 TODAY 16:30', done: false }
+      ],
+      drafts: [
+        { id: 'd1', from: 'VATTENFALL', subject: 'Your July energy bill is ready', urg: 2, title: 'Pay Vattenfall energy bill \u2014 July', owner: 'U', amount: '112.40', due: 'Jul 25', rem: '3 days before' },
+        { id: 'd2', from: 'TANDARTS JORDAAN', subject: 'Please confirm your appointment of Jul 14', urg: 3, title: 'Confirm dentist appointment \u2014 Jul 14', owner: 'A', amount: '', due: 'Jul 14', rem: '1 day before' },
+        { id: 'd3', from: 'GEMEENTE AMSTERDAM', subject: 'Parking permit renewal opens Aug 1', urg: 1, title: 'Renew parking permit \u2014 Zone 7', owner: 'A', amount: '44.50', due: 'Aug 1', rem: 'On the day' },
+        { id: 'd4', from: 'NETFLIX', subject: 'Your price is changing', urg: 1, title: 'Decide: keep or downgrade Netflix', owner: 'U', amount: '15.99', due: 'Aug 3', rem: '3 days before' }
+      ]
+    };
+  }
+
+  componentDidMount() {
+    try { if (localStorage.getItem('even-dark') === '1') this.setState({ dark: true }); } catch (e) {}
+  }
+
+  name(w) { return w === 'A' ? 'Ada' : 'Umut'; }
+  updDraft(patch) { this.setState(s => ({ drafts: s.drafts.map(d => d.id === s.selDraft ? Object.assign({}, d, patch) : d) })); }
+  stampIt(msg) {
+    if (this._tt) clearTimeout(this._tt);
+    this.setState({ stamp: msg });
+    this._tt = setTimeout(() => this.setState({ stamp: null }), 2600);
+  }
+
+  renderVals() {
+    const S = this.state;
+    const pal = this.PAL[this.props.duotone] || this.PAL['Clay & Teal'];
+    const A = S.dark ? pal.da : pal.la;
+    const U = S.dark ? pal.du : pal.lu;
+    const th = S.dark
+      ? { bg: '#17130F', card: '#211B15', ink: '#EDE5D6', sub: '#9A8F7C', line: 'rgba(237,229,214,.15)', faint: 'rgba(237,229,214,.07)' }
+      : { bg: '#F6F1E6', card: '#FBF7EE', ink: '#26201A', sub: '#8A7D69', line: 'rgba(38,32,26,.14)', faint: 'rgba(38,32,26,.055)' };
+    const soft = c => 'color-mix(in srgb, ' + c + ' 14%, transparent)';
+    const col = w => w === 'A' ? A : U;
+    const SZ = { 1: '8px', 2: '11px', 3: '14px' };
+
+    // pebbles = seeded completed work (unless week closed) + live check-offs
+    const seed = S.weekClosed ? [] : this.SEED;
+    const live = S.tasks.filter(t => t.done).map(t => ({ w: t.owner, p: t.p }));
+    const all = seed.concat(live);
+    let wA = 0, wU = 0;
+    all.forEach(e => { if (e.w === 'A') wA += e.p; else wU += e.p; });
+    const total = wA + wU;
+    const compA = total ? Math.round(100 * wA / total) : 50;
+    const beamRot = Math.max(-8, Math.min(8, (50 - compA) * 0.5));
+    const mkPeb = list => list.map((e, i) => ({ size: SZ[e.p], op: 1 - Math.min(.35, i * 0.012) }));
+    const pebblesA = mkPeb(all.filter(e => e.w === 'A'));
+    const pebblesU = mkPeb(all.filter(e => e.w === 'U'));
+
+    let beamCaption;
+    if (!total) beamCaption = 'Empty pans. A new week, level by definition.';
+    else if (Math.abs(compA - 50) <= 1) beamCaption = 'Level. Enjoy it while it lasts.';
+    else if (Math.abs(compA - 50) <= 4) beamCaption = 'Close to even. Not a competition \u2014 but noted.';
+    else beamCaption = 'Leaning ' + (compA > 50 ? 'Ada' : 'Umut') + ' \u2014 mostly the admin and the remembering.';
+
+    const mkRow = t => ({
+      title: t.t, meta: t.meta,
+      ownerInit: t.owner, ownerColor: col(t.owner),
+      heft: Array.from({ length: t.p }, () => ({ size: '6px' })),
+      ckBg: t.done ? col(t.owner) : 'transparent',
+      ckBd: t.done ? col(t.owner) : th.line,
+      ckDash: t.done ? 0 : 13,
+      rowOp: t.done ? .42 : 1,
+      deco: t.done ? 'line-through' : 'none',
+      toggle: () => this.setState(s => ({ tasks: s.tasks.map(x => x.id === t.id ? Object.assign({}, x, { done: !x.done }) : x) }))
+    });
+    const sectionsMob = [
+      { label: 'CHORES \u2014 TODAY', rows: S.tasks.filter(t => t.sec === 'chores').map(mkRow) },
+      { label: 'THE ADMIN \u2014 FROM GMAIL & CALENDAR', rows: S.tasks.filter(t => t.sec === 'admin').map(mkRow) }
+    ].filter(s => s.rows.length);
+
+    const sel = S.drafts.find(d => d.id === S.selDraft) || null;
+    const urgWords = { 1: 'LOW', 2: 'MEDIUM', 3: 'HIGH' };
+    const draftList = S.drafts.map(d => ({
+      from: d.from, subject: d.subject,
+      sum: (this.name(d.owner) + (d.amount ? ' \u00b7 \u20ac' + d.amount : '') + ' \u00b7 DUE ' + d.due).toUpperCase(),
+      urg: urgWords[d.urg], urgC: d.urg === 3 ? A : th.sub,
+      pickMob: () => this.setState({ selDraft: d.id, sheet: true })
+    }));
+
+    const pill = (q, c) => q ? { bg: soft(c), bd: c, color: c } : { bg: 'transparent', bd: th.line, color: th.sub };
+    const ownerOpts = ['A', 'U'].map(w => Object.assign({ label: this.name(w).toUpperCase(), pick: () => this.updDraft({ owner: w }) }, pill(sel && sel.owner === w, col(w))));
+    const remOpts = ['On the day', '1 day before', '3 days before', '1 week before'].map(r => Object.assign({ label: r.toUpperCase(), pick: () => this.updDraft({ rem: r }) }, pill(sel && sel.rem === r, th.ink)));
+
+    let eurA = 0, eurU = 0;
+    this.EXP.forEach(e => { if (e.w === 'A') eurA += e.amt; else eurU += e.amt; });
+    const diff = (eurA - eurU) / 2;
+    const owes = S.settled ? 0 : diff;
+    let expenses = this.EXP.map(e => ({ title: e.t, sub: e.d, amt: '\u20ac' + e.amt.toFixed(2), init: e.w, color: col(e.w) }));
+    if (S.settled) expenses = [{ title: 'Settle-up \u2014 Umut paid Ada', sub: 'JUST NOW \u00b7 CLEARED', amt: '\u20ac' + diff.toFixed(2), init: 'U', color: col('U') }].concat(expenses);
+
+    const weave = 'repeating-linear-gradient(90deg, ' + A + ' 0 2.5px, ' + U + ' 2.5px 5px)';
+    const grad = l => 'linear-gradient(90deg, ' + A + ' 0 ' + Math.max(0, l - 7) + '%, transparent ' + Math.max(0, l - 7) + '%), linear-gradient(270deg, ' + U + ' 0 ' + Math.max(0, 100 - l - 7) + '%, transparent ' + Math.max(0, 100 - l - 7) + '%), ' + weave;
+    const moA = Math.round(100 * eurA / (eurA + eurU));
+
+    const step = S.resetStep;
+    const apprs = [
+      { said: S.saidA, label: 'ADA \u2192 UMUT', quote: '\u201cYou cleared the whole approval inbox on Tuesday. Noticed.\u201d' },
+      { said: S.saidB, label: 'UMUT \u2192 ADA', quote: '\u201cYou caught the boiler reschedule before it became a Saturday surprise.\u201d' }
+    ].map((a, i) => ({
+      label: a.label,
+      body: a.said ? a.quote : 'Say one thing you appreciated this week. Out loud, to their face.',
+      foot: a.said ? 'SAID \u2014 NICE.' : 'TAP WHEN SAID',
+      footC: a.said ? (i === 0 ? A : U) : th.sub,
+      bs: a.said ? 'solid' : 'dashed', bd: a.said ? (i === 0 ? A : U) : th.line,
+      bg: a.said ? soft(i === 0 ? A : U) : 'transparent',
+      tap: () => this.setState(i === 0 ? { saidA: !S.saidA } : { saidB: !S.saidB })
+    }));
+    const trades = S.trades.map((t, i) => ({
+      text: t.text, sub: t.sub,
+      bd: t.acc ? th.ink : th.line, bg: t.acc ? th.faint : 'transparent',
+      ckBg: t.acc ? th.ink : 'transparent', ckBd: t.acc ? th.ink : th.line, ckDash: t.acc ? 0 : 13,
+      toggle: () => this.setState(s => ({ trades: s.trades.map((x, j) => j === i ? Object.assign({}, x, { acc: !x.acc }) : x) }))
+    }));
+
+    const tabC = k => S.tab === k ? th.ink : th.sub;
+
+    return {
+      hueA: A, hueU: U, adaSoftBg: soft(A), umutSoftBg: soft(U),
+      cBg: th.bg, cCard: th.card, cInk: th.ink, cSub: th.sub, cLine: th.line, cFaint: th.faint,
+      isDark: S.dark, showMoon: !S.dark,
+      toggleDark: () => {
+        const v = !S.dark;
+        this.setState({ dark: v });
+        try { localStorage.setItem('even-dark', v ? '1' : '0'); } catch (e) {}
+      },
+      dateLine: 'SUNDAY, JUL 12',
+      goToday: () => this.setState({ tab: 'today' }),
+      goInbox: () => this.setState({ tab: 'inbox' }),
+      goMoney: () => this.setState({ tab: 'money' }),
+      goReset: () => this.setState({ tab: 'reset' }),
+      tTodayC: tabC('today'), tInboxC: tabC('inbox'), tMoneyC: tabC('money'), tResetC: tabC('reset'),
+      showToday: S.tab === 'today', showInbox: S.tab === 'inbox',
+      showMoney: S.tab === 'money', showReset: S.tab === 'reset',
+      // scale
+      beamRot, negRot: -beamRot, adaPct: compA, umutPct: 100 - compA, beamCaption,
+      pebblesA, pebblesU, sectionsMob,
+      // inbox
+      inboxCount: S.drafts.length, inboxEmpty: S.drafts.length === 0, draftList,
+      showSheet: !!(S.sheet && sel),
+      closeSheet: () => this.setState({ sheet: false }),
+      fTitle: sel ? sel.title : '',
+      setTitle: e => this.updDraft({ title: e.target.value }),
+      sheetDueAmt: sel ? ((sel.amount ? '\u20ac' + sel.amount + ' \u00b7 ' : '') + 'DUE ' + sel.due.toUpperCase()) : '',
+      ownerOpts, remOpts,
+      approve: () => {
+        if (!sel) return;
+        const rest = S.drafts.filter(d => d.id !== sel.id);
+        const item = { id: 'i' + Date.now(), sec: 'admin', t: sel.title, owner: sel.owner, p: 2, meta: 'APPROVED \u00b7 CAL \u00b7 ' + sel.due.toUpperCase(), done: false };
+        this.setState({ drafts: rest, tasks: S.tasks.concat([item]), selDraft: rest.length ? rest[0].id : null, sheet: false });
+        this.stampIt('ON THE CALENDAR \u2713');
+      },
+      dismiss: () => {
+        if (!sel) return;
+        const rest = S.drafts.filter(d => d.id !== sel.id);
+        this.setState({ drafts: rest, selDraft: rest.length ? rest[0].id : null, sheet: false });
+        this.stampIt('DISMISSED \u2014 IGNORED');
+      },
+      showStamp: !!S.stamp, stampMsg: S.stamp || '',
+      // money
+      owesAmt: '\u20ac' + owes.toFixed(2),
+      owesLine: S.settled ? 'Even on money. The coin made it across.' : 'Umut owes Ada \u2014 five shared receipts, split evenly.',
+      settle: () => { if (!S.settled) { this.setState({ settled: true }); this.stampIt('SETTLED \u2014 EVEN ON MONEY'); } },
+      settleLabel: S.settled ? 'Settled \u2713' : 'Settle up',
+      sBg: S.settled ? 'transparent' : th.ink, sFg: S.settled ? th.sub : th.bg, sBd: S.settled ? th.line : th.ink,
+      coinAnim: S.settled ? 'coinSlide .8s cubic-bezier(.4,0,.3,1) both' : 'none',
+      expenses,
+      // reset
+      rs0: step === 0, rs1: step === 1, rs2: step === 2, rs3: step === 3, rs4: step === 4,
+      rsSteps: step >= 1 && step <= 3,
+      stepLabel: step + ' OF 3', progW: Math.round(step / 3 * 100) + '%',
+      startReset: () => this.setState({ resetStep: 1 }),
+      nextStep: () => this.setState(s => ({ resetStep: Math.min(3, s.resetStep + 1) })),
+      prevStep: () => this.setState(s => ({ resetStep: Math.max(0, s.resetStep - 1) })),
+      closeWeek: () => { this.setState({ resetStep: 4, weekClosed: true, tasks: S.tasks.map(t => Object.assign({}, t, { done: false })) }); },
+      reviewAgain: () => this.setState({ resetStep: 1 }),
+      weekRows: [
+        { label: 'Chores', l: 52, r: 48, grad: grad(52) },
+        { label: 'The remembering', l: 70, r: 30, grad: grad(70) },
+        { label: 'The admin', l: 75, r: 25, grad: grad(75) },
+        { label: 'Money fronted', l: moA, r: 100 - moA, grad: grad(moA) }
+      ],
+      apprs, trades
+    };
+  }
+}
+</script>
+</body>
+</html>

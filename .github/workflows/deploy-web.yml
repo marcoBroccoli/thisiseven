@@ -1,0 +1,40 @@
+# .github/workflows/deploy-web.yml
+# Auto-deploy the thisiseven.app coming-soon site to Cloudflare Pages on push.
+# Path-scoped to web/coming-soon/** so iOS / backend / mobile commits NEVER trigger a web deploy.
+# Requires two repo secrets (Settings → Secrets and variables → Actions):
+#   CLOUDFLARE_API_TOKEN   — the CF Pages deploy token (currently CLOUDFLARE_PAGES_TOKEN in ~/.env)
+#   CLOUDFLARE_ACCOUNT_ID  — 64d6def322d7854f96a2460c2b1a88a4  (from repo CLAUDE.md)
+name: Deploy web (thisiseven.app)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/coming-soon/**"
+      - ".github/workflows/deploy-web.yml"
+  workflow_dispatch: {}   # allow manual redeploys from the Actions tab
+
+concurrency:
+  group: deploy-web
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Deploy web/coming-soon to Cloudflare Pages
+        working-directory: web/coming-soon
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          npx --yes wrangler@4 pages deploy . \
+            --project-name=thisiseven \
+            --branch=main \
+            --commit-dirty=true
