@@ -1,0 +1,106 @@
+{
+  "project": "Even",
+  "schema": "promo-features/v1",
+  "video": {
+    "theme": "paper",
+    "accent": "#A6552F",
+    "aspect": "9:16",
+    "bezel": true,
+    "cta": "thisiseven.app"
+  },
+  "features": [
+    {
+      "id": "balance-scale",
+      "name": "The balance scale",
+      "hook": "Finished work becomes weight.",
+      "description": "Shared household tasks drop as weighted pebbles onto a living balance beam. Heavier jobs, heavier pebbles — the beam does the arithmetic, so the invisible load of running a home finally becomes something you can both see.",
+      "category": "core",
+      "screenshots": [
+        "docs/screenshots/2026-07-19-stepwise-tilt-3-light.png",
+        "docs/screenshots/2026-07-18-physics-scale-light.png"
+      ],
+      "beats": [
+        { "kicker": "THE SCALE", "caption": "Finished work becomes weight." },
+        { "kicker": "SEEN AT LAST", "caption": "The beam does the arithmetic." }
+      ],
+      "types": ["video", "screenshot+post"]
+    },
+    {
+      "id": "approval-inbox",
+      "name": "The approval inbox",
+      "hook": "Bills become approvals — never surprises.",
+      "description": "Even reads the household mail, and Claude turns real bills and appointments into clean drafts in an approval inbox. Nothing becomes shared work or hits the calendar until one of you approves it.",
+      "category": "core",
+      "screenshots": [
+        "docs/screenshots/2026-07-17-mvp-02-inbox-light.png"
+      ],
+      "beats": [
+        { "kicker": "THE INBOX", "caption": "Bills arrive as drafts." },
+        { "kicker": "YOUR CALL", "caption": "Nothing lands until you approve." }
+      ],
+      "types": ["video", "screenshot+post"]
+    },
+    {
+      "id": "weekly-settle",
+      "name": "Money, settled weekly",
+      "hook": "Money settles itself.",
+      "description": "Shared receipts stack up through the week and settle 50/50 with one tap. The coin rolls across, the balance reads zero, and no one keeps a mental ledger anymore.",
+      "category": "core",
+      "screenshots": [
+        "docs/screenshots/2026-07-17-mvp-03-money-light.png"
+      ],
+      "beats": [
+        { "kicker": "THE MONEY", "caption": "Shared receipts, split evenly." },
+        { "kicker": "SETTLED", "caption": "One tap and you're even." }
+      ],
+      "types": ["video", "screenshot+post"]
+    },
+    {
+      "id": "sunday-reset",
+      "name": "The Sunday reset",
+      "hook": "Sundays start level.",
+      "description": "A ten-minute weekly ritual: look at the week honestly, say one kind thing each, trade what isn't working — then pour the pans out and start the new week even.",
+      "category": "ritual",
+      "screenshots": [
+        "docs/screenshots/2026-07-17-mvp-04-reset-light.png",
+        "docs/screenshots/2026-07-17-mvp-05-reset-week-honestly.png"
+      ],
+      "beats": [
+        { "kicker": "THE RESET", "caption": "Ten honest minutes on Sunday." },
+        { "kicker": "LEVEL AGAIN", "caption": "Pour the pans, start even." }
+      ],
+      "types": ["video", "screenshot+post"]
+    },
+    {
+      "id": "shared-calendar",
+      "name": "The shared calendar",
+      "hook": "One calendar, both of you.",
+      "description": "Every bill, renewal and appointment lands on a shared household calendar you both subscribe to in Google — colored by who owns what, so nothing falls through the cracks.",
+      "category": "core",
+      "screenshots": [
+        "docs/screenshots/2026-07-17-mvp-04-reset-light.png"
+      ],
+      "beats": [
+        { "kicker": "THE CALENDAR", "caption": "One shared household month." },
+        { "kicker": "IN SYNC", "caption": "Colored by who owns what." }
+      ],
+      "types": ["video", "screenshot+post"]
+    },
+    {
+      "id": "two-person-household",
+      "name": "Built for two",
+      "hook": "Two people, one household.",
+      "description": "Sign in with Apple, start a household, share one invite code with your partner. Everything — tasks, money, calendar, the weekly reset — is scoped to exactly the two of you.",
+      "category": "foundation",
+      "screenshots": [
+        "docs/screenshots/2026-07-17-mvp-00-welcome.png",
+        "docs/screenshots/2026-07-19-profile-light.png"
+      ],
+      "beats": [
+        { "kicker": "FOR TWO", "caption": "Two people, one household." },
+        { "kicker": "PRIVATE", "caption": "Only the two of you, ever." }
+      ],
+      "types": ["video", "screenshot+post"]
+    }
+  ]
+}
