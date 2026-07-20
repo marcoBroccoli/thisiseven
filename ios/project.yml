@@ -15,6 +15,8 @@ targets:
     dependencies:
       - package: HouseholdCommandCenter
         product: EvenMobile
+      - target: EvenWidgetsExtension
+        embed: true
     info:
       path: EvenApp/Info.plist
       properties:
@@ -39,7 +41,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.umuryavuz.even
         MARKETING_VERSION: 1.0.1
-        CURRENT_PROJECT_VERSION: 5
+        CURRENT_PROJECT_VERSION: 6
         DEVELOPMENT_TEAM: C3XSV85364
         CODE_SIGN_STYLE: Automatic
         CODE_SIGN_ENTITLEMENTS: EvenApp/Even.entitlements
@@ -51,6 +53,39 @@ targets:
           CODE_SIGN_STYLE: Manual
           CODE_SIGN_IDENTITY: Apple Distribution
           PROVISIONING_PROFILE_SPECIFIER: Even AppStore
+  EvenWidgetsExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - EvenWidgets
+    dependencies:
+      - package: HouseholdCommandCenter
+        product: EvenCore
+    info:
+      path: EvenWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: Even
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+        UIAppFonts:
+          - Newsreader.ttf
+          - Newsreader-Italic.ttf
+          - SourceSans3.ttf
+          - SourceSans3-Italic.ttf
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.umuryavuz.even.widgets
+        MARKETING_VERSION: 1.0.1
+        CURRENT_PROJECT_VERSION: 6
+        DEVELOPMENT_TEAM: C3XSV85364
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_ENTITLEMENTS: EvenWidgets/EvenWidgets.entitlements
+        GENERATE_INFOPLIST_FILE: NO
+        SKIP_INSTALL: YES
+        TARGETED_DEVICE_FAMILY: "1"
+
   EvenUITests:
     type: bundle.ui-testing
     platform: iOS

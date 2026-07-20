@@ -11,12 +11,31 @@
 		13170EB5F01F31BEFBA32669 /* EvenApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A95A43EE2CE1E45F9972E3E5 /* EvenApp.swift */; };
 		168D82537F06FA083AD66FE7 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1FDF0626C25D9F1D3CE11B6C /* Assets.xcassets */; };
 		19BA6F9E80E5AFB954B0A481 /* EvenDemoWalkTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13C1CDC5FE2BAE5109126544 /* EvenDemoWalkTests.swift */; };
+		1C20D0E3F15364C73960A82B /* Newsreader.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 53E14365C55671A4D5C803E1 /* Newsreader.ttf */; };
+		1DCDE3C1A99388A46D64C08A /* WidgetTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EB5B3CE129810AF99B146EB /* WidgetTheme.swift */; };
+		246E0F9E06127BDD74C21234 /* SourceSans3.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 94828603FF4B0F4CA386EFE1 /* SourceSans3.ttf */; };
+		30310A663002B44962F9816A /* EvenWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 937BCF87495D9A6E6E8CF776 /* EvenWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		527B5B3FC73C73894D73C0B1 /* LockWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = C688FC6E0628DFA9807BE19F /* LockWidgets.swift */; };
 		821468CA8DC9C28DA7DFF161 /* EvenE2ETests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0AAF5AFC5B42AA346D03E33 /* EvenE2ETests.swift */; };
+		8351BB659FA3BB3CBFB26E39 /* EvenCore in Frameworks */ = {isa = PBXBuildFile; productRef = ECE4C1DBF9EB08B2BEBF418F /* EvenCore */; };
+		913AC9278E61AF9F75A83C7D /* Provider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F78212281B874F7A9927CE9 /* Provider.swift */; };
+		B13B405352CFEEDD3214FE1B /* EvenWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D4D615724B500AF5E6A94D3 /* EvenWidgetsBundle.swift */; };
+		C4EB1926A7F34D55C3D46572 /* Newsreader-Italic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F84BCAA71BD336B04B69B68C /* Newsreader-Italic.ttf */; };
+		C8A5C12511F304D4D93CCEC7 /* SourceSans3-Italic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = C4ADA82FF8A71056A43540F9 /* SourceSans3-Italic.ttf */; };
 		CEDE401B661D23F2C09659D5 /* PhysicsStressTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 931341DE12ABBB762C4D3C5F /* PhysicsStressTests.swift */; };
+		D00504C2514047A20CFC44F7 /* BalanceBeam.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1182C0E4AB68527AC6FBE676 /* BalanceBeam.swift */; };
 		D9A79A3430AED369FE1207BE /* EvenMobile in Frameworks */ = {isa = PBXBuildFile; productRef = C1DC674DFF5C0654B3196823 /* EvenMobile */; };
+		F863305B3CD8C7433A2ED336 /* HomeWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 945D790C562599D7F4AA0CDF /* HomeWidgets.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		61E2292931CBB666CAB5E5D4 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 02664969AF66D3EC327AFD67 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 68716960EC6E57F3F1FBCA9E;
+			remoteInfo = EvenWidgetsExtension;
+		};
 		AE24C435B4DB1D86687A5664 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 02664969AF66D3EC327AFD67 /* Project object */;
@@ -26,18 +45,45 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		60D45C89537A15EE1993E52E /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				30310A663002B44962F9816A /* EvenWidgetsExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		1182C0E4AB68527AC6FBE676 /* BalanceBeam.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BalanceBeam.swift; sourceTree = "<group>"; };
 		13C1CDC5FE2BAE5109126544 /* EvenDemoWalkTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvenDemoWalkTests.swift; sourceTree = "<group>"; };
 		1FDF0626C25D9F1D3CE11B6C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		2D4D615724B500AF5E6A94D3 /* EvenWidgetsBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvenWidgetsBundle.swift; sourceTree = "<group>"; };
 		39DA8231A84CF0BBDCAFC8C5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		42223694485ED1E379B25DCB /* Even.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Even.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		485A1F14A32A42EC812D3FEC /* EvenCaptureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvenCaptureTests.swift; sourceTree = "<group>"; };
+		4EB5B3CE129810AF99B146EB /* WidgetTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetTheme.swift; sourceTree = "<group>"; };
+		53E14365C55671A4D5C803E1 /* Newsreader.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Newsreader.ttf; sourceTree = "<group>"; };
+		69BD9A26560574B627B99986 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		737DB88BD2FE01869083C344 /* thisiseven */ = {isa = PBXFileReference; lastKnownFileType = folder; name = thisiseven; path = ..; sourceTree = SOURCE_ROOT; };
+		7EB7475D8E45683EADAA0B8C /* EvenWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = EvenWidgets.entitlements; sourceTree = "<group>"; };
 		931341DE12ABBB762C4D3C5F /* PhysicsStressTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhysicsStressTests.swift; sourceTree = "<group>"; };
+		937BCF87495D9A6E6E8CF776 /* EvenWidgetsExtension.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = EvenWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		945D790C562599D7F4AA0CDF /* HomeWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeWidgets.swift; sourceTree = "<group>"; };
+		94828603FF4B0F4CA386EFE1 /* SourceSans3.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = SourceSans3.ttf; sourceTree = "<group>"; };
+		9F78212281B874F7A9927CE9 /* Provider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Provider.swift; sourceTree = "<group>"; };
 		A95A43EE2CE1E45F9972E3E5 /* EvenApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvenApp.swift; sourceTree = "<group>"; };
 		AEA39CF6AF81E4C3FFCDD70C /* EvenUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = EvenUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C4ADA82FF8A71056A43540F9 /* SourceSans3-Italic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SourceSans3-Italic.ttf"; sourceTree = "<group>"; };
+		C688FC6E0628DFA9807BE19F /* LockWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockWidgets.swift; sourceTree = "<group>"; };
 		E3446E7667BA618A453D43C4 /* Even.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Even.entitlements; sourceTree = "<group>"; };
 		F0AAF5AFC5B42AA346D03E33 /* EvenE2ETests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvenE2ETests.swift; sourceTree = "<group>"; };
+		F84BCAA71BD336B04B69B68C /* Newsreader-Italic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Newsreader-Italic.ttf"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -46,6 +92,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				D9A79A3430AED369FE1207BE /* EvenMobile in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9B35E6AA3C764495B00D6D9F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8351BB659FA3BB3CBFB26E39 /* EvenCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -82,11 +136,39 @@
 			path = EvenApp;
 			sourceTree = "<group>";
 		};
+		6B8E1E431C323B4B151E0E60 /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				F84BCAA71BD336B04B69B68C /* Newsreader-Italic.ttf */,
+				53E14365C55671A4D5C803E1 /* Newsreader.ttf */,
+				C4ADA82FF8A71056A43540F9 /* SourceSans3-Italic.ttf */,
+				94828603FF4B0F4CA386EFE1 /* SourceSans3.ttf */,
+			);
+			path = Fonts;
+			sourceTree = "<group>";
+		};
+		8704E78E22B3F1A63BBCF58A /* EvenWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				1182C0E4AB68527AC6FBE676 /* BalanceBeam.swift */,
+				7EB7475D8E45683EADAA0B8C /* EvenWidgets.entitlements */,
+				2D4D615724B500AF5E6A94D3 /* EvenWidgetsBundle.swift */,
+				945D790C562599D7F4AA0CDF /* HomeWidgets.swift */,
+				69BD9A26560574B627B99986 /* Info.plist */,
+				C688FC6E0628DFA9807BE19F /* LockWidgets.swift */,
+				9F78212281B874F7A9927CE9 /* Provider.swift */,
+				4EB5B3CE129810AF99B146EB /* WidgetTheme.swift */,
+				6B8E1E431C323B4B151E0E60 /* Fonts */,
+			);
+			path = EvenWidgets;
+			sourceTree = "<group>";
+		};
 		DD9A6E7905D52CC377512774 /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				42223694485ED1E379B25DCB /* Even.app */,
 				AEA39CF6AF81E4C3FFCDD70C /* EvenUITests.xctest */,
+				937BCF87495D9A6E6E8CF776 /* EvenWidgetsExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -96,6 +178,7 @@
 			children = (
 				633EF34419996FEE49CB3FA1 /* EvenApp */,
 				43AC4B346ED2F5989C6B07E1 /* EvenUITests */,
+				8704E78E22B3F1A63BBCF58A /* EvenWidgets */,
 				600707A17DA28F23972E90F5 /* Packages */,
 				DD9A6E7905D52CC377512774 /* Products */,
 			);
@@ -129,10 +212,12 @@
 				DCC248B77B1109D89C07F3C6 /* Sources */,
 				29CDD730B0B811E5BC2274B9 /* Resources */,
 				5270AB94B1205BF7EEA65533 /* Frameworks */,
+				60D45C89537A15EE1993E52E /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				E758B56BFDF12F5EC856C6D0 /* PBXTargetDependency */,
 			);
 			name = Even;
 			packageProductDependencies = (
@@ -141,6 +226,26 @@
 			productName = Even;
 			productReference = 42223694485ED1E379B25DCB /* Even.app */;
 			productType = "com.apple.product-type.application";
+		};
+		68716960EC6E57F3F1FBCA9E /* EvenWidgetsExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 870024E2207D5CA12F277108 /* Build configuration list for PBXNativeTarget "EvenWidgetsExtension" */;
+			buildPhases = (
+				D863601840AEFCCDAABF7615 /* Sources */,
+				44F3A59E176751BE13CF38DF /* Resources */,
+				9B35E6AA3C764495B00D6D9F /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = EvenWidgetsExtension;
+			packageProductDependencies = (
+				ECE4C1DBF9EB08B2BEBF418F /* EvenCore */,
+			);
+			productName = EvenWidgetsExtension;
+			productReference = 937BCF87495D9A6E6E8CF776 /* EvenWidgetsExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -158,6 +263,10 @@
 					};
 					5F980592C3BF0FBD9861ECC8 = {
 						DevelopmentTeam = C3XSV85364;
+					};
+					68716960EC6E57F3F1FBCA9E = {
+						DevelopmentTeam = C3XSV85364;
+						ProvisioningStyle = Automatic;
 					};
 				};
 			};
@@ -179,6 +288,7 @@
 			projectRoot = "";
 			targets = (
 				5F980592C3BF0FBD9861ECC8 /* Even */,
+				68716960EC6E57F3F1FBCA9E /* EvenWidgetsExtension */,
 				48A344419D70185C515AC65F /* EvenUITests */,
 			);
 		};
@@ -193,6 +303,17 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		44F3A59E176751BE13CF38DF /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C4EB1926A7F34D55C3D46572 /* Newsreader-Italic.ttf in Resources */,
+				1C20D0E3F15364C73960A82B /* Newsreader.ttf in Resources */,
+				C8A5C12511F304D4D93CCEC7 /* SourceSans3-Italic.ttf in Resources */,
+				246E0F9E06127BDD74C21234 /* SourceSans3.ttf in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -204,6 +325,19 @@
 				19BA6F9E80E5AFB954B0A481 /* EvenDemoWalkTests.swift in Sources */,
 				821468CA8DC9C28DA7DFF161 /* EvenE2ETests.swift in Sources */,
 				CEDE401B661D23F2C09659D5 /* PhysicsStressTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D863601840AEFCCDAABF7615 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D00504C2514047A20CFC44F7 /* BalanceBeam.swift in Sources */,
+				B13B405352CFEEDD3214FE1B /* EvenWidgetsBundle.swift in Sources */,
+				F863305B3CD8C7433A2ED336 /* HomeWidgets.swift in Sources */,
+				527B5B3FC73C73894D73C0B1 /* LockWidgets.swift in Sources */,
+				913AC9278E61AF9F75A83C7D /* Provider.swift in Sources */,
+				1DCDE3C1A99388A46D64C08A /* WidgetTheme.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -223,6 +357,11 @@
 			target = 5F980592C3BF0FBD9861ECC8 /* Even */;
 			targetProxy = AE24C435B4DB1D86687A5664 /* PBXContainerItemProxy */;
 		};
+		E758B56BFDF12F5EC856C6D0 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 68716960EC6E57F3F1FBCA9E /* EvenWidgetsExtension */;
+			targetProxy = 61E2292931CBB666CAB5E5D4 /* PBXContainerItemProxy */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
@@ -233,7 +372,7 @@
 				CODE_SIGN_ENTITLEMENTS = EvenApp/Even.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				DEVELOPMENT_TEAM = C3XSV85364;
 				INFOPLIST_FILE = EvenApp/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -256,7 +395,7 @@
 				CODE_SIGN_ENTITLEMENTS = EvenApp/Even.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				DEVELOPMENT_TEAM = C3XSV85364;
 				INFOPLIST_FILE = EvenApp/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -267,6 +406,50 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.umuryavuz.even;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		93B54202ED5B7827CC066CA0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = EvenWidgets/EvenWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 6;
+				DEVELOPMENT_TEAM = C3XSV85364;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = EvenWidgets/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.umuryavuz.even.widgets;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		957581D7FA822E66D81B96DB /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = EvenWidgets/EvenWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 6;
+				DEVELOPMENT_TEAM = C3XSV85364;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = EvenWidgets/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.umuryavuz.even.widgets;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
@@ -440,6 +623,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
+		870024E2207D5CA12F277108 /* Build configuration list for PBXNativeTarget "EvenWidgetsExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				957581D7FA822E66D81B96DB /* Debug */,
+				93B54202ED5B7827CC066CA0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		A658404AAC45D8DE4404DDE5 /* Build configuration list for PBXNativeTarget "EvenUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -471,6 +663,10 @@
 		C1DC674DFF5C0654B3196823 /* EvenMobile */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = EvenMobile;
+		};
+		ECE4C1DBF9EB08B2BEBF418F /* EvenCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = EvenCore;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

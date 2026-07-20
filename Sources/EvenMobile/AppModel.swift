@@ -1,6 +1,9 @@
 import Foundation
 import Observation
 import EvenCore
+#if canImport(WidgetKit)
+import WidgetKit
+#endif
 
 enum EvenTab: String, CaseIterable {
     case today, todos, schedule, money
@@ -151,6 +154,7 @@ final class AppModel {
         if let drafts { self.drafts = drafts }
         if let google { self.googleStatus = google }
         await refreshTodoReminders()
+        publishWidgetSnapshot()
         if summary == nil && drafts == nil && google == nil {
             errorMessage = "Can't reach the house server."
         }
@@ -186,6 +190,7 @@ final class AppModel {
             setTask(updated)
             self.summary = try await api.summary()
             await refreshTodoReminders()
+            publishWidgetSnapshot()
         } catch {
             setTask(task)
             surface(error)
@@ -208,6 +213,7 @@ final class AppModel {
             summary = try await api.summary()
             calendarRevision += 1
             await refreshTodoReminders()
+            publishWidgetSnapshot()
             return true
         } catch {
             surface(error)
@@ -221,6 +227,7 @@ final class AppModel {
             summary = try await api.summary()
             calendarRevision += 1
             await refreshTodoReminders()
+            publishWidgetSnapshot()
             stamp(body.clearDueOn ? "REMOVED FROM CALENDAR" : "TODO UPDATED")
             return true
         } catch {
@@ -235,6 +242,7 @@ final class AppModel {
             summary = try await api.summary()
             calendarRevision += 1
             await refreshTodoReminders()
+            publishWidgetSnapshot()
             stamp("TODO ARCHIVED")
         } catch {
             surface(error)
@@ -300,6 +308,7 @@ final class AppModel {
             summary = try await api.summary()
             calendarRevision += 1
             await refreshTodoReminders()
+            publishWidgetSnapshot()
             stamp("ON THE CALENDAR ✓")
         } catch {
             surface(error)
@@ -505,6 +514,93 @@ final class AppModel {
             surface(error)
             return false
         }
+    }
+
+    // MARK: Widget snapshot
+
+    /// Publishes a small snapshot to the shared App Group and asks WidgetKit to
+    /// reload, so the home/lock widgets track live household state without any
+    /// network access. Called after every summary/todos-changing mutation.
+    func publishWidgetSnapshot() {
+        guard let summary else { return }
+        let today = Self.dayFormat.string(from: Date())
+        let members = household?.members ?? []
+        let clayMember = members.first { $0.color == .clay }
+        let tealMember = members.first { $0.color == .teal }
+
+        func share(_ member: Member?) -> Int {
+            guard let member else { return 0 }
+            return member.isMe ? summary.percentMe : summary.percentPartner
+        }
+        func doneCount(_ member: Member?) -> Int {
+            guard let member else { return 0 }
+            return summary.pebbles.filter { $0.memberId == member.id }.count
+        }
+        func initial(_ member: Member?) -> String {
+            guard let first = member?.displayName.first else { return "—" }
+            return String(first).uppercased()
+        }
+
+        let claySide = EvenWidgetSnapshot.Side(
+            name: clayMember?.displayName ?? "You",
+            initial: initial(clayMember), color: .clay,
+            share: share(clayMember), done: doneCount(clayMember))
+        let tealSide = EvenWidgetSnapshot.Side(
+            name: tealMember?.displayName ?? "— ?",
+            initial: tealMember.map(initial) ?? "—", color: .teal,
+            share: share(tealMember), done: doneCount(tealMember))
+
+        let leftToday = summary.sections.flatMap(\.tasks)
+            .filter { $0.dueOn == today && !$0.done }.count
+
+        let upcoming: [EvenWidgetSnapshot.UpNext] = todos
+            .filter { $0.state != .done }
+            .prefix(4)
+            .map { item in
+                let meta: String
+                switch item.state {
+                case .needsReview: meta = "REVIEW"
+                default:
+                    if let section = item.task?.section {
+                        meta = section == .chore ? "CHORE" : "ADMIN"
+                    } else {
+                        meta = item.source.label
+                    }
+                }
+                let owner = member(item.ownerMemberId)
+                return EvenWidgetSnapshot.UpNext(
+                    id: item.id.uuidString,
+                    title: item.title,
+                    typeMeta: meta,
+                    ownerColor: owner?.color ?? .clay,
+                    ownerInitial: initial(owner),
+                    when: Self.widgetWhenLabel(item.dueOn, today: today),
+                    amountCents: item.amountCents,
+                    gcal: item.source == .calendar)
+            }
+
+        let snapshot = EvenWidgetSnapshot(
+            weekIndex: summary.week.index,
+            clay: claySide, teal: tealSide,
+            hasPartner: partner != nil,
+            leader: summary.caption,
+            leftToday: leftToday,
+            upcoming: upcoming,
+            generatedAt: Date())
+        snapshot.write()
+
+        #if canImport(WidgetKit)
+        WidgetCenter.shared.reloadAllTimelines()
+        #endif
+    }
+
+    private static func widgetWhenLabel(_ dueOn: String?, today: String) -> String {
+        guard let dueOn else { return "—" }
+        if dueOn == today { return "TODAY" }
+        guard let date = dayFormat.date(from: dueOn) else { return dueOn }
+        let out = DateFormatter()
+        out.dateFormat = "MMM d"
+        return out.string(from: date).uppercased()
     }
 }
 
