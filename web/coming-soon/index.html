@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Even — coming soon</title>
-<meta name="description" content="Even — money, settled weekly. A calmer way to keep things fair with the people you share life with. Coming soon.">
+<title>Even — money, settled weekly</title>
+<meta name="description" content="Even — money, settled weekly. A calmer way to keep things fair with the people you share life with. No spreadsheets, no awkward reminders.">
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://thisiseven.app/">
-<meta property="og:title" content="Even — coming soon">
-<meta property="og:description" content="Money, settled weekly. A calmer way to keep things fair with the people you share life with.">
+<meta property="og:title" content="Even — money, settled weekly">
+<meta property="og:description" content="A calmer way to keep things fair with the people you share life with.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://thisiseven.app">
 <meta name="theme-color" content="#E9E1D2">
@@ -21,81 +21,669 @@
     --paper:#E9E1D2; --paper-hi:#F6F1E6; --paper-card:#FBF7EE;
     --ink:#26201A; --ink-soft:#6E6353; --muted:#8A7D69; --hair:#D8CDB8;
     --terra:#A6552F; --terra-deep:#7A3A1D; --pine:#37756D;
+    --gap:clamp(88px,14vh,140px);
   }
   *{box-sizing:border-box}
-  html,body{height:100%}
+  html{scroll-behavior:smooth}
   body{
     margin:0; background:var(--paper); color:var(--ink);
     font-family:'Source Sans 3',system-ui,sans-serif;
     -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
-    display:grid; place-items:center; min-height:100dvh; position:relative; overflow:hidden;
+    position:relative; overflow-x:hidden;
   }
-  /* soft radial warmth + paper grain */
+  /* soft radial warmth + paper grain (brand atmosphere) */
   body::before{
-    content:""; position:fixed; inset:0; pointer-events:none;
-    background:radial-gradient(120% 90% at 50% 0%, var(--paper-hi), transparent 60%);
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background:radial-gradient(120% 70% at 50% 0%, var(--paper-hi), transparent 55%);
   }
   body::after{
-    content:""; position:fixed; inset:0; pointer-events:none; opacity:.5; mix-blend-mode:multiply;
+    content:""; position:fixed; inset:0; pointer-events:none; opacity:.45; mix-blend-mode:multiply; z-index:0;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.42'/%3E%3C/svg%3E");
   }
-  main{
-    position:relative; z-index:1; width:min(680px,90vw); text-align:center;
-    padding:40px 0;
-  }
+  .wrap{position:relative; z-index:1; width:min(1060px,90vw); margin:0 auto}
+
+  /* ── intro settle (CSS-only, JS-independent) ── */
   .item{opacity:0; animation:settle .9s cubic-bezier(.2,.8,.24,1) forwards}
-  .d1{animation-delay:.15s}.d2{animation-delay:.30s}.d3{animation-delay:.46s}.d4{animation-delay:.62s}.d5{animation-delay:.80s}
+  .d1{animation-delay:.15s}.d2{animation-delay:.30s}.d3{animation-delay:.46s}.d4{animation-delay:.62s}.d5{animation-delay:.80s}.d6{animation-delay:.96s}
   @keyframes settle{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
 
-  /* the "evening out" motif — two bars level off */
+  /* ── HERO ── */
+  .hero{min-height:100dvh; display:grid; place-items:center; text-align:center; padding:64px 0 40px}
+  .hero .inner{width:min(700px,100%)}
+  /* the "evening out" motif — two bars level off (brand signature) */
   .scale{display:flex; gap:9px; align-items:flex-end; justify-content:center; height:46px; margin:0 auto 30px}
   .scale i{width:11px; border-radius:4px 4px 2px 2px; display:block}
   .scale i:nth-child(1){background:var(--terra); height:16px; animation:evenA 1.6s cubic-bezier(.5,.05,.2,1) .5s both}
   .scale i:nth-child(2){background:var(--pine);  height:44px; animation:evenB 1.6s cubic-bezier(.5,.05,.2,1) .5s both}
   @keyframes evenA{0%{height:16px}60%{height:32px}100%{height:30px}}
   @keyframes evenB{0%{height:44px}60%{height:28px}100%{height:30px}}
-
-  .brand{font-family:'Newsreader',Georgia,serif; font-weight:500; font-size:22px; letter-spacing:.01em; color:var(--ink)}
+  .brand{font-family:'Newsreader',Georgia,serif; font-weight:500; font-size:22px; letter-spacing:.01em}
   .brand .dot{color:var(--terra)}
   h1{
     font-family:'Newsreader',Georgia,serif; font-weight:500;
-    font-size:clamp(40px,9vw,74px); line-height:1.02; letter-spacing:-.015em;
+    font-size:clamp(40px,9vw,78px); line-height:1.02; letter-spacing:-.015em;
     margin:20px 0 0; text-wrap:balance;
   }
   h1 em{font-style:italic; color:var(--terra)}
   .sub{
     font-size:clamp(16px,2.4vw,19px); color:var(--ink-soft); line-height:1.6;
-    max-width:34ch; margin:20px auto 0;
+    max-width:38ch; margin:20px auto 0; text-wrap:pretty;
   }
+  .cue{
+    margin-top:44px; display:inline-flex; flex-direction:column; align-items:center; gap:8px;
+    font-size:11px; letter-spacing:.22em; text-transform:uppercase; color:var(--muted);
+  }
+  .cue span{width:1px; height:34px; background:linear-gradient(var(--hair),transparent); position:relative; overflow:hidden}
+  .cue span::after{content:""; position:absolute; inset:0; background:var(--terra); transform:translateY(-100%); animation:cueRun 2.2s cubic-bezier(.6,.05,.3,1) infinite}
+  @keyframes cueRun{0%{transform:translateY(-100%)}55%{transform:translateY(100%)}100%{transform:translateY(100%)}}
+
+  /* ── CTA (interest signal) ── */
+  .cta-row{margin-top:36px; display:flex; flex-direction:column; align-items:center; gap:12px}
+  .cta{
+    appearance:none; border:0; cursor:pointer; font:inherit; font-weight:600;
+    font-size:15px; letter-spacing:.01em; color:var(--paper-hi);
+    background:var(--terra); padding:14px 26px; border-radius:999px; will-change:transform;
+    box-shadow:0 1px 0 rgba(255,255,255,.25) inset, 0 12px 26px rgba(122,58,29,.22);
+    transition:transform .35s cubic-bezier(.2,.8,.24,1), background-color .35s ease, box-shadow .35s ease;
+  }
+  .cta:hover{background:var(--terra-deep); box-shadow:0 1px 0 rgba(255,255,255,.25) inset, 0 16px 32px rgba(122,58,29,.28)}
+  .cta:active{transform:translateY(1px)}
+  .cta:focus-visible{outline:2px solid var(--pine); outline-offset:3px}
+  .cta[data-done="1"]{background:var(--pine); pointer-events:none}
+  .cta .arw{display:inline-block; margin-left:8px; transition:transform .35s cubic-bezier(.2,.8,.24,1)}
+  .cta:hover .arw{transform:translateX(4px)}
+  .cta-note{font-size:13px; color:var(--muted); letter-spacing:.01em; min-height:1.2em; transition:opacity .3s ease}
+
+  /* ── eyebrow / section heads ── */
+  .eyebrow{
+    display:flex; align-items:center; gap:12px; justify-content:center;
+    font-size:12px; font-weight:600; letter-spacing:.2em; text-transform:uppercase;
+    color:var(--muted); margin-bottom:14px;
+  }
+  .eyebrow::before,.eyebrow::after{content:""; height:1px; width:36px; background:var(--hair)}
+
+  /* ── SHOWCASE (pinned scroll-scrubbed product demo) ── */
+  .showcase{padding:var(--gap) 0 0}
+  .show-head{text-align:center; margin-bottom:clamp(40px,7vh,80px)}
+  .show-head h2{
+    font-family:'Newsreader',Georgia,serif; font-weight:500;
+    font-size:clamp(28px,5vw,46px); line-height:1.08; letter-spacing:-.01em;
+    margin:0 auto; max-width:18ch;
+  }
+  .show-head h2 em{font-style:italic; color:var(--pine)}
+  /* two-bar "evening out" motif that levels on enter */
+  .levelbars{display:flex; gap:8px; align-items:flex-end; justify-content:center; height:34px; margin:22px auto 0}
+  .levelbars i{width:9px; border-radius:3px 3px 2px 2px; display:block; transform-origin:bottom}
+  .levelbars i:nth-child(1){background:var(--terra); height:34px}
+  .levelbars i:nth-child(2){background:var(--pine);  height:34px}
+
+  .showcase-stage{position:relative}
+  .stage-inner{
+    display:flex; flex-direction:column; gap:clamp(72px,11vh,120px);
+    align-items:center; will-change:transform;
+  }
+  .beat{
+    display:grid; grid-template-columns:1fr; gap:30px; align-items:center;
+    justify-items:center; text-align:center; width:min(560px,100%);
+  }
+  .beat-caption{max-width:40ch}
+  .beat-no{
+    font-family:'Newsreader',serif; font-style:italic; color:var(--terra);
+    font-size:19px; margin-bottom:10px;
+  }
+  .beat-caption h3{
+    font-family:'Newsreader',Georgia,serif; font-weight:500;
+    font-size:clamp(25px,3.6vw,36px); line-height:1.1; letter-spacing:-.01em; margin:0 0 14px;
+  }
+  .beat-caption p{font-size:clamp(15px,1.9vw,17.5px); color:var(--ink-soft); line-height:1.62; margin:0}
+
+  /* ── phone frame (rebuilt from the app's iPhone bezel) ── */
+  .phone{
+    --sw:min(300px,74vw); --sh:calc(var(--sw) * 1120 / 515);
+    --bez:calc(var(--sh) * .0125); --rad:calc(var(--sh) * .0686);
+    position:relative; flex:none; padding:var(--bez);
+    width:calc(var(--sw) + var(--bez)*2); border-radius:calc(var(--rad) + var(--bez));
+    background:#0B0A09; will-change:transform;
+    box-shadow:inset 0 0 0 3px #57534C, inset 0 0 0 5px #17150F,
+      0 30px 60px rgba(38,32,26,.30), 0 6px 14px rgba(38,32,26,.14);
+  }
+  .phone .screen{
+    width:var(--sw); height:var(--sh); border-radius:var(--rad);
+    overflow:hidden; position:relative; background:var(--paper-hi);
+  }
+  .phone .island{
+    position:absolute; top:calc(var(--sh)*.014); left:50%; transform:translateX(-50%);
+    width:calc(var(--sh)*.144); height:calc(var(--sh)*.0427); border-radius:999px; background:#000; z-index:6;
+  }
+  .phone .glare{
+    position:absolute; inset:0; border-radius:var(--rad); pointer-events:none; z-index:7;
+    background:linear-gradient(118deg, rgba(255,255,255,.10) 0%, rgba(255,255,255,.02) 17%, transparent 30%);
+  }
+  .phone .btn{position:absolute; width:3px; border-radius:2px; background:#57534C}
+  .phone .btn.l1{left:-3px; top:23%; height:4.5%}
+  .phone .btn.l2{left:-3px; top:31%; height:7.5%}
+  .phone .btn.r1{right:-3px; top:27%; height:10%}
+
+  /* ── in-screen app UI ── */
+  .scr{position:absolute; inset:0; background:var(--paper-hi); overflow:hidden}
+  .scr.paper{background:var(--paper)}
+  .scr-in{padding:0 20px}
+  .scr-stat{display:flex; justify-content:space-between; align-items:center; padding:14px 20px 0}
+  .scr-stat time{font-weight:700; font-size:13px; color:var(--ink); font-variant-numeric:tabular-nums}
+  /* tabular figures so prices align and the count-to-zero doesn't jitter width */
+  .ci-a,.bal-amt,.settle-amt,.reset-amt{font-variant-numeric:tabular-nums}
+  .scr-stat .sig{display:flex; gap:5px; align-items:center}
+  .scr-stat .sig i{width:12px; height:9px; border-radius:2px; border:1.3px solid var(--ink); display:block}
+  .scr-stat .sig i.f{width:17px; background:var(--ink)}
+  .scr-top{display:flex; justify-content:space-between; align-items:center; padding:14px 20px 0}
   .pill{
-    display:inline-flex; align-items:center; gap:9px; margin-top:34px;
-    font-size:13px; font-weight:600; letter-spacing:.14em; text-transform:uppercase;
-    color:var(--terra-deep); background:var(--paper-card);
-    border:1px solid var(--hair); border-radius:999px; padding:10px 18px;
-    box-shadow:0 1px 0 #fff, 0 10px 24px rgba(74,54,20,.07);
+    display:inline-flex; align-items:center; gap:6px; font-family:'Newsreader',Georgia,serif; font-style:italic;
+    font-weight:600; font-size:15px; color:var(--ink); background:var(--paper-hi);
+    border:1px solid var(--hair); border-radius:999px; padding:6px 13px;
   }
-  .pill .blip{width:8px;height:8px;border-radius:50%;background:var(--pine);
+  .scr.paper .pill{background:var(--paper-hi)}
+  .ava-sm{width:30px; height:30px; border-radius:999px; background:var(--paper-hi); border:1px solid var(--hair)}
+
+  .beamwrap{display:flex; justify-content:center; padding:4px 0 0}
+  .beamwrap svg{width:min(280px,86%); height:auto; display:block}
+  .beamnote{font-family:'Newsreader',Georgia,serif; font-style:italic; font-size:13.5px; color:var(--muted); text-align:center; margin-top:-4px}
+
+  .lst-h{font-size:10.5px; font-weight:700; letter-spacing:.09em; color:var(--muted); margin:14px 0 2px}
+  .ci{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:11px 0; border-bottom:1px solid rgba(38,32,26,.08)}
+  .ci-t{font-family:'Newsreader',Georgia,serif; font-size:16.5px; color:var(--ink); line-height:1.15}
+  .ci-s{font-size:11px; color:var(--muted); margin-top:2px; letter-spacing:.01em}
+  .ci-a{font-family:'Newsreader',Georgia,serif; font-size:16px; color:var(--ink); white-space:nowrap}
+  .ci-a.owe{color:var(--terra)}
+  .bal{
+    display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:14px;
+    background:var(--paper-card); border:1px solid var(--hair); border-radius:14px; padding:13px 15px;
+  }
+  .bal-k{font-size:10.5px; font-weight:700; letter-spacing:.09em; color:var(--muted)}
+  .bal-v{font-family:'Newsreader',Georgia,serif; font-size:15.5px; color:var(--ink); margin-top:3px}
+  .bal-amt{font-family:'Newsreader',Georgia,serif; font-size:26px; color:var(--terra); line-height:1}
+
+  .scr-kick{font-size:10.5px; font-weight:700; letter-spacing:.11em; color:var(--pine); padding:26px 20px 0}
+  .scr-kick.clay{color:var(--terra)}
+  .scr-h{
+    font-family:'Newsreader',Georgia,serif; font-weight:500; font-size:30px; line-height:1.08;
+    color:var(--ink); margin:8px 0 0; padding:0 20px;
+  }
+  .settle-card{
+    margin:22px 20px 0; background:var(--paper-card); border:1px solid var(--hair); border-radius:18px;
+    padding:20px 18px; text-align:center;
+  }
+  .settle-who{display:flex; align-items:center; justify-content:center; gap:12px}
+  .ava{width:38px; height:38px; border-radius:999px; color:#fff; font-weight:700; font-size:15px;
+    display:flex; align-items:center; justify-content:center}
+  .ava.clay{background:var(--terra)} .ava.pine{background:var(--pine)}
+  .settle-who .arrow{color:var(--muted); font-size:18px}
+  .settle-dir{font-size:11.5px; font-weight:700; letter-spacing:.09em; color:var(--muted); margin-top:14px}
+  .settle-amt{font-family:'Newsreader',Georgia,serif; font-size:42px; color:var(--ink); line-height:1; margin-top:4px}
+  .scr-note{font-family:'Newsreader',Georgia,serif; font-style:italic; font-size:14px; color:var(--muted); text-align:center; margin:18px 20px 0; line-height:1.5}
+  .scr-btn{
+    margin:20px 20px 0; border-radius:14px; padding:15px 0; text-align:center;
+    font-family:'Newsreader',Georgia,serif; font-size:18px; color:#fff; background:var(--ink);
+  }
+  .scr-btn.pine{background:var(--pine)}
+  .scr-sub{font-size:11.5px; color:var(--muted); text-align:center; margin-top:12px; letter-spacing:.02em}
+
+  .reset-big{text-align:center; margin-top:6px}
+  .reset-amt{font-family:'Newsreader',Georgia,serif; font-size:46px; color:var(--pine); line-height:1}
+  .reset-lbl{font-size:12px; font-weight:700; letter-spacing:.08em; color:var(--muted); margin-top:6px}
+
+  /* ── ETHOS band ── */
+  .ethos{padding:var(--gap) 0; text-align:center}
+  .ethos .inner{width:min(680px,100%); margin:0 auto}
+  .ethos-statement{
+    font-family:'Newsreader',Georgia,serif; font-weight:400; font-style:italic;
+    font-size:clamp(22px,3.4vw,32px); line-height:1.34; letter-spacing:-.005em; color:var(--ink); margin:0;
+  }
+  .ethos-statement b{font-style:normal; font-weight:500; color:var(--terra)}
+  .values{display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top:34px}
+  .values span{
+    font-size:12.5px; font-weight:600; letter-spacing:.04em; color:var(--ink-soft);
+    background:var(--paper-card); border:1px solid var(--hair); border-radius:999px; padding:9px 16px;
+  }
+  .values span b{color:var(--pine); font-weight:700}
+
+  /* ── CLOSING ── */
+  .close{padding:0 0 calc(var(--gap) + 10px); text-align:center}
+  .close .inner{width:min(640px,100%); margin:0 auto}
+  .close blockquote{
+    font-family:'Newsreader',Georgia,serif; font-style:italic; font-weight:400;
+    font-size:clamp(24px,4.2vw,40px); line-height:1.22; letter-spacing:-.01em;
+    margin:0 0 30px; color:var(--ink);
+  }
+  .close blockquote span{color:var(--terra)}
+
+  footer{
+    position:relative; z-index:1; text-align:center; padding:34px 0 40px;
+    font-size:12.5px; color:var(--muted); letter-spacing:.02em; border-top:1px solid var(--hair);
+    margin-top:20px;
+  }
+  footer a{color:var(--muted); text-decoration:none}
+  footer a:focus-visible{outline:2px solid var(--pine); outline-offset:3px; border-radius:3px}
+  .pulse{width:8px;height:8px;border-radius:50%;background:var(--pine); display:inline-block; vertical-align:middle; margin-right:7px;
     box-shadow:0 0 0 0 rgba(55,117,109,.5); animation:pulse 2.4s ease-out infinite}
   @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(55,117,109,.45)}70%{box-shadow:0 0 0 9px rgba(55,117,109,0)}100%{box-shadow:0 0 0 0 rgba(55,117,109,0)}}
 
-  footer{
-    position:fixed; bottom:22px; left:0; right:0; z-index:1; text-align:center;
-    font-size:12.5px; color:var(--muted); letter-spacing:.02em;
+  /* ── ENHANCED (JS + motion): pinned single-stage crossfade ── */
+  html.js-motion .showcase-stage{height:100vh; min-height:560px}
+  html.js-motion .stage-inner{
+    position:absolute; inset:0; display:block; gap:0;
   }
-  footer a{color:var(--muted); text-decoration:none}
+  html.js-motion .beat{
+    position:absolute; inset:0; width:auto;
+    grid-template-columns:1fr 1fr; gap:clamp(40px,6vw,84px);
+    align-items:center; text-align:left; justify-items:stretch;
+    margin:0 auto; padding:0 clamp(24px,6vw,72px); max-width:1060px; left:0; right:0;
+  }
+  html.js-motion .beat .beat-caption{justify-self:end; max-width:32ch}
+  html.js-motion .beat .phone{justify-self:start;
+    --sw:min(300px, calc(74vh * 515 / 1120));
+  }
+  @media (max-width:760px){
+    html.js-motion .showcase-stage{height:100svh}
+    html.js-motion .beat{grid-template-columns:1fr; text-align:center; justify-items:center;
+      gap:22px; padding:0 22px; align-content:center}
+    html.js-motion .beat .beat-caption{justify-self:center; order:-1; max-width:34ch}
+    html.js-motion .beat .phone{justify-self:center; --sw:min(58vw, calc(52vh * 515 / 1120))}
+    html.js-motion .beat-caption h3{font-size:clamp(22px,6vw,30px)}
+    html.js-motion .beat-caption p{display:none}
+  }
+
+  @media (max-width:760px){
+    .beat{gap:26px}
+    .show-head h2{max-width:15ch}
+  }
   @media (prefers-reduced-motion:reduce){
-    .item,.scale i,.pill .blip{animation:none!important; opacity:1!important; transform:none!important}
+    .item,.scale i,.pulse,.cta .arw,.cue span::after{animation:none!important; opacity:1!important; transform:none!important}
+    html{scroll-behavior:auto}
   }
 </style>
 </head>
 <body>
-  <main>
-    <div class="scale item d1"><i></i><i></i></div>
-    <div class="brand item d2">Even<span class="dot">.</span></div>
-    <h1 class="item d3">Money, settled <em>weekly</em>.</h1>
-    <p class="sub item d4">A calmer way to keep things fair with the people you share life with — no spreadsheets, no awkward reminders.</p>
-    <div class="item d5"><span class="pill"><span class="blip"></span>Coming soon</span></div>
-  </main>
-  <footer class="item d5">thisiseven.app · © 2026 Even</footer>
+  <!-- HERO -->
+  <header class="hero">
+    <div class="wrap inner">
+      <div class="scale item d1" aria-hidden="true"><i></i><i></i></div>
+      <div class="brand item d2">Even<span class="dot">.</span></div>
+      <h1 class="item d3">Money, settled <em>weekly</em>.</h1>
+      <p class="sub item d4">A calmer way to keep things fair with the people you share life with — no spreadsheets, no awkward reminders.</p>
+      <div class="cta-row item d5">
+        <button class="cta" id="cta-hero" data-placement="hero" type="button">Count me in<span class="arw" aria-hidden="true">→</span></button>
+        <span class="cta-note" id="note-hero" aria-live="polite"></span>
+      </div>
+      <div class="cue item d6" aria-hidden="true">See it settle<span></span></div>
+    </div>
+  </header>
+
+  <!-- SHOWCASE — scroll-driven product demo -->
+  <section class="showcase" aria-label="How Even works">
+    <div class="wrap show-head">
+      <div class="eyebrow">How it works</div>
+      <h2 data-split>Watch a week settle <em>itself</em>.</h2>
+      <div class="levelbars" aria-hidden="true"><i></i><i></i></div>
+    </div>
+
+    <div class="showcase-stage">
+      <div class="stage-inner">
+
+        <!-- BEAT 1 — the running balance -->
+        <article class="beat" data-beat="0">
+          <div class="beat-caption">
+            <div class="beat-no">01</div>
+            <h3 data-cap>Always know where you stand.</h3>
+            <p>Every shared cost lands in one running balance — no mental math, no “who paid last time”. Just a clear, honest number for each of you.</p>
+          </div>
+          <div class="phone" role="img" aria-label="The Even app showing this week's shared costs and a running balance: Beste owes Umur nineteen euros ten.">
+            <div class="screen">
+              <div class="island"></div><div class="glare"></div>
+              <div class="scr">
+                <div class="scr-stat"><time>12:21</time><div class="sig" aria-hidden="true"><i></i><i class="f"></i></div></div>
+                <div class="scr-top">
+                  <span class="pill">
+                    <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true"><line x1="1.5" y1="6.8" x2="14.5" y2="4.6" stroke="#26201A" stroke-width="1.6" stroke-linecap="round"/><path d="M8 6.4 L10.6 10.6 H5.4 Z" fill="none" stroke="#26201A" stroke-width="1.4" stroke-linejoin="round"/><line x1="4.5" y1="13.4" x2="11.5" y2="13.4" stroke="#26201A" stroke-width="1.3" stroke-linecap="round"/></svg>
+                    Even</span>
+                  <span class="ava-sm"></span>
+                </div>
+                <div class="beamwrap">
+                  <svg viewBox="0 0 460 250" aria-hidden="true">
+                    <line x1="230" y1="92" x2="230" y2="222" stroke="#26201A" stroke-width="2.2"/>
+                    <line x1="186" y1="222" x2="274" y2="222" stroke="#26201A" stroke-width="2.2" stroke-linecap="round"/>
+                    <g transform="rotate(-8 230 92)">
+                      <line x1="72" y1="92" x2="388" y2="92" stroke="#26201A" stroke-width="3" stroke-linecap="round"/>
+                      <line x1="72" y1="92" x2="30" y2="136" stroke="#26201A" stroke-width="1.6"/>
+                      <line x1="72" y1="92" x2="114" y2="136" stroke="#26201A" stroke-width="1.6"/>
+                      <line x1="30" y1="136" x2="114" y2="136" stroke="#26201A" stroke-width="1.6" stroke-linecap="round"/>
+                      <line x1="388" y1="92" x2="346" y2="136" stroke="#26201A" stroke-width="1.6"/>
+                      <line x1="388" y1="92" x2="430" y2="136" stroke="#26201A" stroke-width="1.6"/>
+                      <line x1="346" y1="136" x2="430" y2="136" stroke="#26201A" stroke-width="1.6" stroke-linecap="round"/>
+                      <circle cx="230" cy="92" r="4.5" fill="#26201A"/>
+                      <circle cx="60" cy="126" r="7" fill="#A6552F"/>
+                    </g>
+                    <text x="72" y="60" text-anchor="middle" font-family="Newsreader, Georgia, serif" font-size="38" fill="#A6552F">57</text>
+                    <text x="388" y="60" text-anchor="middle" font-family="Newsreader, Georgia, serif" font-size="38" fill="#37756D">43</text>
+                    <text x="72" y="162" text-anchor="middle" font-family="'Source Sans 3', sans-serif" font-size="13" font-weight="700" letter-spacing="1" fill="#A6552F">UMUR</text>
+                    <text x="388" y="162" text-anchor="middle" font-family="'Source Sans 3', sans-serif" font-size="13" font-weight="700" letter-spacing="1" fill="#37756D">BESTE</text>
+                  </svg>
+                </div>
+                <div class="beamnote">Leaning Umur — dinner tipped it.</div>
+                <div class="scr-in">
+                  <div class="lst-h">THIS WEEK · SHARED</div>
+                  <div class="ci"><div><div class="ci-t">Groceries</div><div class="ci-s">Albert Heijn · Umur paid</div></div><div class="ci-a">€54.60</div></div>
+                  <div class="ci"><div><div class="ci-t">Energy</div><div class="ci-s">Vattenfall · Umur paid</div></div><div class="ci-a">€31.60</div></div>
+                  <div class="ci"><div><div class="ci-t">Dinner</div><div class="ci-s">Toscanini · Beste paid</div></div><div class="ci-a">€48.00</div></div>
+                  <div class="bal">
+                    <div><div class="bal-k">RUNNING BALANCE</div><div class="bal-v">Beste owes Umur</div></div>
+                    <div class="bal-amt">€19.10</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="btn l1" aria-hidden="true"></div><div class="btn l2" aria-hidden="true"></div><div class="btn r1" aria-hidden="true"></div>
+        </article>
+
+        <!-- BEAT 2 — the weekly settle-up nudge -->
+        <article class="beat" data-beat="1">
+          <div class="beat-caption">
+            <div class="beat-no">02</div>
+            <h3 data-cap>One gentle nudge a week.</h3>
+            <p>Even sums the week and sends a single, friendly settle-up. No chasing, no awkward texts — you both square up at the same calm moment.</p>
+          </div>
+          <div class="phone" role="img" aria-label="The Even app's Sunday settle-up: this week evened out to nineteen euros ten from Beste to Umur, with one Settle up button.">
+            <div class="screen">
+              <div class="island"></div><div class="glare"></div>
+              <div class="scr paper">
+                <div class="scr-stat"><time>18:04</time><div class="sig" aria-hidden="true"><i></i><i class="f"></i></div></div>
+                <div class="scr-kick">SUNDAY · SETTLE-UP</div>
+                <div class="scr-h">This week<br>evened out.</div>
+                <div class="settle-card">
+                  <div class="settle-who">
+                    <span class="ava pine">B</span>
+                    <span class="arrow" aria-hidden="true">→</span>
+                    <span class="ava clay">U</span>
+                  </div>
+                  <div class="settle-dir">BESTE PAYS UMUR</div>
+                  <div class="settle-amt">€19.10</div>
+                </div>
+                <p class="scr-note">One tap and you’re square. It’s the only money message you’ll get all week.</p>
+                <div class="scr-btn">Settle up €19.10</div>
+                <div class="scr-sub">or remind me tomorrow</div>
+              </div>
+            </div>
+          </div>
+          <div class="btn l1" aria-hidden="true"></div><div class="btn l2" aria-hidden="true"></div><div class="btn r1" aria-hidden="true"></div>
+        </article>
+
+        <!-- BEAT 3 — reset to zero -->
+        <article class="beat" data-beat="2">
+          <div class="beat-caption">
+            <div class="beat-no">03</div>
+            <h3 data-cap>Every week starts clean.</h3>
+            <p>Once you’re settled, the slate resets to zero. Debts never pile into a scary spreadsheet — the balance stays small, current, and fair.</p>
+          </div>
+          <div class="phone" role="img" aria-label="The Even app after settling: the balance is level again at zero euros. You're even.">
+            <div class="screen">
+              <div class="island"></div><div class="glare"></div>
+              <div class="scr paper">
+                <div class="scr-stat"><time>18:05</time><div class="sig" aria-hidden="true"><i></i><i class="f"></i></div></div>
+                <div class="scr-kick clay">RESET · SUNDAY RITUAL</div>
+                <div class="beamwrap" style="margin-top:6px">
+                  <svg viewBox="0 0 460 250" aria-hidden="true">
+                    <line x1="230" y1="92" x2="230" y2="222" stroke="#26201A" stroke-width="2.2"/>
+                    <line x1="186" y1="222" x2="274" y2="222" stroke="#26201A" stroke-width="2.2" stroke-linecap="round"/>
+                    <g id="beam3">
+                      <line x1="72" y1="92" x2="388" y2="92" stroke="#26201A" stroke-width="3" stroke-linecap="round"/>
+                      <line x1="72" y1="92" x2="30" y2="136" stroke="#26201A" stroke-width="1.6"/>
+                      <line x1="72" y1="92" x2="114" y2="136" stroke="#26201A" stroke-width="1.6"/>
+                      <line x1="30" y1="136" x2="114" y2="136" stroke="#26201A" stroke-width="1.6" stroke-linecap="round"/>
+                      <line x1="388" y1="92" x2="346" y2="136" stroke="#26201A" stroke-width="1.6"/>
+                      <line x1="388" y1="92" x2="430" y2="136" stroke="#26201A" stroke-width="1.6"/>
+                      <line x1="346" y1="136" x2="430" y2="136" stroke="#26201A" stroke-width="1.6" stroke-linecap="round"/>
+                      <circle cx="230" cy="92" r="4.5" fill="#26201A"/>
+                    </g>
+                    <text x="72" y="60" text-anchor="middle" font-family="Newsreader, Georgia, serif" font-size="38" fill="#A6552F">50</text>
+                    <text x="388" y="60" text-anchor="middle" font-family="Newsreader, Georgia, serif" font-size="38" fill="#37756D">50</text>
+                    <text x="72" y="162" text-anchor="middle" font-family="'Source Sans 3', sans-serif" font-size="13" font-weight="700" letter-spacing="1" fill="#A6552F">UMUR</text>
+                    <text x="388" y="162" text-anchor="middle" font-family="'Source Sans 3', sans-serif" font-size="13" font-weight="700" letter-spacing="1" fill="#37756D">BESTE</text>
+                  </svg>
+                </div>
+                <div class="reset-big">
+                  <div class="reset-amt" id="settleNum">€0.00</div>
+                  <div class="reset-lbl">YOU’RE EVEN ✓</div>
+                </div>
+                <div class="scr-btn pine">Even again ✓</div>
+                <p class="scr-note">Phones down. See you next Sunday.</p>
+              </div>
+            </div>
+          </div>
+          <div class="btn l1" aria-hidden="true"></div><div class="btn l2" aria-hidden="true"></div><div class="btn r1" aria-hidden="true"></div>
+        </article>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ETHOS -->
+  <section class="ethos">
+    <div class="wrap inner">
+      <div class="eyebrow">Why Even</div>
+      <p class="ethos-statement" data-split>Sharing a home shouldn’t mean keeping score. Even remembers the small stuff so you don’t have to — and hands you back one <b>easy, honest number</b> once a week.</p>
+      <div class="values">
+        <span><b>Fair</b> by design</span>
+        <span><b>One</b> weekly moment</span>
+        <span><b>Always</b> back to zero</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- CLOSING -->
+  <section class="close">
+    <div class="wrap inner">
+      <blockquote data-split>Fairness shouldn’t feel like <span>bookkeeping</span>.</blockquote>
+      <div class="cta-row">
+        <button class="cta" id="cta-foot" data-placement="footer" type="button">Count me in<span class="arw" aria-hidden="true">→</span></button>
+        <span class="cta-note" id="note-foot" aria-live="polite"></span>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span class="pulse" aria-hidden="true"></span>Coming soon · <a href="https://thisiseven.app">thisiseven.app</a> · © 2026 Even
+  </footer>
+
+<script>
+/* ══ interest CTA + analytics — PRESERVED EXACTLY (do not alter) ══ */
+(function(){
+  // ── reveal-on-scroll: content is visible by default; this only enhances ──
+  var root=document.documentElement;
+  if(!matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window){
+    root.classList.add('js');
+    var io=new IntersectionObserver(function(es){es.forEach(function(e){
+      if(e.isIntersecting){e.target.classList.add('in'); io.unobserve(e.target);}});},
+      {rootMargin:'0px 0px -8% 0px', threshold:.12});
+    document.querySelectorAll('.reveal').forEach(function(el){io.observe(el);});
+  }
+
+  // ── analytics (PostHog) — demand measurement for the interest CTA + A/B ──
+  // NOTE(Root 2026-07-20): key defaults to the known EU project; a DEDICATED
+  // thisiseven PostHog project key is recommended so demand data isn't mixed.
+  var POSTHOG_KEY = "phc_AM2NcPD9gZuexgZddQFxp67CbDP6gN4QFJKYM4WcVALJ";
+  var POSTHOG_HOST = "https://eu.posthog.com";
+
+  // lightweight A/B bucket (sticky), sent with every event so variants segment cleanly
+  var variant = localStorage.getItem("even_variant");
+  if(!variant){ variant = Math.random() < 0.5 ? "A" : "B"; localStorage.setItem("even_variant", variant); }
+
+  var PH = null;
+  try{
+    !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.async=!0,p.src=s.api_host+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init capture register register_once register_for_session unregister unregister_for_session getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey getNextSurveyStep identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty createPersonProfile opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing debug".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+    window.posthog.init(POSTHOG_KEY,{api_host:POSTHOG_HOST, person_profiles:"identified_only", capture_pageview:true});
+    window.posthog.register({site:"thisiseven.app", ab_variant:variant});
+    PH = window.posthog;
+  }catch(e){ /* analytics must never break the page */ }
+
+  // ── interest CTA: fire the demand event, morph to a calm confirmation ──
+  function wire(btnId, noteId){
+    var b=document.getElementById(btnId), n=document.getElementById(noteId);
+    if(!b) return;
+    b.addEventListener("click", function(){
+      var placement=b.getAttribute("data-placement")||"unknown";
+      try{ if(PH) PH.capture("early_access_interest",{placement:placement, ab_variant:variant}); }catch(e){}
+      b.setAttribute("data-done","1");
+      b.innerHTML='You’re counted ✓';
+      if(n) n.textContent="Nice — we’ll make it worth the wait.";
+      // mirror to the other CTA so both reflect the state
+      document.querySelectorAll('.cta').forEach(function(o){ if(o!==b){o.setAttribute("data-done","1"); o.innerHTML='You’re counted ✓';} });
+    });
+  }
+  wire("cta-hero","note-hero");
+  wire("cta-foot","note-foot");
+
+  // if a returning visitor already signalled, reflect it
+  if(localStorage.getItem("even_interest")==="1"){
+    document.querySelectorAll('.cta').forEach(function(o){o.setAttribute("data-done","1"); o.innerHTML='You’re counted ✓';});
+  }
+  document.querySelectorAll('.cta').forEach(function(o){o.addEventListener("click",function(){localStorage.setItem("even_interest","1");});});
+})();
+</script>
+
+<!-- GSAP (free, pinned to version, cdnjs) — loaded after the CTA so analytics never depends on it -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.0/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.0/ScrollTrigger.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.15.0/SplitText.min.js"></script>
+<script>
+/* ══ motion layer — fully guarded; content is visible without any of this ══ */
+(function(){
+  if(!window.gsap || !window.ScrollTrigger) return;      // CDN blocked → static page stands
+  gsap.registerPlugin(ScrollTrigger);
+  var hasSplit = !!window.SplitText;
+  if(hasSplit) gsap.registerPlugin(SplitText);
+
+  var mm = gsap.matchMedia();
+
+  // Only choreograph when the visitor is OK with motion.
+  mm.add("(prefers-reduced-motion: no-preference)", function(){
+    var ctx;
+    document.fonts.ready.then(function(){
+      document.documentElement.classList.add("js-motion");   // switch showcase to pinned single-stage
+      // let layout settle after the class swap, then measure/build
+      requestAnimationFrame(function(){
+        ctx = gsap.context(build);
+        ScrollTrigger.refresh();
+      });
+    });
+    return function(){ if(ctx) ctx.revert(); document.documentElement.classList.remove("js-motion"); };
+  });
+
+  function build(){
+    /* ---- per-line heading reveals (SplitText, aria preserved automatically) ---- */
+    if(hasSplit){
+      document.querySelectorAll("[data-split]").forEach(function(el){
+        SplitText.create(el, {
+          type:"lines", mask:"lines", autoSplit:true, linesClass:"sl-line",
+          onSplit:function(self){
+            return gsap.from(self.lines, {
+              yPercent:112, opacity:0, duration:.9, ease:"power3.out", stagger:.13,
+              scrollTrigger:{ trigger:el, start:"top 85%", once:true }
+            });
+          }
+        });
+      });
+    }
+
+    /* ---- the two-bar "evening out" motif levels off on enter ---- */
+    var bars = document.querySelectorAll(".levelbars i");
+    if(bars.length===2){
+      // terra bar rises to meet the pine bar — the two levelling off (brand motif)
+      gsap.fromTo(bars[0], {scaleY:0.42}, {
+        scaleY:1, duration:1, ease:"power2.inOut",
+        scrollTrigger:{ trigger:".show-head", start:"top 80%", once:true }
+      });
+    }
+
+    /* ---- showcase captions: paused line-reveals, played at scroll thresholds ---- */
+    var caps = [];
+    document.querySelectorAll("[data-cap]").forEach(function(el){
+      if(hasSplit){
+        var st = SplitText.create(el, {type:"lines", mask:"lines"});
+        caps.push(gsap.from(st.lines, {yPercent:112, opacity:0, duration:.7, ease:"power3.out", stagger:.12, paused:true}));
+      } else {
+        caps.push(gsap.from(el, {y:24, opacity:0, duration:.6, ease:"power3.out", paused:true}));
+      }
+    });
+    function toggleCap(t, on){
+      if(!t) return;
+      if(on && t._on!==true){ t.play(); t._on=true; }
+      else if(!on && t._on!==false){ t.reverse(); t._on=false; }
+    }
+    if(caps[0]){ caps[0].play(); caps[0]._on=true; }   // beat 1 is on screen at pin-start
+
+    /* ---- the pinned, scrub-linked product demo ---- */
+    var beats = gsap.utils.toArray(".beat");
+    gsap.set([beats[1], beats[2]], {autoAlpha:0});
+
+    var settleObj = {v:19.10};
+    var settleEl = document.getElementById("settleNum");
+    var beam3 = document.getElementById("beam3");
+
+    var tl = gsap.timeline({
+      defaults:{ ease:"none" },
+      scrollTrigger:{
+        trigger:".showcase-stage",
+        start:"top top",
+        end:"+=280%",
+        scrub:1,
+        pin:true,
+        anticipatePin:1,
+        onUpdate:function(self){
+          var p = self.progress;
+          toggleCap(caps[0], p < 0.40);
+          toggleCap(caps[1], p >= 0.34 && p < 0.72);
+          toggleCap(caps[2], p >= 0.66);
+        }
+      }
+    });
+
+    // scroll-zoom: the whole stage eases in (transform only)
+    tl.fromTo(".stage-inner", {scale:0.9}, {scale:1, duration:1.1}, 0);
+
+    // beat 1 → beat 2 crossfade
+    tl.to(beats[0],   {autoAlpha:0, duration:1}, 2.2)
+      .fromTo(beats[1], {autoAlpha:0}, {autoAlpha:1, duration:1}, 2.2);
+
+    // beat 2 → beat 3 crossfade + the balance evens out + the debt counts to zero
+    tl.to(beats[1],   {autoAlpha:0, duration:1}, 4.6)
+      .fromTo(beats[2], {autoAlpha:0}, {autoAlpha:1, duration:1}, 4.6);
+
+    if(beam3){
+      tl.fromTo(beam3, {rotation:-8}, {rotation:0, svgOrigin:"230 92", duration:1.6, ease:"power2.out"}, 4.8);
+    }
+    if(settleEl){
+      tl.fromTo(settleObj, {v:19.10}, {
+        v:0, duration:1.6, ease:"power2.out",
+        onUpdate:function(){ settleEl.textContent = "€" + settleObj.v.toFixed(2); }
+      }, 4.8);
+    }
+
+    // small tail so beat 3 holds fully settled at the end of the pin
+    tl.to({}, {duration:1.2});
+
+    /* ---- magnetic CTAs ---- */
+    document.querySelectorAll(".cta").forEach(function(btn){
+      var xTo = gsap.quickTo(btn, "x", {duration:.5, ease:"power3"});
+      var yTo = gsap.quickTo(btn, "y", {duration:.5, ease:"power3"});
+      btn.addEventListener("pointermove", function(e){
+        var r = btn.getBoundingClientRect();
+        xTo((e.clientX - (r.left + r.width/2)) * 0.28);
+        yTo((e.clientY - (r.top + r.height/2)) * 0.42);
+      });
+      btn.addEventListener("pointerleave", function(){ xTo(0); yTo(0); });
+    });
+  }
+})();
+</script>
 </body>
 </html>
