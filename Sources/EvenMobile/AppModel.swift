@@ -3,7 +3,7 @@ import Observation
 import EvenCore
 
 enum EvenTab: String, CaseIterable {
-    case todos, schedule
+    case today, todos, schedule, money
 }
 
 /// The mobile app deliberately presents one household object: a todo. Gmail
@@ -73,7 +73,7 @@ struct TodoItem: Identifiable {
 final class AppModel {
     let session: SessionStore
 
-    var tab: EvenTab = .todos
+    var tab: EvenTab = .today
     var summary: Summary?
     var drafts: [Draft] = []
     var money: Money?

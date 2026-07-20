@@ -168,6 +168,7 @@ struct MainScaffold: View {
     @AppStorage("even-seen-invite-reveal") private var seenInviteReveal = false
     @AppStorage("even-notif-prompted") private var notifPrompted = false
     @State private var currentExtra: OnboardingExtra?
+    @State private var showProfile = false
 
     enum OnboardingExtra: Identifiable {
         case inviteReveal, google, notifications
@@ -178,6 +179,10 @@ struct MainScaffold: View {
 
     var body: some View {
         TabView(selection: $model.tab) {
+            screen(showBrand: false) { TodayView(model: model) }
+                .tabItem { Label("Today", systemImage: "scalemass") }
+                .tag(EvenTab.today)
+
             screen { TodosView(model: model) }
                 .tabItem { Label("Todos", systemImage: "checklist") }
                 .badge(model.pendingReviewCount)
@@ -186,6 +191,10 @@ struct MainScaffold: View {
             screen { CalendarView(model: model) }
                 .tabItem { Label("Schedule", systemImage: "calendar") }
                 .tag(EvenTab.schedule)
+
+            screen { MoneyView(model: model) }
+                .tabItem { Label("Money", systemImage: "eurosign.circle") }
+                .tag(EvenTab.money)
         }
         .tint(palette.clay)
         .overlay(alignment: .bottom) {
@@ -255,40 +264,56 @@ struct MainScaffold: View {
 
     /// Each tab: paper ground + a native navigation bar carrying the
     /// wordmark (leading) and the dark toggle (trailing).
-    private func screen<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+    private func screen<Content: View>(showBrand: Bool = true, @ViewBuilder content: () -> Content) -> some View {
         NavigationStack {
             content()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(palette.bg.ignoresSafeArea())
                 .toolbar {
-                    ToolbarItem(placement: leadingPlacement) {
-                        HStack(spacing: 7) {
-                            ScaleGlyph()
-                                .stroke(palette.ink, style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
-                                .frame(width: 15, height: 15)
-                            Text("Even")
-                                .font(EvenFont.serif(18, .semibold, italic: true))
-                                .foregroundStyle(palette.ink)
-                                .fixedSize()
+                    if showBrand {
+                        ToolbarItem(placement: leadingPlacement) {
+                            HStack(spacing: 7) {
+                                ScaleGlyph()
+                                    .stroke(palette.ink, style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
+                                    .frame(width: 15, height: 15)
+                                Text("Even")
+                                    .font(EvenFont.serif(18, .semibold, italic: true))
+                                    .foregroundStyle(palette.ink)
+                                    .fixedSize()
+                            }
+                            .fixedSize()
                         }
-                        .fixedSize()
                     }
                     ToolbarItem(placement: trailingPlacement) {
-                        Button {
-                            isDark.toggle()
-                        } label: {
-                            Image(systemName: isDark ? "sun.max" : "moon")
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundStyle(palette.sub)
-                                .frame(width: 30, height: 30)
-                                .overlay(Circle().stroke(palette.line, lineWidth: 1))
-                                .contentTransition(.symbolEffect(.replace))
+                        HStack(spacing: 8) {
+                            Button { showProfile = true } label: {
+                                Image(systemName: "person.crop.circle")
+                                    .font(.system(size: 15, weight: .medium))
+                                    .foregroundStyle(palette.sub)
+                                    .frame(width: 30, height: 30)
+                                    .overlay(Circle().stroke(palette.line, lineWidth: 1))
+                            }
+                            .buttonStyle(PressScaleStyle(scale: 0.9))
+                            .accessibilityIdentifier("profile-button")
+                            Button {
+                                isDark.toggle()
+                            } label: {
+                                Image(systemName: isDark ? "sun.max" : "moon")
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundStyle(palette.sub)
+                                    .frame(width: 30, height: 30)
+                                    .overlay(Circle().stroke(palette.line, lineWidth: 1))
+                                    .contentTransition(.symbolEffect(.replace))
+                            }
+                            .buttonStyle(PressScaleStyle(scale: 0.9))
+                            .accessibilityIdentifier("dark-toggle")
                         }
-                        .buttonStyle(PressScaleStyle(scale: 0.9))
-                        .accessibilityIdentifier("dark-toggle")
                     }
                 }
                 .paperNavigationBar(palette)
+                .sheet(isPresented: $showProfile) {
+                    ProfileView(model: model, isDark: $isDark)
+                }
         }
     }
 
