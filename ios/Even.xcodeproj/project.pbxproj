@@ -371,7 +371,7 @@
 				CODE_SIGN_ENTITLEMENTS = EvenApp/Even.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = C3XSV85364;
 				INFOPLIST_FILE = EvenApp/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -394,7 +394,7 @@
 				CODE_SIGN_ENTITLEMENTS = EvenApp/Even.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = C3XSV85364;
 				INFOPLIST_FILE = EvenApp/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -415,7 +415,7 @@
 				CODE_SIGN_ENTITLEMENTS = EvenWidgets/EvenWidgets.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = C3XSV85364;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = EvenWidgets/Info.plist;
@@ -438,7 +438,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = EvenWidgets/EvenWidgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = C3XSV85364;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = EvenWidgets/Info.plist;
