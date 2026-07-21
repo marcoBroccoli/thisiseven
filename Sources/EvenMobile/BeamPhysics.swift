@@ -1,10 +1,44 @@
 import SwiftUI
 import SpriteKit
+#if os(iOS)
+import CoreMotion
+#endif
 import EvenCore
 
 // The beam scale, made physical: the beam and its hanging buckets live in a
 // transparent SpriteKit scene; completed work drops in as balls that settle
 // under real gravity. Percentages roll numerically beside it in SwiftUI.
+
+/// Feeds the beam's physics gravity from the phone's live tilt. The angle is
+/// clamped to ±maxTiltDegrees from straight-down so a full flip of the phone
+/// can never invert gravity — worst case at the clamp is straight sideways,
+/// never upside-down.
+@MainActor
+final class TiltGravityProvider {
+    static let maxTiltDegrees: Double = 90
+
+    #if os(iOS)
+    private let manager = CMMotionManager()
+
+    func start(onTilt: @escaping (CGFloat) -> Void) {
+        guard manager.isDeviceMotionAvailable else { return }
+        manager.deviceMotionUpdateInterval = 1.0 / 60.0
+        manager.startDeviceMotionUpdates(to: .main) { motion, _ in
+            guard let g = motion?.gravity else { return }
+            let degrees = atan2(g.x, -g.y) * 180 / .pi
+            let clamped = max(-Self.maxTiltDegrees, min(Self.maxTiltDegrees, degrees))
+            onTilt(CGFloat(clamped * .pi / 180))
+        }
+    }
+
+    func stop() {
+        manager.stopDeviceMotionUpdates()
+    }
+    #else
+    func start(onTilt: @escaping (CGFloat) -> Void) {}
+    func stop() {}
+    #endif
+}
 
 #if canImport(UIKit)
 private func skColor(_ color: Color) -> SKColor { UIColor(color) }
@@ -41,6 +75,15 @@ final class BeamPhysicsScene: SKScene {
     private var landedPartner: Double = 0
     private var angle: CGFloat = 0
     private var angularVel: CGFloat = 0
+
+    // Each pan hangs off the beam like a real one: it swings to stay plumb
+    // with whatever direction gravity currently points, independent of the
+    // beam's own tilt. Without this the pan's bowl stays scene-upright while
+    // gravity swings sideways, so balls roll straight out over the rim.
+    private var meBucketAngle: CGFloat = 0
+    private var meBucketAngularVel: CGFloat = 0
+    private var partnerBucketAngle: CGFloat = 0
+    private var partnerBucketAngularVel: CGFloat = 0
     private var lastTime: TimeInterval?
 
     private let beamNode = SKNode()
@@ -65,10 +108,23 @@ final class BeamPhysicsScene: SKScene {
         CGPoint(x: size.width / 2, y: size.height - pivotFromTop)
     }
 
+    private let restGravityMagnitude: CGFloat = 6.2
+    private var tiltAngle: CGFloat = 0
+
     override func didMove(to view: SKView) {
         backgroundColor = .clear
-        physicsWorld.gravity = CGVector(dx: 0, dy: -6.2)
+        physicsWorld.gravity = CGVector(dx: 0, dy: -restGravityMagnitude)
         buildIfNeeded()
+    }
+
+    /// Rotates gravity itself around the beam, so a tilt of the phone reads
+    /// as a tilt of "down" — the balls roll and the beam leans with it, on
+    /// top of the weight-driven spring. The pans read this same angle every
+    /// frame in `update` to stay plumb with it.
+    func setTiltAngle(_ angle: CGFloat) {
+        tiltAngle = angle
+        physicsWorld.gravity = CGVector(dx: sin(angle) * restGravityMagnitude,
+                                        dy: -cos(angle) * restGravityMagnitude)
     }
 
     override func didChangeSize(_ oldSize: CGSize) {
@@ -413,6 +469,16 @@ final class BeamPhysicsScene: SKScene {
         angle += angularVel * dt
         beamNode.zRotation = angle
         positionBuckets()
+
+        // Pans swing toward plumb (the live tilt angle) a bit livelier than
+        // the heavier beam, so they lag realistically instead of snapping.
+        let pk: CGFloat = 46, pc: CGFloat = 8.5
+        meBucketAngularVel += (tiltAngle - meBucketAngle) * pk * dt - meBucketAngularVel * pc * dt
+        meBucketAngle += meBucketAngularVel * dt
+        meBucket.zRotation = meBucketAngle
+        partnerBucketAngularVel += (tiltAngle - partnerBucketAngle) * pk * dt - partnerBucketAngularVel * pc * dt
+        partnerBucketAngle += partnerBucketAngularVel * dt
+        partnerBucket.zRotation = partnerBucketAngle
     }
 }
 
@@ -427,6 +493,7 @@ struct BeamScaleView: View {
         scene.scaleMode = .resizeFill
         return scene
     }()
+    @State private var tiltProvider = TiltGravityProvider()
 
     var body: some View {
         let meColor = model.me.map { palette.member($0.color) } ?? palette.clay
@@ -446,14 +513,34 @@ struct BeamScaleView: View {
                     .background(palette.bg)
                     .position(x: cx, y: 189)
 
+                // A swung-out pan reaches well past the beam's resting
+                // footprint, so the render surface needs to be wider than
+                // the card itself — sized around the same `cx` center — or
+                // a hard tilt clips the pan against the card's own edge.
+                let overflowMargin: CGFloat = 90
+                let sceneSize = CGSize(width: geo.size.width + overflowMargin * 2, height: geo.size.height)
+
                 SpriteView(scene: scene, options: [.allowsTransparency])
+                    .frame(width: sceneSize.width, height: sceneSize.height)
+                    .position(x: cx, y: geo.size.height / 2)
+                    .allowsHitTesting(false)
                     .onAppear {
                         scene.layoutScale = min(1, geo.size.width / 400)
-                        scene.size = geo.size
+                        scene.size = sceneSize
                         scene.isPaused = false
                         configureScene(meColor: meColor, partnerColor: partnerColor)
+                        tiltProvider.start { angle in scene.setTiltAngle(angle) }
                     }
-                    .onDisappear { scene.isPaused = true }
+                    .onDisappear {
+                        scene.isPaused = true
+                        tiltProvider.stop()
+                        scene.setTiltAngle(0)
+                    }
+                    .onChange(of: geo.size.width) { _, newWidth in
+                        let newSize = CGSize(width: newWidth + overflowMargin * 2, height: geo.size.height)
+                        scene.layoutScale = min(1, newWidth / 400)
+                        scene.size = newSize
+                    }
 
                 // Names render in-scene on the beam arms; these invisible
                 // statics keep VoiceOver + the E2E name assertions alive.
