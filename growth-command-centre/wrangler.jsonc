@@ -1,0 +1,40 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "entrepreneurial-centre",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-07-28",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/slack/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "entrepreneurial-centre",
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "ASSETS",
+      "bucket_name": "entrepreneurial-centre-assets"
+    }
+  ],
+  "queues": {
+    "producers": [
+      { "binding": "EXECUTION_QUEUE", "queue": "entrepreneurial-centre-execution" }
+    ],
+    "consumers": [
+      { "queue": "entrepreneurial-centre-execution", "max_batch_size": 10, "max_retries": 3 }
+    ]
+  },
+  "triggers": {
+    "crons": ["0 7 * * *", "0 8 * * MON"]
+  },
+  "vars": {
+    "APP_BASE_URL": "http://127.0.0.1:8787",
+    "DEMO_MODE": "true"
+  }
+}
