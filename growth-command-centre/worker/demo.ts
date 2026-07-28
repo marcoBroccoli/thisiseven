@@ -1,10 +1,11 @@
-import type { DashboardPayload, Experiment, Goal, LearningCard, ProviderConnection } from "../shared/types";
+import type { DashboardPayload, Experiment, Goal, LearningCard, MetricDefinition, MetricSnapshot, ProviderConnection } from "../shared/types";
 
 const now = "2026-07-28T08:00:00.000Z";
 
 export const demoGoal: Goal = {
   id: "goal_activation",
   title: "Increase activated workspaces",
+  metricDefinitionId: "metric_activation_funnel",
   metricKind: "funnel",
   metricName: "Signup to first shared project",
   baseline: 31,
@@ -121,13 +122,20 @@ export const demoExperiments: Experiment[] = [
 
 export const demoConnections: ProviderConnection[] = [
   {
+    id: "connection_sandbox",
+    provider: "sandbox",
+    label: "Built-in Sandbox",
+    status: "connected",
+    capabilities: ["read_channel_metrics"],
+    detail: "Runs a complete simulated experiment and learning card locally. It never contacts a provider or audience."
+  },
+  {
     id: "connection_posthog",
     provider: "posthog",
-    label: "Production product analytics",
-    status: "connected",
-    capabilities: ["read_analytics", "resolve_audience"],
-    lastSyncedAt: "2026-07-28T07:00:00.000Z",
-    detail: "Aggregate event, funnel, cohort, and insight data available. Product-experiment write access is not configured."
+    label: "PostHog product analytics",
+    status: "pending_access",
+    capabilities: [],
+    detail: "Not connected. Sandbox includes only a simulated measurement so the workflow can be tested without product data."
   },
   {
     id: "connection_resend",
@@ -183,6 +191,39 @@ export const demoLearningCards: LearningCard[] = [
   }
 ];
 
+export const demoMetricDefinitions: MetricDefinition[] = [
+  {
+    id: "metric_activation_funnel",
+    name: "Signup to first shared project",
+    description: "Percentage of newly signed-up workspaces that create their first shared project within the activation window.",
+    kind: "funnel",
+    sourceProvider: "posthog",
+    calculation: "Created first shared project / completed signup",
+    unit: "%",
+    dimensions: ["plan", "acquisition_channel", "workspace_size"],
+    cadence: "daily",
+    trustLevel: "unavailable",
+    status: "needs_connection",
+    ownerMemberId: "member_admin",
+    version: 1,
+    createdAt: now,
+    updatedAt: now
+  }
+];
+
+export const demoMetricSnapshots: MetricSnapshot[] = [
+  {
+    id: "snapshot_activation_sandbox",
+    metricDefinitionId: "metric_activation_funnel",
+    sourceProvider: "sandbox",
+    value: 31,
+    dimensions: { environment: "sandbox" },
+    trustLevel: "simulated",
+    quality: "verified",
+    capturedAt: now
+  }
+];
+
 export const demoDashboard: DashboardPayload = {
   workspace: { id: "workspace_demo", name: "Northstar growth", productName: "Northstar", timezone: "Europe/Amsterdam" },
   me: { id: "member_admin", name: "Taylor Morgan", email: "taylor@example.com", role: "admin", slackUserId: "U_DEMO_ADMIN" },
@@ -190,6 +231,44 @@ export const demoDashboard: DashboardPayload = {
   experiments: demoExperiments,
   learningCards: demoLearningCards,
   connections: demoConnections,
+  dataSources: [
+    {
+      id: "source_sandbox",
+      provider: "sandbox",
+      label: "Built-in Sandbox",
+      status: "connected",
+      trustLevel: "simulated",
+      freshness: "fresh",
+      lastSyncedAt: now,
+      cadence: "daily",
+      scope: "Local workflow samples only",
+      detail: "Simulated results exercise the workflow but never change production totals."
+    },
+    {
+      id: "source_posthog",
+      provider: "posthog",
+      label: "PostHog product analytics",
+      status: "pending_access",
+      trustLevel: "unavailable",
+      freshness: "not_synced",
+      cadence: "daily",
+      scope: "Aggregate events, funnels, and cohorts",
+      detail: "Connect PostHog and validate the activation funnel before using it for live decisions."
+    },
+    {
+      id: "source_resend",
+      provider: "resend",
+      label: "Lifecycle email reporting",
+      status: "connected",
+      trustLevel: "unavailable",
+      freshness: "not_synced",
+      cadence: "daily",
+      scope: "Aggregate delivery and engagement reporting",
+      detail: "A delivery connection is configured, but no channel metric snapshot has been ingested."
+    }
+  ],
+  metricDefinitions: demoMetricDefinitions,
+  metricSnapshots: demoMetricSnapshots,
   audiences: [
     {
       id: "audience_high_intent",
@@ -211,6 +290,7 @@ export const demoDashboard: DashboardPayload = {
       status: "waiting_for_engineering"
     }
   ],
+  sandboxMode: true,
   lastDailyMonitorAt: "2026-07-28T07:00:00.000Z",
   lastWeeklyPlanAt: "2026-07-28T08:00:00.000Z"
 };

@@ -19,6 +19,38 @@ Copy `.dev.vars.example` to `.dev.vars` before adding local secrets. The Worker
 uses local D1, R2, and Queue emulation, so this workflow needs no Docker. The
 dashboard has a visual demo fallback only when the Worker is not running.
 
+## Run a connection-free test
+
+With the local Worker running, open the dashboard and click **Run test
+experiment** on Command. This uses the built-in Sandbox channel: it records an
+admin approval snapshot, simulated publication, metric evidence, completed
+outcome, learning card, and audit event. It does not resolve an audience, spend
+money, call a marketing API, or require any credential.
+
+`SANDBOX_MODE=true` is the local default. It blocks every non-sandbox execution
+job before a provider can be called. Set `SANDBOX_MODE=false` only in a deployed
+workspace after Cloudflare Access, encrypted credentials, and the relevant
+provider adapter have been configured.
+
+## Connect PostHog measurement
+
+PostHog is the first live, read-only measurement path. It is deliberately
+unavailable while `SANDBOX_MODE=true`.
+
+1. Deploy a non-sandbox environment with `CREDENTIAL_ENCRYPTION_KEY` set as a
+   Worker secret.
+2. In **Connections**, choose **Connect PostHog** and provide the EU or US host,
+   project id, and a personal API key limited to `insight:read`.
+3. The Worker verifies the key by listing saved insights, encrypts the connection
+   configuration before D1 storage, and never returns the key to the browser.
+4. Create a metric definition and map it to one saved insight. The daily monitor
+   reads only that insight's aggregate output and retains dated metric snapshots.
+
+The model receives aggregate values, labels, and cohort names/counts only. It
+does not receive people, raw events, or personal properties. A failed sync is
+shown alongside the last successful source timestamp so operators can distinguish
+stale data from unavailable data.
+
 ## Deploy prerequisites
 
 1. Create the D1 database, R2 bucket, and Queue named in `wrangler.jsonc`, then

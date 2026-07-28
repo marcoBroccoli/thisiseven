@@ -28,6 +28,12 @@ class DeclaredCapabilityProvider implements ChannelProvider {
 
 const providerDefinitions: ProviderDefinition[] = [
   {
+    id: "sandbox",
+    label: "Built-in Sandbox",
+    capabilities: ["read_channel_metrics"],
+    accessNote: "Runs local-only workflow simulations. It has no credentials, audience resolution, or external write capability."
+  },
+  {
     id: "posthog",
     label: "PostHog",
     capabilities: ["read_analytics", "resolve_audience", "create_product_experiment"],

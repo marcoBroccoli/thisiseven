@@ -35,6 +35,7 @@
   },
   "vars": {
     "APP_BASE_URL": "http://127.0.0.1:8787",
-    "DEMO_MODE": "true"
+    "DEMO_MODE": "true",
+    "SANDBOX_MODE": "true"
   }
 }

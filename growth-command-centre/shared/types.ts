@@ -1,4 +1,5 @@
 export const channelIds = [
+  "sandbox",
   "resend",
   "linkedin",
   "meta",
@@ -30,6 +31,11 @@ export type ExperimentStatus =
   | "blocked";
 export type Outcome = "win" | "loss" | "inconclusive" | "stopped" | "pending";
 export type ConnectionStatus = "not_connected" | "pending_access" | "connected" | "revoked";
+export type DataTrustLevel = "observed" | "modeled" | "simulated" | "unavailable";
+export type DataQuality = "verified" | "provisional" | "degraded" | "not_ready";
+export type SourceFreshness = "fresh" | "stale" | "not_synced";
+export type MetricDefinitionStatus = "draft" | "ready" | "needs_connection" | "archived";
+export type MetricSourceProvider = ChannelId | "posthog" | "workspace";
 
 export interface Workspace {
   id: string;
@@ -49,6 +55,7 @@ export interface Member {
 export interface Goal {
   id: string;
   title: string;
+  metricDefinitionId?: string;
   metricKind: GoalMetricKind;
   metricName: string;
   baseline: number;
@@ -58,6 +65,65 @@ export interface Goal {
   guardrail?: string;
   monthlyBudgetCents?: number;
   status: "active" | "paused" | "completed";
+}
+
+export interface MetricDefinition {
+  id: string;
+  name: string;
+  description: string;
+  kind: GoalMetricKind;
+  sourceProvider: MetricSourceProvider;
+  calculation: string;
+  /** The read-only source record, for example a saved PostHog insight ID. */
+  sourceMetricId?: string;
+  unit: string;
+  dimensions: string[];
+  cadence: "hourly" | "daily" | "weekly";
+  trustLevel: DataTrustLevel;
+  status: MetricDefinitionStatus;
+  ownerMemberId?: string;
+  version: number;
+  lastSyncedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MetricDefinitionInput {
+  name: string;
+  description: string;
+  kind: GoalMetricKind;
+  sourceProvider: MetricSourceProvider;
+  calculation: string;
+  sourceMetricId?: string;
+  unit: string;
+  dimensions: string[];
+  cadence: MetricDefinition["cadence"];
+}
+
+export interface MetricSnapshot {
+  id: string;
+  metricDefinitionId?: string;
+  experimentId?: string;
+  sourceProvider: MetricSourceProvider;
+  value: number;
+  dimensions: Record<string, string | number | boolean>;
+  trustLevel: DataTrustLevel;
+  quality: DataQuality;
+  capturedAt: string;
+}
+
+export interface DataSource {
+  id: string;
+  provider: MetricSourceProvider;
+  label: string;
+  status: ConnectionStatus;
+  trustLevel: DataTrustLevel;
+  freshness: SourceFreshness;
+  lastSyncedAt?: string;
+  syncError?: string;
+  cadence: MetricDefinition["cadence"];
+  scope: string;
+  detail: string;
 }
 
 export interface AudienceDefinition {
@@ -110,6 +176,32 @@ export interface Experiment {
   updatedAt: string;
 }
 
+export interface ExperimentDraftUpdate {
+  hypothesis: string;
+  audienceId?: string;
+  successRule: string;
+  decisionWindowDays: number;
+  variants: Variant[];
+  spend: SpendCaps;
+}
+
+export interface ExperimentCreateInput {
+  goalId: string;
+  title: string;
+  surface: ExperimentSurface;
+  channel: ExperimentChannel;
+  hypothesis: string;
+  channelRationale: string;
+  expectedImpact: Experiment["expectedImpact"];
+  confidence: number;
+  audienceId?: string;
+  successRule: string;
+  decisionWindowDays: number;
+  variants: Variant[];
+  spend: SpendCaps;
+  engineeringFlagKey?: string;
+}
+
 export interface ApprovalSnapshot {
   experimentId: string;
   capturedAt: string;
@@ -150,7 +242,15 @@ export interface ProviderConnection {
   status: ConnectionStatus;
   capabilities: ProviderCapability[];
   lastSyncedAt?: string;
+  syncError?: string;
   detail: string;
+}
+
+export interface PostHogInsight {
+  id: string;
+  name: string;
+  description?: string;
+  kind?: string;
 }
 
 export type ProviderCapability =
@@ -180,10 +280,14 @@ export interface DashboardPayload {
   experiments: Experiment[];
   learningCards: LearningCard[];
   connections: ProviderConnection[];
+  dataSources: DataSource[];
+  metricDefinitions: MetricDefinition[];
+  metricSnapshots: MetricSnapshot[];
   audiences: AudienceDefinition[];
   engineeringBriefs: EngineeringBrief[];
   lastDailyMonitorAt?: string;
   lastWeeklyPlanAt?: string;
+  sandboxMode: boolean;
 }
 
 export interface SlackDecision {

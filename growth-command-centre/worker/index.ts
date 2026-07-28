@@ -1,13 +1,16 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { ZodError } from "zod";
 import type { Context } from "hono";
-import { GoalInputSchema } from "../shared/contracts";
+import { ExperimentCreateSchema, ExperimentDraftUpdateSchema, GoalInputSchema, MetricDefinitionInputSchema, PostHogConnectionConfigSchema } from "../shared/contracts";
 import { approvalIssues, canApproveExternalAction, canManageConnections, createApprovalSnapshot } from "../shared/safety";
+import { createSandboxRun } from "../shared/sandbox";
 import type { ExecutionJob, Experiment, Member } from "../shared/types";
 import type { Env } from "./env";
 import { weeklyProposal } from "./planner";
 import { providerDefinition } from "./providers";
-import { encryptConnectionConfig } from "./crypto";
+import { decryptConnectionConfig, encryptConnectionConfig } from "./crypto";
+import { PostHogAnalyticsProvider, type PostHogConnectionConfig } from "./posthog";
 import {
   approveExperiment,
   audienceFor,
@@ -18,16 +21,28 @@ import {
   createExperiment,
   createGoal,
   createLearningCard,
+  createMetricDefinition,
+  createMetricSnapshot,
+  encryptedConnectionConfig,
   engineeringFlagRegistered,
   getExperiment,
   loadDashboard,
   markExperimentLive,
+  markConnectionVerified,
+  markMetricSynced,
   markJob,
   memberForEmail,
   memberForSlack,
+  metricDefinitionFor,
+  metricSnapshotsFor,
   registerSlackInteraction,
+  resetSandboxRecords,
+  recordConnectionSync,
   storeConnectionConfig,
-  transitionExperiment
+  startMetricSyncRun,
+  finishMetricSyncRun,
+  transitionExperiment,
+  updateExperimentDraft
 } from "./store";
 import { notifySlackApproval, verifySlackRequest } from "./slack";
 
@@ -36,7 +51,10 @@ type AppContext = Context<{ Bindings: Env; Variables: Variables }>;
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 app.use("/api/*", cors());
 
+const isSandboxMode = (env: Env) => env.SANDBOX_MODE === "true";
+
 app.onError((error, context) => {
+  if (error instanceof ZodError) return context.json({ error: "Invalid request.", issues: error.flatten() }, 400);
   console.error(error);
   return context.json({ error: error.message || "Unexpected server error" }, 500);
 });
@@ -62,16 +80,145 @@ app.use("/api/*", async (context, next) => {
   }
 });
 
-app.get("/api/health", (context) => context.json({ ok: true }));
+app.get("/api/health", (context) => context.json({ ok: true, sandboxMode: isSandboxMode(context.env) }));
 
-app.get("/api/dashboard", async (context) => context.json(await loadDashboard(context.env.DB)));
+app.get("/api/dashboard", async (context) => context.json(await loadDashboard(context.env.DB, isSandboxMode(context.env))));
+
+app.get("/api/metrics/:id/snapshots", async (context) => {
+  const metric = await metricDefinitionFor(context.env.DB, context.get("workspaceId"), context.req.param("id"));
+  if (!metric) return context.json({ error: "Metric not found." }, 404);
+  const rawLimit = Number(context.req.query("limit") ?? 90);
+  const snapshots = await metricSnapshotsFor(context.env.DB, context.get("workspaceId"), metric.id, rawLimit);
+  return context.json({ metric, snapshots });
+});
 
 app.post("/api/goals", async (context) => {
   const actor = context.get("actor");
   if (actor.role === "viewer") return context.json({ error: "Viewers cannot create goals." }, 403);
   const input = GoalInputSchema.parse(await context.req.json());
-  const goal = await createGoal(context.env.DB, context.get("workspaceId"), input, actor.id);
+  const metric = input.metricDefinitionId
+    ? await metricDefinitionFor(context.env.DB, context.get("workspaceId"), input.metricDefinitionId)
+    : undefined;
+  if (!metric && !isSandboxMode(context.env)) {
+    return context.json({ error: "Choose a registered metric before creating a live goal." }, 409);
+  }
+  if (input.metricDefinitionId && !metric) return context.json({ error: "The selected metric was not found in this workspace." }, 404);
+  if (metric && !isSandboxMode(context.env) && (metric.status !== "ready" || metric.trustLevel !== "observed")) {
+    return context.json({ error: "This metric needs a connected, observed source before it can be used for a live goal." }, 409);
+  }
+  const goal = await createGoal(context.env.DB, context.get("workspaceId"), metric
+    ? { ...input, metricDefinitionId: metric.id, metricKind: metric.kind, metricName: metric.name, unit: metric.unit }
+    : input, actor.id);
   return context.json(goal, 201);
+});
+
+app.post("/api/metrics", async (context) => {
+  const actor = context.get("actor");
+  if (actor.role === "viewer") return context.json({ error: "Viewers cannot create metric definitions." }, 403);
+  const input = MetricDefinitionInputSchema.parse(await context.req.json());
+  const metric = await createMetricDefinition(context.env.DB, context.get("workspaceId"), input, actor.id);
+  return context.json(metric, 201);
+});
+
+app.post("/api/experiments", async (context) => {
+  const actor = context.get("actor");
+  if (actor.role === "viewer") return context.json({ error: "Viewers cannot create experiments." }, 403);
+  const input = ExperimentCreateSchema.parse(await context.req.json());
+  const dashboard = await loadDashboard(context.env.DB);
+  const goal = dashboard.goals.find((item) => item.id === input.goalId);
+  if (!goal) return context.json({ error: "Choose a goal in this workspace." }, 409);
+  const timestamp = new Date().toISOString();
+  const experiment: Experiment = {
+    id: `exp_${crypto.randomUUID()}`,
+    goalId: goal.id,
+    title: input.title,
+    surface: input.surface,
+    channel: input.channel,
+    status: "proposed",
+    hypothesis: input.hypothesis,
+    channelRationale: input.channelRationale,
+    expectedImpact: input.expectedImpact,
+    confidence: input.confidence,
+    audienceId: input.audienceId,
+    optimizationMetric: goal.metricName,
+    successRule: input.successRule,
+    decisionWindowDays: input.decisionWindowDays,
+    variants: input.variants,
+    spend: input.spend,
+    engineeringFlagKey: input.engineeringFlagKey,
+    engineeringBrief: input.engineeringFlagKey ? `Register ${input.engineeringFlagKey} and its tracking contract before launch.` : undefined,
+    createdAt: timestamp,
+    updatedAt: timestamp
+  };
+  if (experiment.surface === "product") experiment.status = "awaiting_engineering";
+  else {
+    const connection = dashboard.connections.find((item) => item.provider === experiment.channel);
+    const audience = dashboard.audiences.find((item) => item.id === experiment.audienceId);
+    const issues = approvalIssues(experiment, connection?.capabilities ?? [], audience?.eligible ?? false, true);
+    experiment.status = issues.length ? "blocked" : "awaiting_approval";
+  }
+  const learningCard = {
+    id: `card_${crypto.randomUUID()}`,
+    experimentId: experiment.id,
+    evidence: [{
+      id: `evidence_${crypto.randomUUID()}`,
+      source: "workspace" as const,
+      label: "User-created plan",
+      detail: `Created manually to move ${goal.metricName}. It remains approval-gated and has not made an external change.`,
+      capturedAt: timestamp
+    }],
+    expectedImpact: experiment.expectedImpact,
+    confidence: experiment.confidence,
+    outcome: "pending" as const,
+    outcomeSummary: "Created by a workspace member and waiting for the next decision.",
+    nextAction: experiment.status === "blocked" ? "Resolve the listed channel or budget requirement before approval." : experiment.status === "awaiting_engineering" ? "Register the product flag and tracking contract." : "Review the exact plan, then approve or revise it."
+  };
+  await createExperiment(context.env.DB, dashboard.workspace.id, experiment, actor.id);
+  await createLearningCard(context.env.DB, dashboard.workspace.id, learningCard);
+  if (experiment.status === "awaiting_engineering" && experiment.engineeringFlagKey) {
+    await createEngineeringBrief(context.env.DB, dashboard.workspace.id, {
+      id: `brief_${crypto.randomUUID()}`,
+      experimentId: experiment.id,
+      flagKey: experiment.engineeringFlagKey,
+      variants: experiment.variants.map((item) => item.name),
+      trackingRequirements: [goal.metricName],
+      status: "waiting_for_engineering"
+    });
+  }
+  await audit(context.env.DB, dashboard.workspace.id, actor.id, "experiment_created_manually", "experiment", experiment.id, { goalId: goal.id, channel: experiment.channel, externalWrites: false });
+  return context.json(experiment, 201);
+});
+
+app.post("/api/sandbox/run", async (context) => {
+  const actor = context.get("actor");
+  if (!canApproveExternalAction(actor.role)) return context.json({ error: "Only admins can run a sandbox experiment." }, 403);
+  if (!isSandboxMode(context.env)) return context.json({ error: "Sandbox mode is disabled for this workspace." }, 403);
+  const dashboard = await loadDashboard(context.env.DB);
+  const goal = dashboard.goals.find((item) => item.status === "active");
+  if (!goal) return context.json({ error: "Create an active goal before running a sandbox experiment." }, 409);
+  const run = createSandboxRun(goal);
+  const snapshot = createApprovalSnapshot(run.experiment, actor.id, "No audience: local simulation");
+  run.experiment.approvalSnapshot = snapshot;
+  await createExperiment(context.env.DB, dashboard.workspace.id, run.experiment, actor.id);
+  await createLearningCard(context.env.DB, dashboard.workspace.id, run.learningCard);
+  await createMetricSnapshot(context.env.DB, dashboard.workspace.id, run.metricSnapshot);
+  await markExperimentLive(context.env.DB, run.experiment.id, "sandbox", `sandbox_${run.experiment.id}`, undefined);
+  await transitionExperiment(context.env.DB, run.experiment.id, "completed", actor.id, "sandbox_experiment_completed");
+  await audit(context.env.DB, dashboard.workspace.id, actor.id, "sandbox_experiment_started", "experiment", run.experiment.id, {
+    approvalFingerprint: snapshot.fingerprint,
+    externalWrites: false,
+    audienceResolved: false,
+    spendCents: 0
+  });
+  return context.json({ experiment: run.experiment, learningCard: run.learningCard, simulated: true }, 201);
+});
+
+app.post("/api/sandbox/reset", async (context) => {
+  const actor = context.get("actor");
+  if (!canApproveExternalAction(actor.role)) return context.json({ error: "Only admins can reset sandbox records." }, 403);
+  if (!isSandboxMode(context.env)) return context.json({ error: "Sandbox mode is disabled for this workspace." }, 403);
+  await resetSandboxRecords(context.env.DB, context.get("workspaceId"), actor.id);
+  return context.json({ ok: true });
 });
 
 app.put("/api/connections/:provider/config", async (context) => {
@@ -88,12 +235,58 @@ app.put("/api/connections/:provider/config", async (context) => {
     return context.json({ error: "Connection configuration must be an object." }, 400);
   }
   try {
-    const encrypted = await encryptConnectionConfig(context.env, config);
+    const validatedConfig = provider === "posthog" ? PostHogConnectionConfigSchema.parse(config) : config;
+    const encrypted = await encryptConnectionConfig(context.env, validatedConfig);
     await storeConnectionConfig(context.env.DB, context.get("workspaceId"), provider as Parameters<typeof connectionFor>[2], encrypted, actor.id);
     return context.json({ ok: true, message: "Configuration stored securely. Complete OAuth or provider access checks before enabling capabilities." });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not store connection configuration.";
     return context.json({ error: message }, message.includes("encryption") ? 503 : 400);
+  }
+});
+
+app.post("/api/connections/posthog/verify", async (context) => {
+  const actor = context.get("actor");
+  if (!canManageConnections(actor.role)) return context.json({ error: "Only admins can verify connections." }, 403);
+  if (isSandboxMode(context.env)) return context.json({ error: "Sandbox mode blocks live provider reads. Turn it off in a deployed workspace before verifying PostHog." }, 409);
+  const workspaceId = context.get("workspaceId");
+  const encrypted = await encryptedConnectionConfig(context.env.DB, workspaceId, "posthog");
+  if (!encrypted) return context.json({ error: "Store PostHog configuration before verification." }, 409);
+  try {
+    const config = PostHogConnectionConfigSchema.parse(await decryptConnectionConfig<PostHogConnectionConfig>(context.env, encrypted));
+    const insights = await new PostHogAnalyticsProvider(config).listInsights();
+    await markConnectionVerified(
+      context.env.DB,
+      workspaceId,
+      "posthog",
+      ["read_analytics"],
+      `Read-only analytics verified. ${insights.length} saved insight${insights.length === 1 ? "" : "s"} discovered.`,
+      actor.id
+    );
+    return context.json({ ok: true, insights });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "PostHog verification failed.";
+    await recordConnectionSync(context.env.DB, workspaceId, "posthog", message);
+    return context.json({ error: message }, 400);
+  }
+});
+
+app.get("/api/connections/posthog/insights", async (context) => {
+  const actor = context.get("actor");
+  if (actor.role === "viewer") return context.json({ error: "Viewers cannot inspect connection metadata." }, 403);
+  if (isSandboxMode(context.env)) return context.json({ error: "Sandbox mode does not read live PostHog data." }, 409);
+  const workspaceId = context.get("workspaceId");
+  const connection = await connectionFor(context.env.DB, workspaceId, "posthog");
+  const encrypted = await encryptedConnectionConfig(context.env.DB, workspaceId, "posthog");
+  if (connection?.status !== "connected" || !encrypted) return context.json({ error: "Verify the PostHog connection before discovering saved insights." }, 409);
+  try {
+    const config = PostHogConnectionConfigSchema.parse(await decryptConnectionConfig<PostHogConnectionConfig>(context.env, encrypted));
+    const insights = await new PostHogAnalyticsProvider(config).listInsights();
+    return context.json({ insights });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "PostHog insight discovery failed.";
+    await recordConnectionSync(context.env.DB, workspaceId, "posthog", message);
+    return context.json({ error: message }, 400);
   }
 });
 
@@ -128,16 +321,82 @@ app.post("/api/experiments/:id/reject", async (context) => {
   return context.json({ ok: true });
 });
 
+app.put("/api/experiments/:id", async (context) => {
+  const actor = context.get("actor");
+  if (actor.role === "viewer") return context.json({ error: "Viewers cannot edit experiments." }, 403);
+  const experimentId = context.req.param("id");
+  const found = await getExperiment(context.env.DB, experimentId);
+  if (!found || found.workspaceId !== context.get("workspaceId")) return context.json({ error: "Experiment not found." }, 404);
+  const update = ExperimentDraftUpdateSchema.parse(await context.req.json());
+  const experiment = await updateExperimentDraft(context.env.DB, experimentId, update, actor.id);
+  return context.json(experiment);
+});
+
+async function syncPostHogMetrics(env: Env, dashboard: Awaited<ReturnType<typeof loadDashboard>>): Promise<{ status: "skipped" | "completed" | "failed"; synced: number; error?: string }> {
+  if (isSandboxMode(env)) return { status: "skipped", synced: 0, error: "Sandbox mode blocks live provider reads." };
+  const connection = await connectionFor(env.DB, dashboard.workspace.id, "posthog");
+  const metrics = dashboard.metricDefinitions.filter((metric) => metric.sourceProvider === "posthog" && metric.status === "ready" && metric.trustLevel === "observed" && metric.sourceMetricId);
+  if (!connection || connection.status !== "connected" || !connection.capabilities.includes("read_analytics")) {
+    return { status: "skipped", synced: 0, error: "PostHog read access is not verified." };
+  }
+  if (!metrics.length) return { status: "skipped", synced: 0, error: "No ready PostHog metric is mapped to a saved insight." };
+  const encrypted = await encryptedConnectionConfig(env.DB, dashboard.workspace.id, "posthog");
+  if (!encrypted) return { status: "failed", synced: 0, error: "PostHog configuration is missing." };
+
+  const syncRunId = await startMetricSyncRun(env.DB, dashboard.workspace.id, "posthog", new Date().toISOString().slice(0, 10));
+  try {
+    const config = PostHogConnectionConfigSchema.parse(await decryptConnectionConfig<PostHogConnectionConfig>(env, encrypted));
+    const provider = new PostHogAnalyticsProvider(config);
+    let synced = 0;
+    const errors: string[] = [];
+    for (const metric of metrics) {
+      try {
+        const point = await provider.latestAggregate(metric.sourceMetricId!);
+        if (!point) {
+          errors.push(`${metric.name}: no aggregate result`);
+          continue;
+        }
+        const capturedAt = point.capturedAt ?? new Date().toISOString();
+        const created = await createMetricSnapshot(env.DB, dashboard.workspace.id, {
+          id: `snapshot_${crypto.randomUUID()}`,
+          metricDefinitionId: metric.id,
+          sourceProvider: "posthog",
+          value: point.value,
+          dimensions: { insightId: metric.sourceMetricId!, ...(point.label ? { series: point.label } : {}) },
+          trustLevel: "observed",
+          quality: "verified",
+          capturedAt
+        });
+        await markMetricSynced(env.DB, dashboard.workspace.id, metric.id, capturedAt);
+        if (created) synced += 1;
+      } catch (error) {
+        errors.push(`${metric.name}: ${error instanceof Error ? error.message : "snapshot failed"}`);
+      }
+    }
+    const error = errors.length ? errors.join("; ") : undefined;
+    await recordConnectionSync(env.DB, dashboard.workspace.id, "posthog", error);
+    await finishMetricSyncRun(env.DB, syncRunId, error);
+    return { status: error ? "failed" : "completed", synced, error };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "PostHog metric sync failed.";
+    await recordConnectionSync(env.DB, dashboard.workspace.id, "posthog", message);
+    await finishMetricSyncRun(env.DB, syncRunId, message);
+    return { status: "failed", synced: 0, error: message };
+  }
+}
+
 async function runDailyMonitor(env: Env): Promise<void> {
-  const dashboard = await loadDashboard(env.DB);
+  const dashboard = await loadDashboard(env.DB, isSandboxMode(env));
+  const posthog = await syncPostHogMetrics(env, dashboard);
   await audit(env.DB, dashboard.workspace.id, undefined, "daily_monitor_completed", "workspace", dashboard.workspace.id, {
     sources: dashboard.connections.filter((connection) => connection.status === "connected").map((connection) => connection.provider),
-    policy: "aggregate_only"
+    policy: "aggregate_only",
+    posthog
   });
 }
 
 async function runWeeklyPlan(env: Env, actorId = "system"): Promise<Experiment | undefined> {
-  const dashboard = await loadDashboard(env.DB);
+  const dashboard = await loadDashboard(env.DB, isSandboxMode(env));
   const goal = dashboard.goals.find((item) => item.status === "active");
   if (!goal) return undefined;
   const { experiment, learningCard } = await weeklyProposal(env, dashboard, goal);
@@ -218,6 +477,11 @@ async function executeJob(job: ExecutionJob, env: Env): Promise<void> {
   }
   if (found.experiment.approvalSnapshot?.fingerprint !== job.approvalFingerprint) {
     await markJob(env.DB, job.id, "failed", "The approval snapshot no longer matches this job.");
+    return;
+  }
+  if (isSandboxMode(env)) {
+    await markJob(env.DB, job.id, "failed", "Sandbox mode blocks all non-sandbox provider execution.");
+    await transitionExperiment(env.DB, found.experiment.id, "blocked", "system", "sandbox_execution_blocked");
     return;
   }
   const connection = await connectionFor(env.DB, found.workspaceId, found.experiment.channel);

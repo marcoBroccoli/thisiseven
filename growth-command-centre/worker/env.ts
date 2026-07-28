@@ -6,6 +6,7 @@ export interface Env {
   EXECUTION_QUEUE: Queue<ExecutionJob>;
   APP_BASE_URL: string;
   DEMO_MODE: string;
+  SANDBOX_MODE: string;
   CREDENTIAL_ENCRYPTION_KEY?: string;
   SLACK_SIGNING_SECRET?: string;
   SLACK_BOT_TOKEN?: string;

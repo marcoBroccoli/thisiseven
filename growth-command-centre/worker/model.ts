@@ -65,7 +65,9 @@ export function modelContext(dashboard: DashboardPayload, goal: Goal, publicRese
   return {
     goal,
     audiences: dashboard.audiences.map(({ id, name, estimatedPeople, eligible, consentProperty }) => ({ id, name, estimatedPeople, eligible, consentProperty })),
-    connectedChannels: dashboard.connections.filter((connection) => connection.status === "connected").map((connection) => connection.provider),
+    connectedChannels: dashboard.connections
+      .filter((connection) => connection.status === "connected" && connection.provider !== "sandbox")
+      .map((connection) => connection.provider),
     recentLearning: dashboard.learningCards.map((card) => {
       const experiment = dashboard.experiments.find((item) => item.id === card.experimentId);
       return { title: experiment?.title ?? "Previous experiment", outcome: card.outcome, nextAction: card.nextAction };
