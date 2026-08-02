@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<title>Even — Todo Creation</title>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..700&family=Source+Sans+3:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+<meta name="ext-resource-dependency" content="./ios-frame.jsx" data-resource-id="ios-frame">
+<style>
+  body { margin:0; background:#E9E1D2; -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; }
+  a { color:#A0522D; text-decoration:underline; text-underline-offset:2px; }
+  a:hover { color:#7A3A1D; }
+  input::placeholder, textarea::placeholder { color:#B8AC99; font-style:italic; }
+  input:focus, button:focus { outline:none; }
+  *::-webkit-scrollbar { width:0; height:0; }
+  [data-grain] { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E"); }
+  @keyframes sheetUp { from { transform:translateY(36px); opacity:0; } to { transform:translateY(0); opacity:1; } }
+  @keyframes scrimIn { from { opacity:0; } to { opacity:1; } }
+  @keyframes pebbleDrop { 0% { transform:translateY(-52px) scale(.6); opacity:0; } 55% { transform:translateY(3px) scale(1.05); opacity:1; } 75% { transform:translateY(-4px) scale(.98); } 100% { transform:translateY(0) scale(1); opacity:1; } }
+</style>
+</helmet>
+<template id="__bundler_thumbnail" data-bg-color="#F6F1E6">
+  <svg viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg">
+    <rect width="56" height="56" fill="#F6F1E6"></rect>
+    <line x1="10" y1="26" x2="46" y2="20" stroke="#26201A" stroke-width="2" stroke-linecap="round"></line>
+    <circle cx="28" cy="23" r="1.6" fill="#26201A"></circle>
+    <line x1="28" y1="23" x2="28" y2="40" stroke="#26201A" stroke-width="1.6"></line>
+    <line x1="20" y1="40" x2="36" y2="40" stroke="#26201A" stroke-width="1.6" stroke-linecap="round"></line>
+  </svg>
+</template>
+<div style="min-height:100vh; box-sizing:border-box; display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:center; gap:52px; padding:56px 40px 80px; font-family:'Newsreader',Georgia,serif; color:#2A231B;">
+
+  <div style="width:290px; max-width:92vw; display:flex; flex-direction:column; gap:14px; padding-top:120px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">EVEN · FLOW 5 · TODO CREATION</div>
+    <div style="font-size:31px; line-height:1.14; font-weight:500; letter-spacing:-.01em;">Add work, weigh it.</div>
+    <div style="font-size:15px; line-height:1.55; color:#6E6353;">Either partner can add a shared todo by hand — give it an owner, a heft (how much it weighs on the beam), and an optional calendar reminder.</div>
+    <div style="display:flex; flex-direction:column; gap:7px; margin-top:6px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.06em; color:#8B7E6B; line-height:1.5;">
+      <div>TRY —</div>
+      <div>· TAP + → THE NEW TODO SHEET</div>
+      <div>· PICK A HEFT → PEBBLE PREVIEW UPDATES</div>
+      <div>· SAVE → IT DROPS INTO TODAY</div>
+    </div>
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.06em; color:#8B7E6B; line-height:1.6;">BACK → <a href="Email Ingestion.dc.html">INGESTION &amp; REMINDERS</a></div>
+  </div>
+
+  <div style="flex:none; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">01 · TODAY — EMPTY STATE</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+      <div data-screen-label="Today empty" style="height:100%; box-sizing:border-box; display:flex; flex-direction:column; position:relative; overflow:hidden; background:#F6F1E6; color:#26201A; font-family:'Newsreader',Georgia,serif;">
+        <div data-grain style="position:absolute; inset:0; z-index:50; opacity:.055; pointer-events:none; mix-blend-mode:multiply;"></div>
+        <div style="padding:64px 20px 4px; display:flex; align-items:center; justify-content:space-between;">
+          <div style="display:flex; align-items:center; gap:7px;">
+            <svg width="15" height="15" viewBox="0 0 16 16"><line x1="1.5" y1="6.8" x2="14.5" y2="4.6" stroke="#26201A" stroke-width="1.6" stroke-linecap="round"></line><path d="M8 6.4 L10.6 10.6 H5.4 Z" fill="none" stroke="#26201A" stroke-width="1.5" stroke-linejoin="round"></path><line x1="4.5" y1="13.4" x2="11.5" y2="13.4" stroke="#26201A" stroke-width="1.4" stroke-linecap="round"></line></svg>
+            <span style="font-size:18px; font-style:italic; font-weight:600;">Even</span>
+          </div>
+          <button style="width:30px; height:30px; border-radius:999px; border:1px solid rgba(38,32,26,.14); background:#26201A; color:#F6F1E6; display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0;">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M7 1.5v11M1.5 7h11"></path></svg>
+          </button>
+        </div>
+        <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:0 32px;">
+          <div style="position:relative; width:150px; height:36px;">
+            <div style="position:absolute; left:0; right:0; top:16px; height:2px; border-radius:1px; background:#26201A;"></div>
+            <div style="position:absolute; left:-2px; top:12px; width:8px; height:8px; border-radius:99px; background:#A6552F;"></div>
+            <div style="position:absolute; right:-2px; top:12px; width:8px; height:8px; border-radius:99px; background:#37756D;"></div>
+            <svg width="14" height="10" viewBox="0 0 20 13" style="position:absolute; left:50%; top:19px; transform:translateX(-50%);"><path d="M10 1.2 L18.6 12 H1.4 Z" fill="none" stroke="#26201A" stroke-width="1.5" stroke-linejoin="round"></path></svg>
+          </div>
+          <div style="margin-top:16px; font-size:19px; font-style:italic;">Nothing on the beam yet.</div>
+          <div style="margin-top:8px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:12px; line-height:1.6; color:#8A7D69;">Add the first chore or errand — tap the + above.</div>
+        </div>
+      </div>
+    </x-import>
+  </div>
+
+  <div style="flex:none; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">02 · TODAY — INTERACTIVE, TAP +</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+      <div data-screen-label="Today" style="--ada:#A6552F; --umut:#37756D; height:100%; box-sizing:border-box; display:flex; flex-direction:column; position:relative; overflow:hidden; background:#F6F1E6; color:#26201A; font-family:'Newsreader',Georgia,serif;">
+        <div data-grain style="position:absolute; inset:0; z-index:50; opacity:.055; pointer-events:none; mix-blend-mode:multiply;"></div>
+        <div style="padding:64px 20px 4px; display:flex; align-items:center; justify-content:space-between;">
+          <div style="display:flex; align-items:center; gap:7px;">
+            <svg width="15" height="15" viewBox="0 0 16 16"><line x1="1.5" y1="6.8" x2="14.5" y2="4.6" stroke="#26201A" stroke-width="1.6" stroke-linecap="round"></line><path d="M8 6.4 L10.6 10.6 H5.4 Z" fill="none" stroke="#26201A" stroke-width="1.5" stroke-linejoin="round"></path><line x1="4.5" y1="13.4" x2="11.5" y2="13.4" stroke="#26201A" stroke-width="1.4" stroke-linecap="round"></line></svg>
+            <span style="font-size:18px; font-style:italic; font-weight:600;">Even</span>
+          </div>
+          <button onClick="{{openNew}}" style-active="transform:scale(.9)" style="width:30px; height:30px; border-radius:999px; border:1px solid rgba(38,32,26,.14); background:#26201A; color:#F6F1E6; display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0; transition:transform .15s;">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M7 1.5v11M1.5 7h11"></path></svg>
+          </button>
+        </div>
+        <div style="flex:1; overflow-y:auto; overflow-x:hidden; padding:0 20px 26px;">
+          <sc-for list="{{sections}}" as="sec" hint-placeholder-count="2">
+            <div style="margin-top:18px;">
+              <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9.5px; font-weight:600; letter-spacing:.15em; color:#8A7D69;">{{sec.label}}</div>
+              <sc-for list="{{sec.rows}}" as="t" hint-placeholder-count="3">
+                <div style="display:flex; gap:10px; align-items:center; padding:11px 0; border-bottom:1px solid rgba(38,32,26,.055); animation:{{t.anim}};">
+                  <button onClick="{{t.toggle}}" style-active="transform:scale(.85)" style="flex:none; width:27px; height:27px; border-radius:999px; border:1.5px solid {{t.ckBd}}; background:{{t.ckBg}}; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; transition:background .2s ease, border-color .2s ease, transform .15s;">
+                    <svg width="13" height="13" viewBox="0 0 14 14"><path d="M2.8 7.4l2.9 2.9L11.3 4.4" stroke="#FBF7EE" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="stroke-dasharray:13; stroke-dashoffset:{{t.ckDash}}; transition:stroke-dashoffset .25s ease .05s;"></path></svg>
+                  </button>
+                  <div style="flex:1; min-width:0; opacity:{{t.rowOp}}; transition:opacity .2s;">
+                    <div style="font-size:15px; line-height:1.3; text-decoration:{{t.deco}}; text-decoration-thickness:1px;">{{t.title}}</div>
+                    <div style="margin-top:2px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:600; letter-spacing:.06em; color:#8A7D69;">{{t.meta}}</div>
+                  </div>
+                  <div style="flex:none; display:flex; align-items:center; gap:2.5px;">
+                    <sc-for list="{{t.heft}}" as="h" hint-placeholder-count="2">
+                      <span style="width:6px; height:6px; border-radius:99px; background:{{t.ownerColor}}; opacity:.8;"></span>
+                    </sc-for>
+                  </div>
+                  <span style="flex:none; width:20px; height:20px; border-radius:999px; background:{{t.ownerColor}}; color:#FBF7EE; display:flex; align-items:center; justify-content:center; font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:700;">{{t.ownerInit}}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-for>
+        </div>
+
+        <sc-if value="{{showNew}}" hint-placeholder-val="{{false}}">
+          <div style="position:absolute; inset:0; z-index:60;">
+            <div onClick="{{closeNew}}" style="position:absolute; inset:0; background:rgba(20,14,7,.45); animation:scrimIn .2s ease both;"></div>
+            <div style="position:absolute; left:0; right:0; bottom:0; max-height:86%; overflow-y:auto; background:#FBF7EE; border-radius:24px 24px 0 0; padding:14px 20px 34px; animation:sheetUp .28s cubic-bezier(.3,.8,.4,1) both; box-shadow:0 -10px 36px rgba(20,12,5,.16);">
+              <div style="width:36px; height:4px; border-radius:2px; background:rgba(38,32,26,.14); margin:0 auto 12px;"></div>
+              <div style="display:flex; align-items:baseline; justify-content:space-between;">
+                <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9.5px; font-weight:600; letter-spacing:.16em; color:#8A7D69;">NEW TODO</span>
+                <button onClick="{{closeNew}}" style="border:none; background:transparent; cursor:pointer; padding:4px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:12px; color:#8A7D69;">✕</button>
+              </div>
+              <input type="text" value="{{form.title}}" onChange="{{setTitle}}" placeholder="What needs doing?" style="margin-top:10px; width:100%; box-sizing:border-box; border:none; border-bottom:1.5px solid rgba(38,32,26,.16); background:transparent; padding:4px 0 8px; font-family:'Newsreader',Georgia,serif; font-size:18px; color:#26201A;"/>
+
+              <div style="margin-top:16px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:600; letter-spacing:.16em; color:#8A7D69;">OWNER</div>
+              <div style="display:flex; gap:8px; margin-top:6px;">
+                <sc-for list="{{ownerOpts}}" as="o" hint-placeholder-count="2">
+                  <button onClick="{{o.pick}}" style-active="transform:scale(.95)" style="padding:8px 18px; border-radius:999px; border:1.5px solid {{o.bd}}; background:{{o.bg}}; color:{{o.color}}; cursor:pointer; font-family:'Source Sans 3',system-ui,sans-serif; font-size:11px; font-weight:600; letter-spacing:.08em; transition:transform .15s;">{{o.label}}</button>
+                </sc-for>
+              </div>
+
+              <div style="margin-top:16px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:600; letter-spacing:.16em; color:#8A7D69;">HEFT — HOW MUCH THIS WEIGHS</div>
+              <div style="display:flex; gap:8px; margin-top:6px;">
+                <sc-for list="{{heftOpts}}" as="h" hint-placeholder-count="3">
+                  <button onClick="{{h.pick}}" style-active="transform:scale(.95)" style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; padding:10px 0; border-radius:12px; border:1.5px solid {{h.bd}}; background:{{h.bg}}; color:{{h.color}}; cursor:pointer; transition:transform .15s;">
+                    <div style="display:flex; align-items:center; gap:2.5px; height:14px;">
+                      <sc-for list="{{h.dots}}" as="d" hint-placeholder-count="2">
+                        <span style="width:{{d.size}}; height:{{d.size}}; border-radius:99px; background:{{h.color}};"></span>
+                      </sc-for>
+                    </div>
+                    <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9.5px; font-weight:600; letter-spacing:.06em;">{{h.label}}</span>
+                  </button>
+                </sc-for>
+              </div>
+
+              <div style="margin-top:16px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:600; letter-spacing:.16em; color:#8A7D69;">DUE</div>
+              <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:6px;">
+                <sc-for list="{{dueOpts}}" as="o" hint-placeholder-count="4">
+                  <button onClick="{{o.pick}}" style-active="transform:scale(.95)" style="padding:6px 12px; border-radius:999px; border:1.5px solid {{o.bd}}; background:{{o.bg}}; color:{{o.color}}; cursor:pointer; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.08em; transition:transform .15s;">{{o.label}}</button>
+                </sc-for>
+              </div>
+
+              <div style="margin-top:16px; display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-radius:12px; background:rgba(38,32,26,.055);">
+                <div>
+                  <div style="font-size:14.5px;">Add a calendar reminder</div>
+                  <div style="margin-top:2px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; color:#8A7D69;">Writes to the shared "Even" calendar</div>
+                </div>
+                <button onClick="{{toggleReminder}}" style-active="transform:scale(.95)" style="flex:none; width:44px; height:26px; border-radius:99px; border:none; background:{{remTrack}}; position:relative; cursor:pointer; padding:0; transition:background .2s;">
+                  <span style="position:absolute; top:2px; left:{{remKnobPos}}; width:22px; height:22px; border-radius:99px; background:#FBF7EE; transition:left .2s;"></span>
+                </button>
+              </div>
+
+              <button onClick="{{save}}" style-active="transform:scale(.97)" style="margin-top:20px; width:100%; height:48px; border-radius:10px; border:none; background:#26201A; color:#F6F1E6; cursor:pointer; font-family:'Newsreader',Georgia,serif; font-size:16px; font-weight:500; opacity:{{saveOp}}; transition:transform .15s;">Add to Today</button>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </x-import>
+  </div>
+
+  <div style="flex:none; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">03 · SAVED — PEBBLE DROPS, BEAM GIVES</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+      <div data-screen-label="Todo saved" style="height:100%; box-sizing:border-box; display:flex; flex-direction:column; position:relative; overflow:hidden; background:#F6F1E6; color:#26201A; font-family:'Newsreader',Georgia,serif;">
+        <div data-grain style="position:absolute; inset:0; z-index:50; opacity:.055; pointer-events:none; mix-blend-mode:multiply;"></div>
+        <div style="padding:64px 20px 4px; display:flex; align-items:center; gap:7px;">
+          <svg width="15" height="15" viewBox="0 0 16 16"><line x1="1.5" y1="6.8" x2="14.5" y2="4.6" stroke="#26201A" stroke-width="1.6" stroke-linecap="round"></line><path d="M8 6.4 L10.6 10.6 H5.4 Z" fill="none" stroke="#26201A" stroke-width="1.5" stroke-linejoin="round"></path><line x1="4.5" y1="13.4" x2="11.5" y2="13.4" stroke="#26201A" stroke-width="1.4" stroke-linecap="round"></line></svg>
+          <span style="font-size:18px; font-style:italic; font-weight:600;">Even</span>
+        </div>
+        <div style="flex:1; overflow:hidden; padding:0 20px;">
+          <div style="position:relative; height:228px; margin:2px -6px 0;">
+            <div style="position:absolute; left:50%; top:196px; width:120px; height:2px; border-radius:1px; background:#26201A; transform:translateX(-50%);"></div>
+            <div style="position:absolute; left:50%; top:64px; width:2px; height:132px; background:#26201A; transform:translateX(-50%);"></div>
+            <div style="position:absolute; left:50%; top:186px; transform:translateX(-50%); font-family:'Source Sans 3',system-ui,sans-serif; font-size:7.5px; font-weight:600; letter-spacing:.3em; color:#8A7D69; background:#F6F1E6; padding:0 6px; z-index:3;">WK 28</div>
+            <div style="position:absolute; left:50%; top:64px; width:300px; height:0; transform:translateX(-50%) rotate(-3deg); z-index:2;">
+              <div style="position:absolute; left:0; right:0; top:-1.5px; height:3px; border-radius:2px; background:#26201A;"></div>
+              <div style="position:absolute; left:50%; top:-4px; width:8px; height:8px; border-radius:99px; background:#26201A; transform:translateX(-50%);"></div>
+              <div style="position:absolute; left:-2px; top:44px; width:0; height:0; transform:rotate(3deg);">
+                <div style="position:absolute; left:-2px; top:-46px; width:4px; height:4px; border-radius:99px; background:#26201A;"></div>
+                <svg width="96" height="58" viewBox="0 0 96 58" style="position:absolute; left:-48px; top:-45px;"><path d="M48 2 L12 46 M48 2 L84 46" stroke="#26201A" stroke-width="1.3" fill="none" opacity=".55"></path><path d="M6 46 Q48 66 90 46" stroke="#26201A" stroke-width="2.2" fill="none" stroke-linecap="round"></path></svg>
+                <div style="position:absolute; left:-39px; top:-26px; width:78px; height:26px; display:flex; flex-wrap:wrap-reverse; align-content:flex-end; justify-content:center; align-items:flex-end; gap:1.5px;">
+                  <span style="width:9px; height:9px; border-radius:99px; background:#A6552F; animation:pebbleDrop .5s cubic-bezier(.3,1.4,.5,1) both;"></span>
+                  <span style="width:11px; height:11px; border-radius:99px; background:#A6552F; opacity:.95; animation:pebbleDrop .5s cubic-bezier(.3,1.4,.5,1) both .05s;"></span>
+                  <span style="width:8px; height:8px; border-radius:99px; background:#A6552F; opacity:.9;"></span>
+                </div>
+                <div style="position:absolute; left:-39px; top:16px; width:78px; text-align:center; font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:600; letter-spacing:.2em; color:#A6552F;">ADA</div>
+              </div>
+              <div style="position:absolute; right:-2px; top:44px; width:0; height:0; transform:rotate(3deg);">
+                <div style="position:absolute; left:-2px; top:-46px; width:4px; height:4px; border-radius:99px; background:#26201A;"></div>
+                <svg width="96" height="58" viewBox="0 0 96 58" style="position:absolute; left:-48px; top:-45px;"><path d="M48 2 L12 46 M48 2 L84 46" stroke="#26201A" stroke-width="1.3" fill="none" opacity=".55"></path><path d="M6 46 Q48 66 90 46" stroke="#26201A" stroke-width="2.2" fill="none" stroke-linecap="round"></path></svg>
+                <div style="position:absolute; left:-39px; top:-26px; width:78px; height:26px; display:flex; flex-wrap:wrap-reverse; align-content:flex-end; justify-content:center; align-items:flex-end; gap:1.5px;">
+                  <span style="width:8px; height:8px; border-radius:99px; background:#37756D;"></span>
+                  <span style="width:9px; height:9px; border-radius:99px; background:#37756D; opacity:.9;"></span>
+                </div>
+                <div style="position:absolute; left:-39px; top:16px; width:78px; text-align:center; font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:600; letter-spacing:.2em; color:#37756D;">UMUT</div>
+              </div>
+              <div style="position:absolute; left:6px; bottom:14px;"><div style="font-size:34px; line-height:.9; font-weight:500; color:#A6552F; font-variant-numeric:tabular-nums;">57</div></div>
+              <div style="position:absolute; right:6px; bottom:14px; text-align:right;"><div style="font-size:34px; line-height:.9; font-weight:500; color:#37756D; font-variant-numeric:tabular-nums;">43</div></div>
+            </div>
+          </div>
+          <div style="text-align:center; font-style:italic; font-size:13.5px; color:#8A7D69; margin-top:2px;">Leaning Ada — mostly the admin and the remembering.</div>
+          <div style="margin-top:18px;">
+            <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9.5px; font-weight:600; letter-spacing:.15em; color:#8A7D69;">CHORES — TODAY</div>
+            <div style="display:flex; gap:10px; align-items:center; padding:11px 0; border-bottom:1px solid rgba(38,32,26,.055); animation:fadeUp .3s ease both;">
+              <span style="flex:none; width:27px; height:27px; border-radius:999px; border:1.5px solid rgba(38,32,26,.14);"></span>
+              <div style="flex:1; min-width:0;">
+                <div style="font-size:15px; line-height:1.3;">Book Miso's grooming appointment</div>
+                <div style="margin-top:2px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:600; letter-spacing:.06em; color:#8A7D69;">TODAY · ONE-OFF · REMINDER SET</div>
+              </div>
+              <div style="flex:none; display:flex; align-items:center; gap:2.5px;"><span style="width:9px; height:9px; border-radius:99px; background:#A6552F; opacity:.8;"></span><span style="width:11px; height:11px; border-radius:99px; background:#A6552F; opacity:.8;"></span></div>
+              <span style="flex:none; width:20px; height:20px; border-radius:999px; background:#A6552F; color:#FBF7EE; display:flex; align-items:center; justify-content:center; font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:700;">A</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </x-import>
+  </div>
+
+  <div style="flex:none; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">04 · EDIT OR DELETE AN EXISTING TODO</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+      <div data-screen-label="Edit todo" style="height:100%; box-sizing:border-box; display:flex; flex-direction:column; position:relative; overflow:hidden; background:#F6F1E6; color:#26201A; font-family:'Newsreader',Georgia,serif;">
+        <div data-grain style="position:absolute; inset:0; z-index:50; opacity:.055; pointer-events:none; mix-blend-mode:multiply;"></div>
+        <div style="position:absolute; inset:0; background:rgba(20,14,7,.35);"></div>
+        <div style="position:relative; z-index:2; margin-top:auto; background:#FBF7EE; border-radius:24px 24px 0 0; padding:14px 20px 34px; box-shadow:0 -10px 36px rgba(20,12,5,.16);">
+          <div style="width:36px; height:4px; border-radius:2px; background:rgba(38,32,26,.14); margin:0 auto 12px;"></div>
+          <div style="display:flex; align-items:baseline; justify-content:space-between;">
+            <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9.5px; font-weight:600; letter-spacing:.16em; color:#8A7D69;">EDIT TODO</span>
+            <button style="border:none; background:transparent; cursor:pointer; padding:4px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:12px; color:#8A7D69;">✕</button>
+          </div>
+          <div style="margin-top:10px; width:100%; box-sizing:border-box; border-bottom:1.5px solid rgba(38,32,26,.16); padding:4px 0 8px; font-size:18px;">Laundry — towels &amp; bedding</div>
+          <div style="margin-top:16px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:600; letter-spacing:.16em; color:#8A7D69;">OWNER</div>
+          <div style="display:flex; gap:8px; margin-top:6px;">
+            <button style="padding:8px 18px; border-radius:999px; border:1.5px solid #A6552F; background:#A6552F; color:#FBF7EE; cursor:pointer; font-family:'Source Sans 3',system-ui,sans-serif; font-size:11px; font-weight:600; letter-spacing:.08em;">ADA</button>
+            <button style="padding:8px 18px; border-radius:999px; border:1.5px solid #37756D; background:transparent; color:#37756D; cursor:pointer; font-family:'Source Sans 3',system-ui,sans-serif; font-size:11px; font-weight:600; letter-spacing:.08em;">UMUT</button>
+          </div>
+          <div style="margin-top:16px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:600; letter-spacing:.16em; color:#8A7D69;">HEFT</div>
+          <div style="display:flex; gap:8px; margin-top:6px;">
+            <button style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; padding:10px 0; border-radius:12px; border:1.5px solid rgba(38,32,26,.16); background:transparent; color:#26201A;"><span style="width:6px; height:6px; border-radius:99px; background:#26201A;"></span><span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9.5px; font-weight:600;">LIGHT</span></button>
+            <button style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; padding:10px 0; border-radius:12px; border:1.5px solid #26201A; background:#26201A; color:#F6F1E6;"><span style="display:flex; gap:2.5px;"><span style="width:8px; height:8px; border-radius:99px; background:currentColor;"></span><span style="width:8px; height:8px; border-radius:99px; background:currentColor;"></span></span><span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9.5px; font-weight:600;">MEDIUM</span></button>
+            <button style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; padding:10px 0; border-radius:12px; border:1.5px solid rgba(38,32,26,.16); background:transparent; color:#26201A;"><span style="width:10px; height:10px; border-radius:99px; background:#26201A;"></span><span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9.5px; font-weight:600;">HEAVY</span></button>
+          </div>
+          <div style="display:flex; gap:8px; margin-top:20px;">
+            <button style="flex:1; height:48px; border-radius:10px; border:1px solid #A6552F; background:transparent; color:#A6552F; cursor:pointer; font-family:'Newsreader',Georgia,serif; font-size:15px; display:flex; align-items:center; justify-content:center; gap:8px;">
+              <svg width="14" height="16" viewBox="0 0 14 16" fill="none" stroke="#A6552F" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4h12M5 4V2h4v2M2.5 4l.8 10.5a1 1 0 0 0 1 .9h5.4a1 1 0 0 0 1-.9L11.5 4"></path></svg>
+              <span>Delete</span>
+            </button>
+            <button style="flex:2; height:48px; border-radius:10px; border:none; background:#26201A; color:#F6F1E6; cursor:pointer; font-family:'Newsreader',Georgia,serif; font-size:15px; font-weight:500;">Save changes</button>
+          </div>
+        </div>
+      </div>
+    </x-import>
+  </div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = {
+    showNew: false,
+    form: { title: '', owner: 'A', heft: 2, due: 'Today', reminder: false },
+    sections: [
+      { label: 'CHORES — TODAY', rows: [
+        { id: 'a1', t: "Laundry — towels & bedding", owner: 'A', p: 2, meta: 'TODAY · WEEKLY', done: false },
+        { id: 'u1', t: 'Dishes tonight', owner: 'U', p: 1, meta: 'TODAY · DAILY', done: false }
+      ] },
+      { label: 'ADMIN', rows: [
+        { id: 'ad1', t: 'Pay Waternet water bill — Q2', owner: 'U', p: 2, meta: 'GMAIL · €84.30 · 2 DAYS OVER', done: false },
+        { id: 'ad2', t: 'Decide health-insurance renewal', owner: 'A', p: 3, meta: 'GMAIL · DUE TODAY', done: false }
+      ] }
+    ]
+  };
+  openNew() { this.setState({ showNew: true }); }
+  closeNew() { this.setState({ showNew: false }); }
+  setTitle(e) { this.setState(s => ({ form: Object.assign({}, s.form, { title: e.target.value }) })); }
+  setOwner(o) { this.setState(s => ({ form: Object.assign({}, s.form, { owner: o }) })); }
+  setHeft(h) { this.setState(s => ({ form: Object.assign({}, s.form, { heft: h }) })); }
+  setDue(d) { this.setState(s => ({ form: Object.assign({}, s.form, { due: d }) })); }
+  toggleReminder() { this.setState(s => ({ form: Object.assign({}, s.form, { reminder: !s.form.reminder }) })); }
+  toggleTask(secIdx, id) {
+    this.setState(s => ({
+      sections: s.sections.map((sec, i) => i !== secIdx ? sec : Object.assign({}, sec, {
+        rows: sec.rows.map(t => t.id === id ? Object.assign({}, t, { done: !t.done }) : t)
+      }))
+    }));
+  }
+  save() {
+    const f = this.state.form;
+    if (!f.title.trim()) return;
+    this.setState(s => ({
+      showNew: false,
+      form: { title: '', owner: 'A', heft: 2, due: 'Today', reminder: false },
+      sections: s.sections.map((sec, i) => i !== 0 ? sec : Object.assign({}, sec, {
+        rows: [{ id: 'new' + Date.now(), t: f.title, owner: f.owner, p: f.heft, meta: f.due.toUpperCase() + ' · ONE-OFF' + (f.reminder ? ' · REMINDER SET' : ''), done: false }, ...sec.rows]
+      }))
+    }));
+  }
+
+  renderVals() {
+    const S = this.state;
+    const col = w => w === 'A' ? '#A6552F' : '#37756D';
+    const SZ = { 1: '6px', 2: '8px', 3: '10px' };
+    const mkRow = (t, secIdx) => ({
+      title: t.t, meta: t.meta,
+      ownerInit: t.owner, ownerColor: col(t.owner),
+      heft: Array.from({ length: t.p }, () => ({})),
+      ckBg: t.done ? col(t.owner) : 'transparent',
+      ckBd: t.done ? col(t.owner) : 'rgba(38,32,26,.14)',
+      ckDash: t.done ? 0 : 13,
+      rowOp: t.done ? .42 : 1,
+      deco: t.done ? 'line-through' : 'none',
+      anim: 'none',
+      toggle: () => this.toggleTask(secIdx, t.id)
+    });
+    const f = S.form;
+    return {
+      sections: S.sections.map((sec, i) => ({ label: sec.label, rows: sec.rows.map(t => mkRow(t, i)) })),
+      showNew: S.showNew,
+      openNew: () => this.openNew(),
+      closeNew: () => this.closeNew(),
+      form: f,
+      setTitle: (e) => this.setTitle(e),
+      ownerOpts: [
+        { label: 'ADA', color: f.owner === 'A' ? '#FBF7EE' : '#A6552F', bg: f.owner === 'A' ? '#A6552F' : 'transparent', bd: '#A6552F', pick: () => this.setOwner('A') },
+        { label: 'UMUT', color: f.owner === 'U' ? '#FBF7EE' : '#37756D', bg: f.owner === 'U' ? '#37756D' : 'transparent', bd: '#37756D', pick: () => this.setOwner('U') }
+      ],
+      heftOpts: [1, 2, 3].map(h => ({
+        label: h === 1 ? 'LIGHT' : h === 2 ? 'MEDIUM' : 'HEAVY',
+        dots: Array.from({ length: h }, () => ({ size: SZ[h] })),
+        color: f.heft === h ? '#FBF7EE' : '#26201A',
+        bg: f.heft === h ? '#26201A' : 'transparent',
+        bd: f.heft === h ? '#26201A' : 'rgba(38,32,26,.16)',
+        pick: () => this.setHeft(h)
+      })),
+      dueOpts: ['Today', 'Tomorrow', 'This week', 'No date'].map(d => ({
+        label: d.toUpperCase(), color: f.due === d ? '#FBF7EE' : '#26201A',
+        bg: f.due === d ? '#26201A' : 'transparent', bd: 'rgba(38,32,26,.2)',
+        pick: () => this.setDue(d)
+      })),
+      toggleReminder: () => this.toggleReminder(),
+      remTrack: f.reminder ? '#26201A' : 'rgba(38,32,26,.16)',
+      remKnobPos: f.reminder ? '20px' : '2px',
+      save: () => this.save(),
+      saveOp: f.title.trim() ? 1 : .5
+    };
+  }
+}
+
+</script>
+</body>
+</html>

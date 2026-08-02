@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<title>Even — Email &amp; Calendar Ingestion</title>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..700&family=Source+Sans+3:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+<meta name="ext-resource-dependency" content="./ios-frame.jsx" data-resource-id="ios-frame">
+<style>
+  body { margin:0; background:#E9E1D2; -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; }
+  a { color:#A0522D; text-decoration:underline; text-underline-offset:2px; }
+  a:hover { color:#7A3A1D; }
+  *::-webkit-scrollbar { width:0; height:0; }
+  [data-grain] { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E"); }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes sheetUp { from { transform:translateY(36px); opacity:0; } to { transform:translateY(0); opacity:1; } }
+  @keyframes scrimIn { from { opacity:0; } to { opacity:1; } }
+  @keyframes stampIn { 0% { transform:translate(-50%,0) scale(1.6) rotate(-6deg); opacity:0; } 60% { transform:translate(-50%,0) scale(.95) rotate(1deg); opacity:1; } 100% { transform:translate(-50%,0) scale(1) rotate(0); opacity:1; } }
+</style>
+</helmet>
+<template id="__bundler_thumbnail" data-bg-color="#F6F1E6">
+  <svg viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg">
+    <rect width="56" height="56" fill="#F6F1E6"></rect>
+    <line x1="10" y1="26" x2="46" y2="20" stroke="#26201A" stroke-width="2" stroke-linecap="round"></line>
+    <circle cx="28" cy="23" r="1.6" fill="#26201A"></circle>
+    <line x1="28" y1="23" x2="28" y2="40" stroke="#26201A" stroke-width="1.6"></line>
+    <line x1="20" y1="40" x2="36" y2="40" stroke="#26201A" stroke-width="1.6" stroke-linecap="round"></line>
+  </svg>
+</template>
+<div style="min-height:100vh; box-sizing:border-box; display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:center; gap:52px; padding:56px 40px 80px; font-family:'Newsreader',Georgia,serif; color:#2A231B;">
+
+  <div style="width:290px; max-width:92vw; display:flex; flex-direction:column; gap:14px; padding-top:120px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">EVEN · FLOW 4 · INGESTION &amp; REMINDERS</div>
+    <div style="font-size:31px; line-height:1.14; font-weight:500; letter-spacing:-.01em;">Nothing moves without a yes.</div>
+    <div style="font-size:15px; line-height:1.55; color:#6E6353;">Gmail finds a bill, drafts it into the shared inbox, one partner reviews and approves — only then does it become a task with a calendar reminder.</div>
+    <div style="display:flex; flex-direction:column; gap:7px; margin-top:6px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.06em; color:#8B7E6B; line-height:1.5;">
+      <div>TRY —</div>
+      <div>· TAP A DRAFT → REVIEW SHEET OPENS</div>
+      <div>· APPROVE → INK STAMP, EVENT WRITES</div>
+    </div>
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.06em; color:#8B7E6B; line-height:1.6;">BACK → <a href="Email &amp; Calendar Setup.dc.html">CALENDAR SETUP</a><br>NEXT → <a href="Todo Creation.dc.html">TODO CREATION</a></div>
+  </div>
+
+  <div style="flex:none; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">01 · APPROVAL INBOX — INTERACTIVE</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+      <div data-screen-label="Inbox" style="--ada:#A6552F; --umut:#37756D; height:100%; box-sizing:border-box; display:flex; flex-direction:column; position:relative; overflow:hidden; background:#F6F1E6; color:#26201A; font-family:'Newsreader',Georgia,serif;">
+        <div data-grain style="position:absolute; inset:0; z-index:50; opacity:.055; pointer-events:none; mix-blend-mode:multiply;"></div>
+        <div style="padding:64px 20px 4px; display:flex; align-items:center; gap:7px;">
+          <svg width="15" height="15" viewBox="0 0 16 16"><line x1="1.5" y1="6.8" x2="14.5" y2="4.6" stroke="#26201A" stroke-width="1.6" stroke-linecap="round"></line><path d="M8 6.4 L10.6 10.6 H5.4 Z" fill="none" stroke="#26201A" stroke-width="1.5" stroke-linejoin="round"></path><line x1="4.5" y1="13.4" x2="11.5" y2="13.4" stroke="#26201A" stroke-width="1.4" stroke-linecap="round"></line></svg>
+          <span style="font-size:18px; font-style:italic; font-weight:600;">Even</span>
+        </div>
+        <div style="flex:1; overflow-y:auto; overflow-x:hidden; padding:0 20px 26px;">
+          <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.14em; color:#8A7D69;">GMAIL DISCOVERY · 4 SCANNED</div>
+          <h1 style="margin:4px 0 0; font-size:26px; line-height:1.12; font-weight:500; letter-spacing:-.015em;">Approval Inbox</h1>
+          <div style="margin-top:4px; font-style:italic; font-size:12.5px; color:#8A7D69;">Drafts, not tasks. Tap one to review.</div>
+          <div style="display:flex; flex-direction:column; gap:10px; margin-top:14px;">
+            <sc-for list="{{draftList}}" as="d" hint-placeholder-count="4">
+              <button onClick="{{d.pick}}" style-active="transform:scale(.98)" style="text-align:left; width:100%; border:1.5px solid rgba(38,32,26,.14); background:transparent; border-radius:13px; padding:12px 14px; cursor:pointer; font-family:'Newsreader',Georgia,serif; color:#26201A; transition:transform .15s;">
+                <div style="display:flex; align-items:baseline; gap:8px;">
+                  <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9.5px; font-weight:700; letter-spacing:.08em;">{{d.from}}</span>
+                  <span style="flex:1;"></span>
+                  <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:8px; font-weight:700; letter-spacing:.08em; color:{{d.urgC}};">{{d.urg}}</span>
+                </div>
+                <div style="margin-top:3px; font-size:14.5px;">{{d.subject}}</div>
+                <div style="margin-top:4px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:600; letter-spacing:.04em; color:#8A7D69;">{{d.sum}}</div>
+              </button>
+            </sc-for>
+          </div>
+          <div style="margin-top:14px; text-align:center; font-style:italic; font-size:12px; color:#8A7D69;">Nothing reaches Calendar until you approve it.</div>
+        </div>
+
+        <sc-if value="{{showSheet}}" hint-placeholder-val="{{false}}">
+          <div style="position:absolute; inset:0; z-index:60;">
+            <div onClick="{{closeSheet}}" style="position:absolute; inset:0; background:rgba(20,14,7,.45); animation:scrimIn .2s ease both;"></div>
+            <div style="position:absolute; left:0; right:0; bottom:0; max-height:82%; overflow-y:auto; background:#FBF7EE; border-radius:24px 24px 0 0; padding:14px 20px 34px; animation:sheetUp .28s cubic-bezier(.3,.8,.4,1) both; box-shadow:0 -10px 36px rgba(20,12,5,.16);">
+              <div style="width:36px; height:4px; border-radius:2px; background:rgba(38,32,26,.14); margin:0 auto 12px;"></div>
+              <div style="display:flex; align-items:baseline; justify-content:space-between;">
+                <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9.5px; font-weight:600; letter-spacing:.16em; color:#8A7D69;">REVIEW DRAFT — EVERYTHING EDITABLE</span>
+                <button onClick="{{closeSheet}}" style="border:none; background:transparent; cursor:pointer; padding:4px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:12px; color:#8A7D69;">✕</button>
+              </div>
+              <div style="margin-top:10px; width:100%; box-sizing:border-box; border-bottom:1.5px solid rgba(38,32,26,.16); padding:4px 0 8px; font-family:'Newsreader',Georgia,serif; font-size:17px; color:#26201A;">{{sel.title}}</div>
+              <div style="margin-top:12px; display:flex; align-items:center; gap:8px;">
+                <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:600; letter-spacing:.16em; color:#8A7D69;">OWNER</span>
+                <sc-for list="{{ownerOpts}}" as="o" hint-placeholder-count="2">
+                  <button onClick="{{o.pick}}" style-active="transform:scale(.95)" style="padding:6px 16px; border-radius:999px; border:1.5px solid {{o.bd}}; background:{{o.bg}}; color:{{o.color}}; cursor:pointer; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.08em; transition:transform .15s;">{{o.label}}</button>
+                </sc-for>
+                <span style="flex:1;"></span>
+                <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:11px; font-weight:600; font-variant-numeric:tabular-nums;">{{sel.amount}}</span>
+              </div>
+              <div style="margin-top:12px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:600; letter-spacing:.16em; color:#8A7D69;">CALENDAR REMINDER</div>
+              <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:6px;">
+                <sc-for list="{{remOpts}}" as="o" hint-placeholder-count="4">
+                  <button onClick="{{o.pick}}" style-active="transform:scale(.95)" style="padding:6px 12px; border-radius:999px; border:1.5px solid {{o.bd}}; background:{{o.bg}}; color:{{o.color}}; cursor:pointer; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.08em; transition:transform .15s;">{{o.label}}</button>
+                </sc-for>
+              </div>
+              <div style="display:flex; gap:8px; margin-top:16px;">
+                <button onClick="{{dismiss}}" style-active="transform:scale(.97)" style="flex:1; height:46px; border-radius:10px; border:1px solid rgba(38,32,26,.14); background:transparent; color:#8A7D69; cursor:pointer; font-family:'Newsreader',Georgia,serif; font-size:15px; transition:transform .15s;">Dismiss</button>
+                <button onClick="{{approve}}" style-active="transform:scale(.97)" style="flex:2; height:46px; border-radius:10px; border:none; background:#26201A; color:#F6F1E6; cursor:pointer; font-family:'Newsreader',Georgia,serif; font-size:15px; font-weight:500; transition:transform .15s;">Approve → Calendar</button>
+              </div>
+              <div style="margin-top:8px; text-align:center; font-style:italic; font-size:11.5px; color:#8A7D69;">Approval writes one event with a reminder. Never before.</div>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{showStamp}}" hint-placeholder-val="{{false}}">
+          <div style="position:absolute; left:50%; bottom:60px; transform:translateX(-50%); z-index:70; border:2px solid #26201A; color:#26201A; background:#F6F1E6; border-radius:8px; padding:9px 18px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:11px; font-weight:700; letter-spacing:.14em; box-shadow:0 8px 24px rgba(20,12,5,.18); animation:stampIn .4s cubic-bezier(.3,1.4,.5,1) both; max-width:320px; text-align:center;">APPROVED → TASK + CALENDAR EVENT</div>
+        </sc-if>
+      </div>
+    </x-import>
+  </div>
+
+  <div style="flex:none; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">02 · ON THE SHARED CALENDAR</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+      <div data-screen-label="Calendar event" style="height:100%; box-sizing:border-box; display:flex; flex-direction:column; position:relative; overflow:hidden; background:#F6F1E6; color:#26201A; font-family:'Newsreader',Georgia,serif;">
+        <div data-grain style="position:absolute; inset:0; z-index:50; opacity:.055; pointer-events:none; mix-blend-mode:multiply;"></div>
+        <div style="padding:64px 20px 6px; display:flex; align-items:center; justify-content:space-between;">
+          <div style="display:flex; align-items:center; gap:7px;">
+            <svg width="15" height="15" viewBox="0 0 16 16"><line x1="1.5" y1="6.8" x2="14.5" y2="4.6" stroke="#26201A" stroke-width="1.6" stroke-linecap="round"></line><path d="M8 6.4 L10.6 10.6 H5.4 Z" fill="none" stroke="#26201A" stroke-width="1.5" stroke-linejoin="round"></path><line x1="4.5" y1="13.4" x2="11.5" y2="13.4" stroke="#26201A" stroke-width="1.4" stroke-linecap="round"></line></svg>
+            <span style="font-size:18px; font-style:italic; font-weight:600;">Even</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:5px; padding:5px 10px; border-radius:999px; border:1px solid rgba(38,32,26,.14); color:#8A7D69;">
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><rect x="1.8" y="2.8" width="12.4" height="11.4" rx="2"></rect><path d="M1.8 6.4h12.4M5.2 1.2v3M10.8 1.2v3"></path></svg>
+            <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:600; letter-spacing:.14em;">SHARED · GOOGLE</span>
+          </div>
+        </div>
+        <div style="flex:1; padding:8px 20px 26px;">
+          <div style="text-align:center; font-size:22px; font-weight:500; font-style:italic; letter-spacing:-.01em;">July 2026</div>
+          <div style="margin-top:14px; border-radius:14px; border:1px solid rgba(38,32,26,.14); background:#FBF7EE; padding:13px 16px 5px; animation:fadeUp .2s ease both;">
+            <div style="display:flex; align-items:center; gap:8px; padding-bottom:2px;">
+              <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9.5px; font-weight:600; letter-spacing:.16em; color:#8A7D69;">FRIDAY, JULY 25</span>
+              <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:8px; font-weight:700; letter-spacing:.12em; color:#FBF7EE; background:#26201A; border-radius:99px; padding:2.5px 7px;">TODAY</span>
+            </div>
+            <div style="display:flex; gap:10px; align-items:center; padding:11px 0; border-bottom:1px solid rgba(38,32,26,.055);">
+              <div style="flex:1; min-width:0;">
+                <div style="font-size:15px; line-height:1.3;">Pay Vattenfall energy bill — July</div>
+                <div style="margin-top:2px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:600; letter-spacing:.06em; color:#8A7D69;">BILL · REMINDER 3 DAYS BEFORE · GMAIL</div>
+              </div>
+              <span style="flex:none; font-family:'Source Sans 3',system-ui,sans-serif; font-size:13px; font-weight:600; font-variant-numeric:tabular-nums;">€112.40</span>
+              <span style="flex:none; width:20px; height:20px; border-radius:999px; background:#37756D; color:#FBF7EE; display:flex; align-items:center; justify-content:center; font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:700;">U</span>
+            </div>
+          </div>
+          <div style="margin-top:20px; padding:14px 16px; border-radius:14px; border:1px dashed rgba(38,32,26,.22); display:flex; gap:12px; align-items:flex-start;">
+            <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="#26201A" stroke-width="1.2" stroke-linecap="round" style="flex:none; margin-top:2px;"><rect x="1.8" y="2.8" width="12.4" height="11.4" rx="2"></rect><path d="M1.8 6.4h12.4M5.2 1.2v3M10.8 1.2v3"></path><circle cx="6" cy="9.4" r="1" fill="#A6552F" stroke="none"></circle><circle cx="10" cy="11.6" r="1" fill="#37756D" stroke="none"></circle></svg>
+            <div>
+              <div style="font-size:14.5px; line-height:1.35;">Written the moment Umut approved.</div>
+              <div style="margin-top:4px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:11px; line-height:1.55; color:#8A7D69;">One event, one reminder — visible on both phones and in Google Calendar.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </x-import>
+  </div>
+
+  <div style="flex:none; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">03 · NOTIFICATION PERMISSION</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+      <div data-screen-label="Notification permission" style="height:100%; box-sizing:border-box; display:flex; align-items:flex-end; position:relative; overflow:hidden; background:#F6F1E6; font-family:'Newsreader',Georgia,serif;">
+        <div data-grain style="position:absolute; inset:0; z-index:50; opacity:.055; pointer-events:none; mix-blend-mode:multiply;"></div>
+        <div style="position:absolute; inset:0; background:rgba(20,14,7,.4);"></div>
+        <div style="position:relative; z-index:2; width:100%; box-sizing:border-box; margin:0 20px 60px; background:#FBF7EE; border-radius:18px; padding:20px 20px 16px; text-align:center;">
+          <svg width="30" height="30" viewBox="0 0 16 16" style="margin:0 auto;"><line x1="1.5" y1="6.8" x2="14.5" y2="4.6" stroke="#26201A" stroke-width="1.5" stroke-linecap="round"></line><path d="M8 6.4 L10.6 10.6 H5.4 Z" fill="none" stroke="#26201A" stroke-width="1.4" stroke-linejoin="round"></path><line x1="4.5" y1="13.4" x2="11.5" y2="13.4" stroke="#26201A" stroke-width="1.3" stroke-linecap="round"></line></svg>
+          <div style="margin-top:12px; font-size:17px; font-weight:600;">"Even" Would Like to Send You Notifications</div>
+          <div style="margin-top:8px; font-size:13.5px; line-height:1.5; color:#6E6353;">Notifications let Even remind you before bills, appointments and renewals are due — only the ones you or your partner approved.</div>
+          <div style="margin-top:16px; display:flex; flex-direction:column; gap:1px; border-radius:12px; overflow:hidden;">
+            <button style="height:46px; border:none; background:#FBF7EE; border-top:1px solid rgba(38,32,26,.14); color:#8A7D69; cursor:pointer; font-family:'Newsreader',Georgia,serif; font-size:16px;">Don't Allow</button>
+            <button style="height:46px; border:none; background:#FBF7EE; border-top:1px solid rgba(38,32,26,.14); color:#26201A; cursor:pointer; font-family:'Newsreader',Georgia,serif; font-size:16px; font-weight:600;">Allow</button>
+          </div>
+        </div>
+      </div>
+    </x-import>
+  </div>
+
+  <div style="flex:none; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">04 · REMINDER FIRES</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px" dark="true">
+      <div data-screen-label="Reminder notification" style="height:100%; box-sizing:border-box; position:relative; overflow:hidden; background:linear-gradient(180deg,#2A2118,#17130F); color:#EDE5D6; font-family:'Newsreader',Georgia,serif;">
+        <div style="padding:104px 0 0; text-align:center;">
+          <div style="font-size:64px; font-weight:300; letter-spacing:-.02em;">4:41</div>
+          <div style="margin-top:4px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:14px; font-weight:500; color:rgba(237,229,214,.7);">Friday, July 25</div>
+        </div>
+        <div style="margin:56px 20px 0; border-radius:18px; background:rgba(251,247,238,.1); backdrop-filter:blur(20px); padding:14px 16px; display:flex; gap:12px; align-items:flex-start;">
+          <div style="flex:none; width:34px; height:34px; border-radius:9px; background:#211B15; display:flex; align-items:center; justify-content:center;">
+            <svg width="17" height="17" viewBox="0 0 16 16"><line x1="1.5" y1="6.8" x2="14.5" y2="4.6" stroke="#EDE5D6" stroke-width="1.6" stroke-linecap="round"></line><path d="M8 6.4 L10.6 10.6 H5.4 Z" fill="none" stroke="#EDE5D6" stroke-width="1.5" stroke-linejoin="round"></path><line x1="4.5" y1="13.4" x2="11.5" y2="13.4" stroke="#EDE5D6" stroke-width="1.4" stroke-linecap="round"></line></svg>
+          </div>
+          <div style="flex:1;">
+            <div style="display:flex; align-items:baseline; gap:6px;">
+              <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:12px; font-weight:700;">Even</span>
+              <span style="flex:1;"></span>
+              <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; color:rgba(237,229,214,.55);">now</span>
+            </div>
+            <div style="margin-top:3px; font-size:15px; font-weight:500;">Due in 3 days — Umut</div>
+            <div style="margin-top:2px; font-size:13.5px; line-height:1.45; color:rgba(237,229,214,.8);">Vattenfall energy bill, €112.40. Approved by both of you on Jul 22.</div>
+          </div>
+        </div>
+        <div style="position:absolute; left:50%; bottom:34px; transform:translateX(-50%); width:134px; height:5px; border-radius:3px; background:rgba(237,229,214,.55);"></div>
+      </div>
+    </x-import>
+  </div>
+
+  <div style="flex:none; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">05 · INBOX — EMPTY STATE</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+      <div data-screen-label="Inbox empty" style="height:100%; box-sizing:border-box; display:flex; flex-direction:column; position:relative; overflow:hidden; background:#F6F1E6; color:#26201A; font-family:'Newsreader',Georgia,serif;">
+        <div data-grain style="position:absolute; inset:0; z-index:50; opacity:.055; pointer-events:none; mix-blend-mode:multiply;"></div>
+        <div style="padding:64px 20px 4px; display:flex; align-items:center; gap:7px;">
+          <svg width="15" height="15" viewBox="0 0 16 16"><line x1="1.5" y1="6.8" x2="14.5" y2="4.6" stroke="#26201A" stroke-width="1.6" stroke-linecap="round"></line><path d="M8 6.4 L10.6 10.6 H5.4 Z" fill="none" stroke="#26201A" stroke-width="1.5" stroke-linejoin="round"></path><line x1="4.5" y1="13.4" x2="11.5" y2="13.4" stroke="#26201A" stroke-width="1.4" stroke-linecap="round"></line></svg>
+          <span style="font-size:18px; font-style:italic; font-weight:600;">Even</span>
+        </div>
+        <div style="padding:0 20px;">
+          <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.14em; color:#8A7D69;">GMAIL DISCOVERY · 6 SCANNED</div>
+          <h1 style="margin:4px 0 0; font-size:26px; line-height:1.12; font-weight:500; letter-spacing:-.015em;">Approval Inbox</h1>
+        </div>
+        <div style="flex:1; display:flex; align-items:center; justify-content:center;">
+          <div style="text-align:center;">
+            <div style="position:relative; width:150px; height:36px; margin:0 auto;">
+              <div style="position:absolute; left:0; right:0; top:16px; height:2px; border-radius:1px; background:#26201A;"></div>
+              <div style="position:absolute; left:-2px; top:12px; width:8px; height:8px; border-radius:99px; background:#A6552F;"></div>
+              <div style="position:absolute; right:-2px; top:12px; width:8px; height:8px; border-radius:99px; background:#37756D;"></div>
+              <svg width="14" height="10" viewBox="0 0 20 13" style="position:absolute; left:50%; top:19px; transform:translateX(-50%);"><path d="M10 1.2 L18.6 12 H1.4 Z" fill="none" stroke="#26201A" stroke-width="1.5" stroke-linejoin="round"></path></svg>
+            </div>
+            <div style="margin-top:14px; font-style:italic; font-size:14.5px; color:#8A7D69;">Inbox zero. Rare — enjoy it.</div>
+          </div>
+        </div>
+      </div>
+    </x-import>
+  </div>
+
+  <div style="flex:none; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">06 · CALENDAR MONTH — BILLS &amp; CHORES TOGETHER</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+      <div data-screen-label="Calendar month" style="height:100%; box-sizing:border-box; display:flex; flex-direction:column; position:relative; overflow:hidden; background:#F6F1E6; color:#26201A; font-family:'Newsreader',Georgia,serif;">
+        <div data-grain style="position:absolute; inset:0; z-index:50; opacity:.055; pointer-events:none; mix-blend-mode:multiply;"></div>
+        <div style="padding:64px 20px 6px; display:flex; align-items:center; justify-content:space-between;">
+          <div style="display:flex; align-items:center; gap:7px;">
+            <svg width="15" height="15" viewBox="0 0 16 16"><line x1="1.5" y1="6.8" x2="14.5" y2="4.6" stroke="#26201A" stroke-width="1.6" stroke-linecap="round"></line><path d="M8 6.4 L10.6 10.6 H5.4 Z" fill="none" stroke="#26201A" stroke-width="1.5" stroke-linejoin="round"></path><line x1="4.5" y1="13.4" x2="11.5" y2="13.4" stroke="#26201A" stroke-width="1.4" stroke-linecap="round"></line></svg>
+            <span style="font-size:18px; font-style:italic; font-weight:600;">Even</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:5px; padding:5px 10px; border-radius:999px; border:1px solid rgba(38,32,26,.14); color:#8A7D69;">
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><rect x="1.8" y="2.8" width="12.4" height="11.4" rx="2"></rect><path d="M1.8 6.4h12.4M5.2 1.2v3M10.8 1.2v3"></path></svg>
+            <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:600; letter-spacing:.14em;">SHARED · GOOGLE</span>
+          </div>
+        </div>
+        <div style="flex:1; padding:8px 20px 26px; overflow-y:auto;">
+          <div style="display:flex; align-items:center;">
+            <span style="width:32px; height:32px;"></span>
+            <div style="flex:1; text-align:center; font-size:22px; font-weight:500; font-style:italic; letter-spacing:-.01em;">July 2026</div>
+            <span style="width:32px; height:32px;"></span>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(7,1fr); margin-top:12px;">
+            <span style="text-align:center; font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:600; letter-spacing:.12em; color:#8A7D69; padding-bottom:6px;">M</span>
+            <span style="text-align:center; font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:600; letter-spacing:.12em; color:#8A7D69; padding-bottom:6px;">T</span>
+            <span style="text-align:center; font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:600; letter-spacing:.12em; color:#8A7D69; padding-bottom:6px;">W</span>
+            <span style="text-align:center; font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:600; letter-spacing:.12em; color:#8A7D69; padding-bottom:6px;">T</span>
+            <span style="text-align:center; font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:600; letter-spacing:.12em; color:#8A7D69; padding-bottom:6px;">F</span>
+            <span style="text-align:center; font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:600; letter-spacing:.12em; color:#8A7D69; padding-bottom:6px;">S</span>
+            <span style="text-align:center; font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:600; letter-spacing:.12em; color:#8A7D69; padding-bottom:6px;">S</span>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(7,1fr); row-gap:2px;">
+            <span></span><span></span>
+            <div style="height:50px; display:flex; flex-direction:column; align-items:center; gap:3px; padding:3px 0 0;"><span style="width:30px; height:30px; border-radius:999px; display:flex; align-items:center; justify-content:center; font-size:14.5px;">1</span></div>
+            <div style="height:50px; display:flex; flex-direction:column; align-items:center; gap:3px; padding:3px 0 0;"><span style="width:30px; height:30px; border-radius:999px; display:flex; align-items:center; justify-content:center; font-size:14.5px;">2</span><span style="display:flex; gap:2.5px;"><span style="width:4.5px; height:4.5px; border-radius:99px; background:#37756D;"></span></span></div>
+            <div style="height:50px; display:flex; flex-direction:column; align-items:center; gap:3px; padding:3px 0 0;"><span style="width:30px; height:30px; border-radius:999px; display:flex; align-items:center; justify-content:center; font-size:14.5px;">3</span></div>
+            <div style="height:50px; display:flex; flex-direction:column; align-items:center; gap:3px; padding:3px 0 0;"><span style="width:30px; height:30px; border-radius:999px; display:flex; align-items:center; justify-content:center; font-size:14.5px;">4</span></div>
+            <div style="height:50px; display:flex; flex-direction:column; align-items:center; gap:3px; padding:3px 0 0;"><span style="width:30px; height:30px; border-radius:999px; display:flex; align-items:center; justify-content:center; font-size:14.5px;">5</span></div>
+            <div style="height:50px; display:flex; flex-direction:column; align-items:center; gap:3px; padding:3px 0 0;"><span style="width:30px; height:30px; border-radius:999px; display:flex; align-items:center; justify-content:center; font-size:14.5px;">6</span><span style="display:flex; gap:2.5px;"><span style="width:4.5px; height:4.5px; border-radius:99px; background:#37756D;"></span></span></div>
+            <div style="height:50px; display:flex; flex-direction:column; align-items:center; gap:3px; padding:3px 0 0;"><span style="width:30px; height:30px; border-radius:999px; display:flex; align-items:center; justify-content:center; font-size:14.5px;">7</span></div>
+            <div style="height:50px; display:flex; flex-direction:column; align-items:center; gap:3px; padding:3px 0 0;"><span style="width:30px; height:30px; border-radius:999px; display:flex; align-items:center; justify-content:center; font-size:14.5px;">8</span></div>
+            <div style="height:50px; display:flex; flex-direction:column; align-items:center; gap:3px; padding:3px 0 0;"><span style="width:30px; height:30px; border-radius:999px; display:flex; align-items:center; justify-content:center; font-size:14.5px;">9</span></div>
+            <div style="height:50px; display:flex; flex-direction:column; align-items:center; gap:3px; padding:3px 0 0;"><span style="width:30px; height:30px; border-radius:999px; display:flex; align-items:center; justify-content:center; font-size:14.5px; border:1.2px solid #26201A;">10</span></div>
+            <div style="height:50px; display:flex; flex-direction:column; align-items:center; gap:3px; padding:3px 0 0;"><span style="width:30px; height:30px; border-radius:999px; display:flex; align-items:center; justify-content:center; font-size:14.5px;">11</span></div>
+            <div style="height:50px; display:flex; flex-direction:column; align-items:center; gap:3px; padding:3px 0 0;"><span style="width:30px; height:30px; border-radius:999px; display:flex; align-items:center; justify-content:center; font-size:14.5px;">12</span></div>
+          </div>
+          <div style="margin-top:14px; border-radius:14px; border:1px solid rgba(38,32,26,.14); background:#FBF7EE; padding:13px 16px 5px;">
+            <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9.5px; font-weight:600; letter-spacing:.16em; color:#8A7D69; padding-bottom:8px;">TODAY · JULY 10</div>
+            <div style="display:flex; gap:10px; align-items:center; padding:10px 0; border-bottom:1px solid rgba(38,32,26,.055);">
+              <div style="flex:1; min-width:0;"><div style="font-size:15px; line-height:1.3;">Miso — vet booster</div><div style="margin-top:2px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:600; letter-spacing:.06em; color:#8A7D69;">APPOINTMENT · 16:30 · CALENDAR</div></div>
+              <span style="flex:none; width:20px; height:20px; border-radius:999px; background:#A6552F; color:#FBF7EE; display:flex; align-items:center; justify-content:center; font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:700;">A</span>
+            </div>
+            <div style="display:flex; gap:10px; align-items:center; padding:10px 0;">
+              <div style="flex:1; min-width:0;"><div style="font-size:15px; line-height:1.3;">Laundry — towels &amp; bedding</div><div style="margin-top:2px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:600; letter-spacing:.06em; color:#8A7D69;">TASK · WEEKLY</div></div>
+              <span style="flex:none; width:20px; height:20px; border-radius:999px; background:#A6552F; color:#FBF7EE; display:flex; align-items:center; justify-content:center; font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:700;">A</span>
+            </div>
+          </div>
+          <div style="margin-top:10px; text-align:center; font-style:italic; font-size:12px; color:#8A7D69;">One month: Gmail bills, calendar visits and hand-added chores, side by side.</div>
+        </div>
+      </div>
+    </x-import>
+  </div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = {
+    sheet: false, stamp: false, selId: 'd1',
+    drafts: [
+      { id: 'd1', from: 'VATTENFALL', subject: 'Your July energy bill is ready', urg: 2, title: 'Pay Vattenfall energy bill — July', owner: 'U', amount: '€112.40', rem: '3 days before' },
+      { id: 'd2', from: 'TANDARTS JORDAAN', subject: 'Please confirm your appointment of Jul 14', urg: 3, title: 'Confirm dentist appointment — Jul 14', owner: 'A', amount: '', rem: '1 day before' },
+      { id: 'd3', from: 'GEMEENTE AMSTERDAM', subject: 'Parking permit renewal opens Aug 1', urg: 1, title: 'Renew parking permit — Zone 7', owner: 'A', amount: '€44.50', rem: 'On the day' },
+      { id: 'd4', from: 'NETFLIX', subject: 'Your price is changing', urg: 1, title: 'Decide: keep or downgrade Netflix', owner: 'U', amount: '€15.99', rem: '3 days before' }
+    ]
+  };
+  pickDraft(id) { this.setState({ sheet: true, selId: id }); }
+  closeSheet() { this.setState({ sheet: false }); }
+  setOwner(id, owner) { this.setState(s => ({ drafts: s.drafts.map(d => d.id === id ? Object.assign({}, d, { owner }) : d) })); }
+  setRem(id, rem) { this.setState(s => ({ drafts: s.drafts.map(d => d.id === id ? Object.assign({}, d, { rem }) : d) })); }
+  approve() {
+    this.setState({ sheet: false, stamp: true });
+    clearTimeout(this._t);
+    this._t = setTimeout(() => this.setState({ stamp: false }), 2400);
+  }
+  dismiss() { this.setState({ sheet: false }); }
+
+  renderVals() {
+    const S = this.state;
+    const urgLabels = { 1: 'LOW', 2: 'THIS WEEK', 3: 'URGENT' };
+    const urgColors = { 1: '#8A7D69', 2: '#A6552F', 3: '#A6552F' };
+    const sel = S.drafts.find(d => d.id === S.selId) || S.drafts[0];
+    return {
+      draftList: S.drafts.map(d => ({
+        from: d.from, subject: d.subject, sum: (d.amount ? d.amount + ' · ' : '') + 'due soon',
+        urg: urgLabels[d.urg], urgC: urgColors[d.urg],
+        pick: () => this.pickDraft(d.id)
+      })),
+      showSheet: S.sheet, showStamp: S.stamp,
+      sel,
+      closeSheet: () => this.closeSheet(),
+      ownerOpts: [
+        { label: 'ADA', color: sel.owner === 'A' ? '#FBF7EE' : '#A6552F', bg: sel.owner === 'A' ? '#A6552F' : 'transparent', bd: '#A6552F', pick: () => this.setOwner(sel.id, 'A') },
+        { label: 'UMUT', color: sel.owner === 'U' ? '#FBF7EE' : '#37756D', bg: sel.owner === 'U' ? '#37756D' : 'transparent', bd: '#37756D', pick: () => this.setOwner(sel.id, 'U') }
+      ],
+      remOpts: ['On the day', '1 day before', '3 days before', 'A week before'].map(r => ({
+        label: r.toUpperCase(), color: sel.rem === r ? '#FBF7EE' : '#26201A',
+        bg: sel.rem === r ? '#26201A' : 'transparent', bd: 'rgba(38,32,26,.2)',
+        pick: () => this.setRem(sel.id, r)
+      })),
+      approve: () => this.approve(),
+      dismiss: () => this.dismiss()
+    };
+  }
+}
+
+</script>
+</body>
+</html>

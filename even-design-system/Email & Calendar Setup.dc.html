@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<title>Even — Email &amp; Calendar Setup</title>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..700&family=Source+Sans+3:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+<meta name="ext-resource-dependency" content="./ios-frame.jsx" data-resource-id="ios-frame">
+<style>
+  body { margin:0; background:#E9E1D2; -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; }
+  a { color:#A0522D; text-decoration:underline; text-underline-offset:2px; }
+  a:hover { color:#7A3A1D; }
+  *::-webkit-scrollbar { width:0; height:0; }
+  [data-grain] { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E"); }
+</style>
+</helmet>
+<template id="__bundler_thumbnail" data-bg-color="#F6F1E6">
+  <svg viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg">
+    <rect width="56" height="56" fill="#F6F1E6"></rect>
+    <line x1="10" y1="26" x2="46" y2="20" stroke="#26201A" stroke-width="2" stroke-linecap="round"></line>
+    <circle cx="28" cy="23" r="1.6" fill="#26201A"></circle>
+    <line x1="28" y1="23" x2="28" y2="40" stroke="#26201A" stroke-width="1.6"></line>
+    <line x1="20" y1="40" x2="36" y2="40" stroke="#26201A" stroke-width="1.6" stroke-linecap="round"></line>
+  </svg>
+</template>
+<div style="min-height:100vh; box-sizing:border-box; display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:center; gap:52px; padding:56px 40px 80px; font-family:'Newsreader',Georgia,serif; color:#2A231B;">
+
+  <div style="width:290px; max-width:92vw; display:flex; flex-direction:column; gap:14px; padding-top:120px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">EVEN · FLOW 3 · EMAIL &amp; CALENDAR SETUP</div>
+    <div style="font-size:31px; line-height:1.14; font-weight:500; letter-spacing:-.01em;">Let Gmail do the noticing.</div>
+    <div style="font-size:15px; line-height:1.55; color:#6E6353;">Optional, read-only, revocable any time. Toggle exactly what Even may look at, then a shared "Even" calendar publishes to Google.</div>
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.06em; color:#8B7E6B; line-height:1.6;">BACK → <a href="Household Setup.dc.html">HOUSEHOLD SETUP</a><br>NEXT → <a href="Email Ingestion.dc.html">INGESTION &amp; REMINDERS</a></div>
+  </div>
+
+  <div style="flex:none; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">01 · WHY CONNECT</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+      <div data-screen-label="Connect Google" style="height:100%; box-sizing:border-box; display:flex; flex-direction:column; position:relative; overflow:hidden; background:#F6F1E6; color:#26201A; font-family:'Newsreader',Georgia,serif; padding:64px 28px 40px;">
+        <div data-grain style="position:absolute; inset:0; z-index:50; opacity:.055; pointer-events:none; mix-blend-mode:multiply;"></div>
+        <div style="padding-top:22px;">
+          <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.18em; color:#8A7D69;">OPTIONAL · YOU CAN DO THIS ANY TIME</div>
+          <h1 style="margin:10px 0 0; font-size:34px; line-height:1.08; font-weight:500; letter-spacing:-.02em;">Let Gmail do<br>the noticing.</h1>
+          <div style="margin-top:12px; font-style:italic; font-size:14px; color:#8A7D69;">Read-only. Even never sends, moves, or deletes mail.</div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:18px; margin-top:30px;">
+          <div style="display:flex; gap:14px; align-items:flex-start;">
+            <div style="flex:none; width:34px; height:34px; border-radius:999px; background:rgba(38,32,26,.055); display:flex; align-items:center; justify-content:center;">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#26201A" stroke-width="1.4" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"></circle><path d="M10.5 10.5 14 14"></path></svg>
+            </div>
+            <div style="flex:1;">
+              <div style="font-size:16px; font-weight:500;">It scans for bills and appointments</div>
+              <div style="margin-top:3px; font-size:13.5px; line-height:1.5; color:#6E6353;">Utility bills, dentist reminders, school emails — spotted so neither of you has to be the one who notices.</div>
+            </div>
+          </div>
+          <div style="display:flex; gap:14px; align-items:flex-start;">
+            <div style="flex:none; width:34px; height:34px; border-radius:999px; background:rgba(38,32,26,.055); display:flex; align-items:center; justify-content:center;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#26201A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13.5 8 5.5h8l4 8"></path><path d="M4 13.5h4.5l1.5 2.5h4l1.5-2.5H20V17a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17Z"></path></svg>
+            </div>
+            <div style="flex:1;">
+              <div style="font-size:16px; font-weight:500;">Everything lands as a draft</div>
+              <div style="margin-top:3px; font-size:13.5px; line-height:1.5; color:#6E6353;">Into the shared Approval Inbox. Your partner approves before anything becomes a task.</div>
+            </div>
+          </div>
+          <div style="display:flex; gap:14px; align-items:flex-start;">
+            <div style="flex:none; width:34px; height:34px; border-radius:999px; background:rgba(38,32,26,.055); display:flex; align-items:center; justify-content:center;">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#26201A" stroke-width="1.4" stroke-linecap="round"><rect x="1.5" y="2.5" width="13" height="12" rx="2"></rect><path d="M1.5 6h13M5 1v3M11 1v3"></path></svg>
+            </div>
+            <div style="flex:1;">
+              <div style="font-size:16px; font-weight:500;">Approved drafts hit the calendar</div>
+              <div style="margin-top:3px; font-size:13.5px; line-height:1.5; color:#6E6353;">One event, one reminder. Never without a yes from one of you.</div>
+            </div>
+          </div>
+        </div>
+        <div style="flex:1;"></div>
+        <button style="width:100%; height:52px; border-radius:12px; border:1.5px solid rgba(38,32,26,.16); background:#FBF7EE; color:#26201A; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:15.5px; font-weight:600;">
+          <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"></path><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09C3.26 21.3 7.31 24 12 24z"></path><path fill="#FBBC05" d="M5.27 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.98-3.09z"></path><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.98 3.09c.95-2.85 3.6-4.96 6.73-4.96z"></path></svg>
+          <span>Connect Google</span>
+        </button>
+        <div style="text-align:center; margin-top:14px;">
+          <button style="border:none; background:transparent; padding:6px; cursor:pointer; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.14em; color:#8A7D69; text-decoration:underline; text-underline-offset:3px;">SKIP FOR NOW</button>
+        </div>
+      </div>
+    </x-import>
+  </div>
+
+  <div style="flex:none; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">02 · CHOOSE WHAT TO SHARE</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+      <div data-screen-label="Scopes" style="height:100%; box-sizing:border-box; display:flex; flex-direction:column; position:relative; overflow:hidden; background:#F6F1E6; color:#26201A; font-family:'Newsreader',Georgia,serif; padding:64px 28px 40px;">
+        <div data-grain style="position:absolute; inset:0; z-index:50; opacity:.055; pointer-events:none; mix-blend-mode:multiply;"></div>
+        <button style="align-self:flex-start; border:none; background:transparent; padding:4px 0; cursor:pointer; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.12em; color:#8A7D69;">← BACK</button>
+        <h1 style="margin:18px 0 0; font-size:31px; line-height:1.1; font-weight:500; letter-spacing:-.015em;">What Even<br>can see.</h1>
+        <div style="margin-top:12px; font-style:italic; font-size:14px; color:#8A7D69;">ada@gmail.com · both scopes read-only</div>
+        <div style="display:flex; flex-direction:column; gap:12px; margin-top:26px;">
+          <div style="border:1.5px solid rgba(38,32,26,.16); background:#FBF7EE; border-radius:14px; padding:14px 16px; display:flex; align-items:flex-start; gap:12px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#26201A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex:none; margin-top:2px;"><path d="M4 13.5 8 5.5h8l4 8"></path><path d="M4 13.5h4.5l1.5 2.5h4l1.5-2.5H20V17a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17Z"></path></svg>
+            <div style="flex:1;">
+              <div style="font-size:15.5px; font-weight:500;">Gmail — read-only</div>
+              <div style="margin-top:3px; font-size:13px; line-height:1.5; color:#6E6353;">Even scans subject lines and previews for bills, renewals and appointments. It can't send, delete, or move anything.</div>
+            </div>
+            <span style="flex:none; width:44px; height:26px; border-radius:99px; background:#26201A; position:relative;"><span style="position:absolute; right:2px; top:2px; width:22px; height:22px; border-radius:99px; background:#F6F1E6;"></span></span>
+          </div>
+          <div style="border:1.5px solid rgba(38,32,26,.16); background:#FBF7EE; border-radius:14px; padding:14px 16px; display:flex; align-items:flex-start; gap:12px;">
+            <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="#26201A" stroke-width="1.3" stroke-linecap="round" style="flex:none; margin-top:2px;"><rect x="1.5" y="2.5" width="13" height="12" rx="2"></rect><path d="M1.5 6h13M5 1v3M11 1v3"></path></svg>
+            <div style="flex:1;">
+              <div style="font-size:15.5px; font-weight:500;">Calendar — read &amp; write</div>
+              <div style="margin-top:3px; font-size:13px; line-height:1.5; color:#6E6353;">Lets Even create the shared "Even" calendar and add approved events with reminders.</div>
+            </div>
+            <span style="flex:none; width:44px; height:26px; border-radius:99px; background:#26201A; position:relative;"><span style="position:absolute; right:2px; top:2px; width:22px; height:22px; border-radius:99px; background:#F6F1E6;"></span></span>
+          </div>
+        </div>
+        <div style="margin-top:20px; font-style:italic; font-size:12.5px; color:#8A7D69; text-align:center;">Revoke either scope any time in Settings → Connections.</div>
+        <div style="flex:1;"></div>
+        <button style="width:100%; height:50px; border-radius:10px; border:none; background:#26201A; color:#F6F1E6; cursor:pointer; font-family:'Newsreader',Georgia,serif; font-size:16px; font-weight:500;">Allow &amp; continue</button>
+      </div>
+    </x-import>
+  </div>
+
+  <div style="flex:none; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">03 · CONNECTED</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+      <div data-screen-label="Connected" style="height:100%; box-sizing:border-box; display:flex; flex-direction:column; position:relative; overflow:hidden; background:#F6F1E6; color:#26201A; font-family:'Newsreader',Georgia,serif; padding:64px 28px 40px;">
+        <div data-grain style="position:absolute; inset:0; z-index:50; opacity:.055; pointer-events:none; mix-blend-mode:multiply;"></div>
+        <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
+          <div style="width:64px; height:64px; border-radius:999px; background:rgba(55,117,109,.14); display:flex; align-items:center; justify-content:center;">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#37756D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17.5 19.5 6.5"></path></svg>
+          </div>
+          <h1 style="margin:20px 0 0; font-size:26px; font-weight:500; letter-spacing:-.015em;">Gmail &amp; Calendar<br>connected.</h1>
+          <div style="margin-top:12px; font-style:italic; font-size:14.5px; color:#8A7D69; max-width:250px; line-height:1.5;">A shared "Even" calendar now publishes to Google — subscribe from either of your phones.</div>
+          <div style="margin-top:22px; width:100%; max-width:280px; border:1px dashed rgba(38,32,26,.22); border-radius:14px; padding:14px 16px; display:flex; gap:12px; align-items:flex-start; text-align:left;">
+            <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="#26201A" stroke-width="1.2" stroke-linecap="round" style="flex:none; margin-top:2px;"><rect x="1.8" y="2.8" width="12.4" height="11.4" rx="2"></rect><path d="M1.8 6.4h12.4M5.2 1.2v3M10.8 1.2v3"></path><circle cx="6" cy="9.4" r="1" fill="#A6552F" stroke="none"></circle><circle cx="10" cy="11.6" r="1" fill="#37756D" stroke="none"></circle></svg>
+            <div>
+              <div style="font-size:14.5px; line-height:1.35;">"Even" calendar subscribed</div>
+              <div style="margin-top:4px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:11px; line-height:1.55; color:#8A7D69;">Both of you now see the same bills, renewals and visits beside your own plans.</div>
+            </div>
+          </div>
+        </div>
+        <button style="width:100%; height:50px; border-radius:10px; border:none; background:#26201A; color:#F6F1E6; cursor:pointer; font-family:'Newsreader',Georgia,serif; font-size:16px; font-weight:500;">Go to Even</button>
+      </div>
+    </x-import>
+  </div>
+
+  <div style="flex:none; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">04 · SETTINGS — MANAGE CONNECTIONS</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+      <div data-screen-label="Connections settings" style="height:100%; box-sizing:border-box; display:flex; flex-direction:column; position:relative; overflow:hidden; background:#F6F1E6; color:#26201A; font-family:'Newsreader',Georgia,serif; padding:64px 20px 36px;">
+        <div data-grain style="position:absolute; inset:0; z-index:50; opacity:.055; pointer-events:none; mix-blend-mode:multiply;"></div>
+        <div style="display:flex; align-items:center; padding:0 8px;">
+          <button style="border:none; background:transparent; padding:4px 0; cursor:pointer; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.12em; color:#8A7D69;">← SETTINGS</button>
+        </div>
+        <h1 style="margin:14px 8px 0; font-size:27px; font-weight:500; letter-spacing:-.015em;">Connections</h1>
+        <div style="margin-top:22px; display:flex; flex-direction:column; gap:12px; padding:0 8px;">
+          <div style="border:1.5px solid rgba(38,32,26,.16); background:#FBF7EE; border-radius:14px; padding:14px 16px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"></path><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09C3.26 21.3 7.31 24 12 24z"></path><path fill="#FBBC05" d="M5.27 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.98-3.09z"></path><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.98 3.09c.95-2.85 3.6-4.96 6.73-4.96z"></path></svg>
+              <div style="flex:1;">
+                <div style="font-size:15.5px; font-weight:500;">Google — ada@gmail.com</div>
+                <div style="margin-top:2px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.06em; color:#37756D;">CONNECTED</div>
+              </div>
+            </div>
+            <div style="margin-top:14px; display:flex; align-items:center; justify-content:space-between; padding-top:12px; border-top:1px solid rgba(38,32,26,.1);">
+              <span style="font-size:14px;">Gmail — read-only</span>
+              <span style="width:40px; height:24px; border-radius:99px; background:#26201A; position:relative;"><span style="position:absolute; right:2px; top:2px; width:20px; height:20px; border-radius:99px; background:#F6F1E6;"></span></span>
+            </div>
+            <div style="margin-top:10px; display:flex; align-items:center; justify-content:space-between;">
+              <span style="font-size:14px;">Calendar — read &amp; write</span>
+              <span style="width:40px; height:24px; border-radius:99px; background:#26201A; position:relative;"><span style="position:absolute; right:2px; top:2px; width:20px; height:20px; border-radius:99px; background:#F6F1E6;"></span></span>
+            </div>
+            <button style="margin-top:14px; width:100%; height:42px; border-radius:9px; border:1px solid #A6552F; background:transparent; color:#A6552F; cursor:pointer; font-family:'Newsreader',Georgia,serif; font-size:14.5px; font-weight:500;">Disconnect Google</button>
+          </div>
+          <div style="font-style:italic; font-size:12.5px; color:#8A7D69; text-align:center; margin-top:4px;">Disconnecting stops new drafts. Approved tasks and past events stay.</div>
+        </div>
+      </div>
+    </x-import>
+  </div>
+
+</div>
+
+</x-dc>
+</body>
+</html>

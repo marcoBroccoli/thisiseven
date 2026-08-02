@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<title>Even — Onboarding</title>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..700&family=Source+Sans+3:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+<meta name="ext-resource-dependency" content="./ios-frame.jsx" data-resource-id="ios-frame">
+<style>
+  body { margin:0; background:#E9E1D2; -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; }
+  a { color:#A0522D; text-decoration:underline; text-underline-offset:2px; }
+  a:hover { color:#7A3A1D; }
+  *::-webkit-scrollbar { width:0; height:0; }
+  [data-grain] { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E"); }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+</style>
+</helmet>
+<template id="__bundler_thumbnail" data-bg-color="#F6F1E6">
+  <svg viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg">
+    <rect width="56" height="56" fill="#F6F1E6"></rect>
+    <line x1="10" y1="26" x2="46" y2="20" stroke="#26201A" stroke-width="2" stroke-linecap="round"></line>
+    <circle cx="28" cy="23" r="1.6" fill="#26201A"></circle>
+    <line x1="28" y1="23" x2="28" y2="40" stroke="#26201A" stroke-width="1.6"></line>
+    <line x1="20" y1="40" x2="36" y2="40" stroke="#26201A" stroke-width="1.6" stroke-linecap="round"></line>
+  </svg>
+</template>
+<div style="min-height:100vh; box-sizing:border-box; display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:center; gap:52px; padding:56px 40px 80px; font-family:'Newsreader',Georgia,serif; color:#2A231B;">
+
+  <div style="width:290px; max-width:92vw; display:flex; flex-direction:column; gap:14px; padding-top:120px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">EVEN · FLOW 1 · ONBOARDING</div>
+    <div style="font-size:31px; line-height:1.14; font-weight:500; letter-spacing:-.01em;">New user to first use.</div>
+    <div style="font-size:15px; line-height:1.55; color:#6E6353;">Splash, one sign-in, a three-page how-it-works, then handoff. Household setup, Gmail/Calendar connection and the first todo are their own flows next.</div>
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.06em; color:#8B7E6B; line-height:1.6;">NEXT → <a href="Household Setup.dc.html">HOUSEHOLD SETUP</a></div>
+  </div>
+
+  <div style="flex:none; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">01 · SPLASH</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+      <div data-screen-label="Splash" style="height:100%; box-sizing:border-box; display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden; background:#F6F1E6; color:#26201A; font-family:'Newsreader',Georgia,serif;">
+        <div data-grain style="position:absolute; inset:0; z-index:50; opacity:.055; pointer-events:none; mix-blend-mode:multiply;"></div>
+        <div style="display:flex; flex-direction:column; align-items:center;">
+          <svg width="80" height="80" viewBox="0 0 16 16"><line x1="1.5" y1="6.8" x2="14.5" y2="4.6" stroke="#26201A" stroke-width="1.4" stroke-linecap="round"></line><path d="M8 6.4 L10.6 10.6 H5.4 Z" fill="none" stroke="#26201A" stroke-width="1.3" stroke-linejoin="round"></path><line x1="4.5" y1="13.4" x2="11.5" y2="13.4" stroke="#26201A" stroke-width="1.2" stroke-linecap="round"></line></svg>
+          <div style="margin-top:16px; font-size:40px; font-style:italic; font-weight:600; letter-spacing:-.01em;">Even</div>
+        </div>
+      </div>
+    </x-import>
+  </div>
+
+  <div style="flex:none; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">02 · WELCOME / SIGN IN</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+      <div data-screen-label="Welcome" style="height:100%; box-sizing:border-box; display:flex; flex-direction:column; position:relative; overflow:hidden; background:#F6F1E6; color:#26201A; font-family:'Newsreader',Georgia,serif; padding:64px 28px 40px;">
+        <div data-grain style="position:absolute; inset:0; z-index:50; opacity:.055; pointer-events:none; mix-blend-mode:multiply;"></div>
+        <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
+          <svg width="58" height="58" viewBox="0 0 16 16"><line x1="1.5" y1="6.8" x2="14.5" y2="4.6" stroke="#26201A" stroke-width="1.4" stroke-linecap="round"></line><path d="M8 6.4 L10.6 10.6 H5.4 Z" fill="none" stroke="#26201A" stroke-width="1.3" stroke-linejoin="round"></path><line x1="4.5" y1="13.4" x2="11.5" y2="13.4" stroke="#26201A" stroke-width="1.2" stroke-linecap="round"></line></svg>
+          <div style="margin-top:14px; font-size:46px; font-style:italic; font-weight:600; letter-spacing:-.01em;">Even</div>
+          <div style="margin-top:12px; font-size:17px; line-height:1.5; color:#6E6353; max-width:250px;">One house, two people, kept even.</div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:14px;">
+          <button style="width:100%; height:52px; border-radius:12px; border:none; background:#000; color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:9px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:16px; font-weight:600;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="#fff"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.56-1.702"></path></svg>
+            <span>Sign in with Apple</span>
+          </button>
+          <div style="text-align:center; font-style:italic; font-size:12.5px; color:#8A7D69;">Only the two of you ever see what's inside. No ads, no tracking.</div>
+        </div>
+      </div>
+    </x-import>
+  </div>
+
+  <div style="flex:none; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">03 · HOW IT WORKS — 1 OF 3</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+      <div data-screen-label="How it works 1" style="height:100%; box-sizing:border-box; display:flex; flex-direction:column; position:relative; overflow:hidden; background:#F6F1E6; color:#26201A; font-family:'Newsreader',Georgia,serif; padding:64px 28px 36px;">
+        <div data-grain style="position:absolute; inset:0; z-index:50; opacity:.055; pointer-events:none; mix-blend-mode:multiply;"></div>
+        <div style="display:flex; align-items:center;">
+          <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9.5px; font-weight:600; letter-spacing:.18em; color:#8A7D69;">HOW EVEN WORKS</span>
+          <span style="flex:1;"></span>
+          <button style="border:none; background:transparent; padding:4px 0; cursor:pointer; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.14em; color:#8A7D69; text-decoration:underline; text-underline-offset:3px;">SKIP</button>
+        </div>
+        <div style="flex:1; display:flex; align-items:center; justify-content:center;">
+          <svg width="252" height="168" viewBox="0 0 240 160">
+            <line x1="22" y1="80" x2="218" y2="56" stroke="#26201A" stroke-width="2.4" stroke-linecap="round"></line>
+            <circle cx="120" cy="68" r="3.2" fill="#26201A"></circle>
+            <line x1="120" y1="68" x2="120" y2="132" stroke="#26201A" stroke-width="2"></line>
+            <line x1="94" y1="132" x2="146" y2="132" stroke="#26201A" stroke-width="2" stroke-linecap="round"></line>
+            <path d="M26 80 L10 114 M26 80 L42 114" stroke="#26201A" stroke-width="1.2" opacity=".55" fill="none"></path>
+            <path d="M4 114 Q26 130 48 114" stroke="#26201A" stroke-width="2.2" fill="none" stroke-linecap="round"></path>
+            <circle cx="19" cy="110" r="3.6" fill="#A6552F"></circle><circle cx="27" cy="109" r="4.2" fill="#A6552F"></circle><circle cx="35" cy="111" r="3" fill="#A6552F"></circle>
+            <path d="M214 56 L198 90 M214 56 L230 90" stroke="#26201A" stroke-width="1.2" opacity=".55" fill="none"></path>
+            <path d="M192 90 Q214 106 236 90" stroke="#26201A" stroke-width="2.2" fill="none" stroke-linecap="round"></path>
+            <circle cx="209" cy="86" r="3" fill="#37756D"></circle><circle cx="217" cy="85" r="3.4" fill="#37756D"></circle><circle cx="224" cy="87" r="2.6" fill="#37756D"></circle>
+          </svg>
+        </div>
+        <div style="min-height:210px;">
+          <h1 style="margin:0; font-size:30px; line-height:1.12; font-weight:500; letter-spacing:-.015em;">Work you can weigh.</h1>
+          <div style="margin-top:10px; font-size:15.5px; line-height:1.55; color:#6E6353;">Every finished task drops a pebble in your pan — heavier chores, heavier pebbles. The beam shows the week's balance at a glance, so nobody has to keep score out loud.</div>
+        </div>
+        <div style="display:flex; justify-content:center; gap:6px; margin:14px 0 16px;">
+          <span style="width:18px; height:6px; border-radius:99px; background:#26201A;"></span>
+          <span style="width:6px; height:6px; border-radius:99px; background:rgba(38,32,26,.2);"></span>
+          <span style="width:6px; height:6px; border-radius:99px; background:rgba(38,32,26,.2);"></span>
+        </div>
+        <button style="width:100%; height:50px; border-radius:10px; border:none; background:#26201A; color:#F6F1E6; cursor:pointer; font-family:'Newsreader',Georgia,serif; font-size:16px; font-weight:500;">Next</button>
+      </div>
+    </x-import>
+  </div>
+
+  <div style="flex:none; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">03 · HOW IT WORKS — 2 OF 3</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+      <div data-screen-label="How it works 2" style="height:100%; box-sizing:border-box; display:flex; flex-direction:column; position:relative; overflow:hidden; background:#F6F1E6; color:#26201A; font-family:'Newsreader',Georgia,serif; padding:64px 28px 36px;">
+        <div data-grain style="position:absolute; inset:0; z-index:50; opacity:.055; pointer-events:none; mix-blend-mode:multiply;"></div>
+        <div style="display:flex; align-items:center;">
+          <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9.5px; font-weight:600; letter-spacing:.18em; color:#8A7D69;">HOW EVEN WORKS</span>
+          <span style="flex:1;"></span>
+          <button style="border:none; background:transparent; padding:4px 0; cursor:pointer; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.14em; color:#8A7D69; text-decoration:underline; text-underline-offset:3px;">SKIP</button>
+        </div>
+        <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:9px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <svg width="34" height="26" viewBox="0 0 34 26"><rect x="1" y="1" width="32" height="24" rx="5" fill="none" stroke="#26201A" stroke-width="1.5"></rect><path d="M2 3 L17 14 L32 3" fill="none" stroke="#26201A" stroke-width="1.5" stroke-linejoin="round"></path></svg>
+            <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:600; letter-spacing:.16em; color:#8A7D69;">GMAIL · READ-ONLY</span>
+          </div>
+          <svg width="2" height="20" viewBox="0 0 2 20"><line x1="1" y1="0" x2="1" y2="20" stroke="#8A7D69" stroke-width="1.5" stroke-dasharray="3 4"></line></svg>
+          <div style="width:210px; border:1.5px solid rgba(38,32,26,.16); border-radius:13px; padding:11px 14px; background:#FBF7EE;">
+            <div style="display:flex; align-items:baseline; gap:8px;">
+              <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:700; letter-spacing:.08em;">CITY OF UTRECHT</span>
+              <span style="flex:1;"></span>
+              <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:8px; font-weight:700; letter-spacing:.08em; color:#A6552F;">DRAFT</span>
+            </div>
+            <div style="margin-top:3px; font-size:14.5px;">Water bill — €84, due Friday</div>
+            <div style="margin-top:4px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:8.5px; font-weight:600; letter-spacing:.06em; color:#8A7D69;">NEEDS YOUR PARTNER'S OK</div>
+          </div>
+          <svg width="2" height="20" viewBox="0 0 2 20"><line x1="1" y1="0" x2="1" y2="20" stroke="#8A7D69" stroke-width="1.5" stroke-dasharray="3 4"></line></svg>
+          <div style="border:2px solid #26201A; border-radius:7px; padding:8px 15px; transform:rotate(-2deg); font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:700; letter-spacing:.14em;">APPROVED → TASK + CALENDAR</div>
+        </div>
+        <div style="min-height:210px;">
+          <h1 style="margin:0; font-size:30px; line-height:1.12; font-weight:500; letter-spacing:-.015em;">Drafts, not demands.</h1>
+          <div style="margin-top:10px; font-size:15.5px; line-height:1.55; color:#6E6353;">Bills and appointments in your Gmail become drafts in a shared inbox. A draft turns into a task or calendar event only after your partner has looked at it and approved.</div>
+        </div>
+        <div style="display:flex; justify-content:center; gap:6px; margin:14px 0 16px;">
+          <span style="width:6px; height:6px; border-radius:99px; background:rgba(38,32,26,.2);"></span>
+          <span style="width:18px; height:6px; border-radius:99px; background:#26201A;"></span>
+          <span style="width:6px; height:6px; border-radius:99px; background:rgba(38,32,26,.2);"></span>
+        </div>
+        <button style="width:100%; height:50px; border-radius:10px; border:none; background:#26201A; color:#F6F1E6; cursor:pointer; font-family:'Newsreader',Georgia,serif; font-size:16px; font-weight:500;">Next</button>
+      </div>
+    </x-import>
+  </div>
+
+  <div style="flex:none; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">03 · HOW IT WORKS — 3 OF 3</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+      <div data-screen-label="How it works 3" style="height:100%; box-sizing:border-box; display:flex; flex-direction:column; position:relative; overflow:hidden; background:#F6F1E6; color:#26201A; font-family:'Newsreader',Georgia,serif; padding:64px 28px 36px;">
+        <div data-grain style="position:absolute; inset:0; z-index:50; opacity:.055; pointer-events:none; mix-blend-mode:multiply;"></div>
+        <div style="display:flex; align-items:center;">
+          <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9.5px; font-weight:600; letter-spacing:.18em; color:#8A7D69;">HOW EVEN WORKS</span>
+          <span style="flex:1;"></span>
+          <button style="border:none; background:transparent; padding:4px 0; cursor:pointer; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.14em; color:#8A7D69; text-decoration:underline; text-underline-offset:3px;">SKIP</button>
+        </div>
+        <div style="flex:1; display:flex; align-items:center; justify-content:center;">
+          <div style="position:relative; width:210px; height:110px;">
+            <div style="position:absolute; left:0; right:0; top:26px; height:2px; border-radius:1px; background:#26201A;"></div>
+            <div style="position:absolute; left:-2px; top:21px; width:9px; height:9px; border-radius:99px; background:#A6552F;"></div>
+            <div style="position:absolute; right:-2px; top:21px; width:9px; height:9px; border-radius:99px; background:#37756D;"></div>
+            <svg width="16" height="11" viewBox="0 0 20 13" style="position:absolute; left:50%; top:29px; transform:translateX(-50%);"><path d="M10 1.2 L18.6 12 H1.4 Z" fill="none" stroke="#26201A" stroke-width="1.5" stroke-linejoin="round"></path></svg>
+            <span style="position:absolute; left:50%; top:100px; transform:translateX(-50%); font-family:'Source Sans 3',system-ui,sans-serif; font-size:8px; font-weight:600; letter-spacing:.28em; color:#8A7D69;">SUNDAY · 6 PM</span>
+          </div>
+        </div>
+        <div style="min-height:210px;">
+          <h1 style="margin:0; font-size:30px; line-height:1.12; font-weight:500; letter-spacing:-.015em;">Sunday, pour the pans.</h1>
+          <div style="margin-top:10px; font-size:15.5px; line-height:1.55; color:#6E6353;">Once a week, ten minutes together: look at the balance honestly, say one kind thing each, trade what isn't working. Then the pans empty and Monday starts level.</div>
+        </div>
+        <div style="display:flex; justify-content:center; gap:6px; margin:14px 0 16px;">
+          <span style="width:6px; height:6px; border-radius:99px; background:rgba(38,32,26,.2);"></span>
+          <span style="width:6px; height:6px; border-radius:99px; background:rgba(38,32,26,.2);"></span>
+          <span style="width:18px; height:6px; border-radius:99px; background:#26201A;"></span>
+        </div>
+        <a href="Household Setup.dc.html" style="width:100%; box-sizing:border-box; height:50px; border-radius:10px; border:none; background:#26201A; color:#F6F1E6; cursor:pointer; font-family:'Newsreader',Georgia,serif; font-size:16px; font-weight:500; text-decoration:none; display:flex; align-items:center; justify-content:center;">Get started</a>
+      </div>
+    </x-import>
+  </div>
+
+</div>
+
+</x-dc>
+</body>
+</html>

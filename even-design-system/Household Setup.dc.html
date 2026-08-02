@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<title>Even — Household Setup</title>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..700&family=Source+Sans+3:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+<meta name="ext-resource-dependency" content="./ios-frame.jsx" data-resource-id="ios-frame">
+<style>
+  body { margin:0; background:#E9E1D2; -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; }
+  a { color:#A0522D; text-decoration:underline; text-underline-offset:2px; }
+  a:hover { color:#7A3A1D; }
+  *::-webkit-scrollbar { width:0; height:0; }
+  [data-grain] { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E"); }
+</style>
+</helmet>
+<template id="__bundler_thumbnail" data-bg-color="#F6F1E6">
+  <svg viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg">
+    <rect width="56" height="56" fill="#F6F1E6"></rect>
+    <line x1="10" y1="26" x2="46" y2="20" stroke="#26201A" stroke-width="2" stroke-linecap="round"></line>
+    <circle cx="28" cy="23" r="1.6" fill="#26201A"></circle>
+    <line x1="28" y1="23" x2="28" y2="40" stroke="#26201A" stroke-width="1.6"></line>
+    <line x1="20" y1="40" x2="36" y2="40" stroke="#26201A" stroke-width="1.6" stroke-linecap="round"></line>
+  </svg>
+</template>
+<div style="min-height:100vh; box-sizing:border-box; display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:center; gap:52px; padding:56px 40px 80px; font-family:'Newsreader',Georgia,serif; color:#2A231B;">
+
+  <div style="width:290px; max-width:92vw; display:flex; flex-direction:column; gap:14px; padding-top:120px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">EVEN · FLOW 2 · HOUSEHOLD SETUP</div>
+    <div style="font-size:31px; line-height:1.14; font-weight:500; letter-spacing:-.01em;">Two people, one space.</div>
+    <div style="font-size:15px; line-height:1.55; color:#6E6353;">A household holds exactly two people. Start one and hand your partner a code, or join with a code they gave you.</div>
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.06em; color:#8B7E6B; line-height:1.6;">BACK → <a href="Onboarding.dc.html">ONBOARDING</a><br>NEXT → <a href="Email &amp; Calendar Setup.dc.html">EMAIL &amp; CALENDAR SETUP</a></div>
+  </div>
+
+  <div style="flex:none; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">01 · PATH CHOICE</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+      <div data-screen-label="Path choice" style="height:100%; box-sizing:border-box; display:flex; flex-direction:column; position:relative; overflow:hidden; background:#F6F1E6; color:#26201A; font-family:'Newsreader',Georgia,serif; padding:64px 28px 40px;">
+        <div data-grain style="position:absolute; inset:0; z-index:50; opacity:.055; pointer-events:none; mix-blend-mode:multiply;"></div>
+        <div style="padding-top:22px;">
+          <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.18em; color:#8A7D69;">SIGNED IN · ADA</div>
+          <h1 style="margin:10px 0 0; font-size:34px; line-height:1.08; font-weight:500; letter-spacing:-.02em;">Set up your<br>household.</h1>
+          <div style="margin-top:12px; font-style:italic; font-size:14px; color:#8A7D69;">An Even household holds exactly two people.</div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:12px; margin-top:28px;">
+          <button style="text-align:left; width:100%; border:1.5px solid rgba(38,32,26,.16); background:#FBF7EE; border-radius:16px; padding:18px 18px; cursor:pointer; font-family:'Newsreader',Georgia,serif; color:#26201A; display:flex; align-items:center; gap:14px;">
+            <div style="flex:1; min-width:0;">
+              <div style="font-size:19px; font-weight:500;">Start a new household</div>
+              <div style="margin-top:4px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:11px; font-weight:600; letter-spacing:.03em; color:#8A7D69;">YOU'LL GET A CODE TO HAND YOUR PARTNER</div>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#26201A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h10M9 4l4 4-4 4"></path></svg>
+          </button>
+          <button style="text-align:left; width:100%; border:1.5px solid rgba(38,32,26,.16); background:transparent; border-radius:16px; padding:18px 18px; cursor:pointer; font-family:'Newsreader',Georgia,serif; color:#26201A; display:flex; align-items:center; gap:14px;">
+            <div style="flex:1; min-width:0;">
+              <div style="font-size:19px; font-weight:500;">Join with a code</div>
+              <div style="margin-top:4px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:11px; font-weight:600; letter-spacing:.03em; color:#8A7D69;">YOUR PARTNER GAVE YOU SIX CHARACTERS</div>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#26201A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h10M9 4l4 4-4 4"></path></svg>
+          </button>
+        </div>
+        <div style="flex:1;"></div>
+        <div style="text-align:center;">
+          <button style="border:none; background:transparent; padding:6px; cursor:pointer; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.14em; color:#8A7D69; text-decoration:underline; text-underline-offset:3px;">SIGN OUT</button>
+        </div>
+      </div>
+    </x-import>
+  </div>
+
+  <div style="flex:none; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">02 · NAME THE HOUSEHOLD</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+      <div data-screen-label="Create household" style="height:100%; box-sizing:border-box; display:flex; flex-direction:column; position:relative; overflow:hidden; background:#F6F1E6; color:#26201A; font-family:'Newsreader',Georgia,serif; padding:64px 28px 40px;">
+        <div data-grain style="position:absolute; inset:0; z-index:50; opacity:.055; pointer-events:none; mix-blend-mode:multiply;"></div>
+        <button style="align-self:flex-start; border:none; background:transparent; padding:4px 0; cursor:pointer; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.12em; color:#8A7D69;">← BACK</button>
+        <h1 style="margin:18px 0 0; font-size:34px; line-height:1.08; font-weight:500; letter-spacing:-.02em;">Name your<br>household.</h1>
+        <div style="margin-top:12px; font-style:italic; font-size:14px; color:#8A7D69;">Both of these can change later.</div>
+        <div style="margin-top:34px;">
+          <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9.5px; font-weight:600; letter-spacing:.18em; color:#8A7D69;">HOUSEHOLD NAME</div>
+          <div style="margin-top:6px; padding:6px 0 10px; border-bottom:1.5px solid rgba(38,32,26,.16); font-size:22px;">The Attic</div>
+        </div>
+        <div style="margin-top:26px;">
+          <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9.5px; font-weight:600; letter-spacing:.18em; color:#8A7D69;">YOUR NAME</div>
+          <div style="margin-top:6px; padding:6px 0 10px; border-bottom:1.5px solid rgba(38,32,26,.16); font-size:22px;">Ada</div>
+          <div style="margin-top:10px; font-style:italic; font-size:12.5px; color:#8A7D69;">This is the name on your pan of the scale — what your partner sees on tasks and pebbles.</div>
+        </div>
+        <div style="flex:1;"></div>
+        <button style="width:100%; height:50px; border-radius:10px; border:none; background:#26201A; color:#F6F1E6; cursor:pointer; font-family:'Newsreader',Georgia,serif; font-size:16px; font-weight:500;">Create household</button>
+      </div>
+    </x-import>
+  </div>
+
+  <div style="flex:none; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">03 · SHARE THE CODE</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+      <div data-screen-label="Invite code" style="height:100%; box-sizing:border-box; display:flex; flex-direction:column; position:relative; overflow:hidden; background:#F6F1E6; color:#26201A; font-family:'Newsreader',Georgia,serif; padding:64px 28px 40px;">
+        <div data-grain style="position:absolute; inset:0; z-index:50; opacity:.055; pointer-events:none; mix-blend-mode:multiply;"></div>
+        <div style="padding-top:22px;">
+          <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.18em; color:#8A7D69;">THE ATTIC · CREATED</div>
+          <h1 style="margin:10px 0 0; font-size:34px; line-height:1.08; font-weight:500; letter-spacing:-.02em;">Now, your<br>partner.</h1>
+          <div style="margin-top:12px; font-style:italic; font-size:14px; color:#8A7D69;">One code. It works exactly once.</div>
+        </div>
+        <div style="display:flex; justify-content:center; gap:8px; margin-top:32px;">
+          <div style="width:44px; height:58px; border:1.5px solid rgba(38,32,26,.2); border-radius:11px; background:#FBF7EE; display:flex; align-items:center; justify-content:center; font-size:27px; font-weight:500;">A</div>
+          <div style="width:44px; height:58px; border:1.5px solid rgba(38,32,26,.2); border-radius:11px; background:#FBF7EE; display:flex; align-items:center; justify-content:center; font-size:27px; font-weight:500;">T</div>
+          <div style="width:44px; height:58px; border:1.5px solid rgba(38,32,26,.2); border-radius:11px; background:#FBF7EE; display:flex; align-items:center; justify-content:center; font-size:27px; font-weight:500;">T</div>
+          <div style="width:44px; height:58px; border:1.5px solid rgba(38,32,26,.2); border-radius:11px; background:#FBF7EE; display:flex; align-items:center; justify-content:center; font-size:27px; font-weight:500;">I</div>
+          <div style="width:44px; height:58px; border:1.5px solid rgba(38,32,26,.2); border-radius:11px; background:#FBF7EE; display:flex; align-items:center; justify-content:center; font-size:27px; font-weight:500;">C</div>
+          <div style="width:44px; height:58px; border:1.5px solid rgba(38,32,26,.2); border-radius:11px; background:#FBF7EE; display:flex; align-items:center; justify-content:center; font-size:27px; font-weight:500;">7</div>
+        </div>
+        <button style="margin-top:24px; width:100%; height:50px; border-radius:10px; border:none; background:#26201A; color:#F6F1E6; cursor:pointer; font-family:'Newsreader',Georgia,serif; font-size:16px; font-weight:500; display:flex; align-items:center; justify-content:center; gap:9px;">
+          <svg width="15" height="17" viewBox="0 0 15 17" fill="none" stroke="#F6F1E6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 1v10M4 4l3.5-3L11 4"></path><path d="M2.5 8H2a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1h-.5"></path></svg>
+          <span>Share the code</span>
+        </button>
+        <div style="margin-top:20px; background:rgba(38,32,26,.055); border-radius:13px; padding:14px 16px;">
+          <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:600; letter-spacing:.16em; color:#8A7D69;">WHAT YOUR PARTNER DOES NEXT</div>
+          <div style="margin-top:6px; font-style:italic; font-size:14px; line-height:1.5;">They install Even, choose "Join with a code", and type this in. The moment they land, the code retires — a household holds exactly two.</div>
+        </div>
+        <div style="flex:1;"></div>
+        <div style="text-align:center;">
+          <button style="border:none; background:transparent; padding:6px; cursor:pointer; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.14em; color:#8A7D69; text-decoration:underline; text-underline-offset:3px;">CONTINUE — THE CODE STAYS ON TODAY</button>
+        </div>
+      </div>
+    </x-import>
+  </div>
+
+  <div style="flex:none; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">04 · PARTNER: JOIN WITH CODE</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+      <div data-screen-label="Join household" style="height:100%; box-sizing:border-box; display:flex; flex-direction:column; position:relative; overflow:hidden; background:#F6F1E6; color:#26201A; font-family:'Newsreader',Georgia,serif; padding:64px 28px 40px;">
+        <div data-grain style="position:absolute; inset:0; z-index:50; opacity:.055; pointer-events:none; mix-blend-mode:multiply;"></div>
+        <button style="align-self:flex-start; border:none; background:transparent; padding:4px 0; cursor:pointer; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.12em; color:#8A7D69;">← BACK</button>
+        <h1 style="margin:18px 0 0; font-size:34px; line-height:1.08; font-weight:500; letter-spacing:-.02em;">Enter the<br>code.</h1>
+        <div style="margin-top:12px; font-style:italic; font-size:14px; color:#8A7D69;">Six characters, from your partner.</div>
+        <div style="display:flex; justify-content:center; gap:8px; margin-top:30px;">
+          <div style="width:44px; height:58px; border:1.5px solid rgba(38,32,26,.2); border-radius:11px; background:#FBF7EE; display:flex; align-items:center; justify-content:center; font-size:27px; font-weight:500;">A</div>
+          <div style="width:44px; height:58px; border:1.5px solid rgba(38,32,26,.2); border-radius:11px; background:#FBF7EE; display:flex; align-items:center; justify-content:center; font-size:27px; font-weight:500;">T</div>
+          <div style="width:44px; height:58px; border:1.5px solid rgba(38,32,26,.2); border-radius:11px; background:#FBF7EE; display:flex; align-items:center; justify-content:center; font-size:27px; font-weight:500;">T</div>
+          <div style="width:44px; height:58px; border:1.5px solid rgba(38,32,26,.2); border-radius:11px; background:#FBF7EE; display:flex; align-items:center; justify-content:center; font-size:27px; font-weight:500;">I</div>
+          <div style="width:44px; height:58px; border:1.5px solid rgba(38,32,26,.2); border-radius:11px; background:#FBF7EE; display:flex; align-items:center; justify-content:center; font-size:27px; font-weight:500;">C</div>
+          <div style="width:44px; height:58px; border:1.5px solid rgba(38,32,26,.2); border-radius:11px; background:#FBF7EE; display:flex; align-items:center; justify-content:center; font-size:27px; font-weight:500;">7</div>
+        </div>
+        <div style="margin-top:30px;">
+          <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9.5px; font-weight:600; letter-spacing:.18em; color:#8A7D69;">YOUR NAME</div>
+          <div style="margin-top:6px; padding:6px 0 10px; border-bottom:1.5px solid rgba(38,32,26,.16); font-size:22px;">Umut</div>
+        </div>
+        <div style="flex:1;"></div>
+        <button style="width:100%; height:50px; border-radius:10px; border:none; background:#26201A; color:#F6F1E6; cursor:pointer; font-family:'Newsreader',Georgia,serif; font-size:16px; font-weight:500;">Join household</button>
+      </div>
+    </x-import>
+  </div>
+
+  <div style="flex:none; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">04 · JOIN — ERROR STATE</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+      <div data-screen-label="Join error" style="height:100%; box-sizing:border-box; display:flex; flex-direction:column; position:relative; overflow:hidden; background:#F6F1E6; color:#26201A; font-family:'Newsreader',Georgia,serif; padding:64px 28px 40px;">
+        <div data-grain style="position:absolute; inset:0; z-index:50; opacity:.055; pointer-events:none; mix-blend-mode:multiply;"></div>
+        <button style="align-self:flex-start; border:none; background:transparent; padding:4px 0; cursor:pointer; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.12em; color:#8A7D69;">← BACK</button>
+        <h1 style="margin:18px 0 0; font-size:34px; line-height:1.08; font-weight:500; letter-spacing:-.02em;">Enter the<br>code.</h1>
+        <div style="margin-top:12px; font-style:italic; font-size:14px; color:#8A7D69;">Six characters, from your partner.</div>
+        <div style="display:flex; justify-content:center; gap:8px; margin-top:30px;">
+          <div style="width:44px; height:58px; border:1.5px solid #A6552F; border-radius:11px; background:#FBF7EE; display:flex; align-items:center; justify-content:center; font-size:27px; font-weight:500; color:#A6552F;">X</div>
+          <div style="width:44px; height:58px; border:1.5px solid #A6552F; border-radius:11px; background:#FBF7EE; display:flex; align-items:center; justify-content:center; font-size:27px; font-weight:500; color:#A6552F;">Q</div>
+          <div style="width:44px; height:58px; border:1.5px solid #A6552F; border-radius:11px; background:#FBF7EE; display:flex; align-items:center; justify-content:center; font-size:27px; font-weight:500; color:#A6552F;">9</div>
+          <div style="width:44px; height:58px; border:1.5px solid #A6552F; border-radius:11px; background:#FBF7EE; display:flex; align-items:center; justify-content:center; font-size:27px; font-weight:500; color:#A6552F;">Z</div>
+          <div style="width:44px; height:58px; border:1.5px solid #A6552F; border-radius:11px; background:#FBF7EE; display:flex; align-items:center; justify-content:center; font-size:27px; font-weight:500; color:#A6552F;">4</div>
+          <div style="width:44px; height:58px; border:1.5px solid #A6552F; border-radius:11px; background:#FBF7EE; display:flex; align-items:center; justify-content:center; font-size:27px; font-weight:500; color:#A6552F;">M</div>
+        </div>
+        <div style="margin-top:14px; text-align:center; font-style:italic; font-size:13.5px; line-height:1.5; color:#A6552F;">That code doesn't match an open household — or it's already been used. Check it with your partner; codes retire once both of you are in.</div>
+        <div style="margin-top:24px;">
+          <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9.5px; font-weight:600; letter-spacing:.18em; color:#8A7D69;">YOUR NAME</div>
+          <div style="margin-top:6px; padding:6px 0 10px; border-bottom:1.5px solid rgba(38,32,26,.16); font-size:22px;">Umut</div>
+        </div>
+        <div style="flex:1;"></div>
+        <button style="width:100%; height:50px; border-radius:10px; border:1px solid rgba(38,32,26,.16); background:transparent; color:#8A7D69; cursor:pointer; font-family:'Newsreader',Georgia,serif; font-size:16px; font-weight:500;">Try again</button>
+      </div>
+    </x-import>
+  </div>
+
+  <div style="flex:none; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">05 · WAITING FOR PARTNER</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+      <div data-screen-label="Waiting for partner" style="height:100%; box-sizing:border-box; display:flex; flex-direction:column; position:relative; overflow:hidden; background:#F6F1E6; color:#26201A; font-family:'Newsreader',Georgia,serif; padding:64px 20px 40px;">
+        <div data-grain style="position:absolute; inset:0; z-index:50; opacity:.055; pointer-events:none; mix-blend-mode:multiply;"></div>
+        <div style="display:flex; align-items:center; gap:7px;">
+          <svg width="15" height="15" viewBox="0 0 16 16"><line x1="1.5" y1="6.8" x2="14.5" y2="4.6" stroke="#26201A" stroke-width="1.6" stroke-linecap="round"></line><path d="M8 6.4 L10.6 10.6 H5.4 Z" fill="none" stroke="#26201A" stroke-width="1.5" stroke-linejoin="round"></path><line x1="4.5" y1="13.4" x2="11.5" y2="13.4" stroke="#26201A" stroke-width="1.4" stroke-linecap="round"></line></svg>
+          <span style="font-size:18px; font-style:italic; font-weight:600;">Even</span>
+        </div>
+        <div style="text-align:center; font-style:italic; font-size:13.5px; color:#8A7D69; margin-top:34px;">All yours so far. Even starts mattering at two.</div>
+        <div style="margin-top:18px; background:#FBF7EE; border:1px solid rgba(38,32,26,.14); border-radius:16px; padding:15px 17px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:9px; font-weight:600; letter-spacing:.16em; color:#8A7D69;">YOUR PARTNER ISN'T IN YET</span>
+            <span style="flex:1;"></span>
+            <span style="width:7px; height:7px; border-radius:99px; background:#37756D; opacity:.5;"></span>
+          </div>
+          <div style="margin-top:8px; display:flex; align-items:center; gap:12px;">
+            <div style="font-size:25px; font-weight:500; letter-spacing:.22em;">ATTIC7</div>
+            <span style="flex:1;"></span>
+            <button style="height:38px; padding:0 16px; border-radius:9px; border:none; background:#26201A; color:#F6F1E6; cursor:pointer; font-family:'Source Sans 3',system-ui,sans-serif; font-size:12px; font-weight:600; letter-spacing:.06em;">RESEND</button>
+          </div>
+        </div>
+        <div style="margin-top:24px; text-align:center;">
+          <div style="font-style:italic; font-size:14.5px; color:#6E6353; max-width:270px; margin:0 auto;">The moment Umut joins with this code, the beam gets its second pan and the week starts counting for both of you.</div>
+        </div>
+      </div>
+    </x-import>
+  </div>
+
+  <div style="flex:none; display:flex; flex-direction:column; gap:12px;">
+    <div style="font-family:'Source Sans 3',system-ui,sans-serif; font-size:10.5px; font-weight:600; letter-spacing:.16em; color:#8B7E6B;">06 · PARTNER JOINED</div>
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+      <div data-screen-label="Partner joined" style="height:100%; box-sizing:border-box; display:flex; flex-direction:column; position:relative; overflow:hidden; background:#F6F1E6; color:#26201A; font-family:'Newsreader',Georgia,serif; padding:64px 28px 40px;">
+        <div data-grain style="position:absolute; inset:0; z-index:50; opacity:.055; pointer-events:none; mix-blend-mode:multiply;"></div>
+        <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
+          <div style="position:relative; width:120px; height:44px;">
+            <div style="position:absolute; left:8px; top:0; width:44px; height:44px; border-radius:999px; background:#A6552F; color:#FBF7EE; display:flex; align-items:center; justify-content:center; font-family:'Source Sans 3',system-ui,sans-serif; font-size:16px; font-weight:700; border:3px solid #F6F1E6;">A</div>
+            <div style="position:absolute; right:8px; top:0; width:44px; height:44px; border-radius:999px; background:#37756D; color:#FBF7EE; display:flex; align-items:center; justify-content:center; font-family:'Source Sans 3',system-ui,sans-serif; font-size:16px; font-weight:700; border:3px solid #F6F1E6;">U</div>
+          </div>
+          <h1 style="margin:20px 0 0; font-size:27px; font-weight:500; letter-spacing:-.015em;">Umut joined The Attic.</h1>
+          <div style="margin-top:12px; font-style:italic; font-size:14.5px; color:#8A7D69; max-width:250px; line-height:1.5;">Two pans on the beam now. The code has retired — this household is full.</div>
+          <div style="margin-top:22px; font-family:'Source Sans 3',system-ui,sans-serif; font-size:10px; font-weight:600; letter-spacing:.16em; color:#8A7D69;">NEXT — CONNECT GMAIL &amp; CALENDAR</div>
+        </div>
+        <button style="width:100%; height:50px; border-radius:10px; border:none; background:#26201A; color:#F6F1E6; cursor:pointer; font-family:'Newsreader',Georgia,serif; font-size:16px; font-weight:500;">Continue</button>
+      </div>
+    </x-import>
+  </div>
+
+</div>
+
+</x-dc>
+</body>
+</html>
