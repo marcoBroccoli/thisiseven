@@ -79,6 +79,17 @@ execution order. AC = acceptance criteria.
 - [x] **EV-46** Reset: intro, progress header, step 1 bars + biggest carry,
   step 2 appreciation cards, step 3 trades, close-week action, poured-out
   end screen. Wired.
+- [x] **EV-47** Household-setup design parity (`docs/product design review,
+  2026-08-02`): added `WaitingForPartnerView` (05) and `PartnerJoinedView`
+  (06) in `OnboardingExtraViews.swift`, wired into `MainScaffold.advanceExtras()`
+  in `EvenRootView.swift`. Decision (2026-08-02, product): kept both
+  dismissible rather than fully blocking like the design mock — waiting
+  screen can resurface on a later launch while still solo
+  (`dismissedWaitingThisSession`, session-only); partner-joined is a
+  one-time celebration (`even-seen-partner-joined`). Google-connect now
+  requires `household.partner != nil`. Detection stays on the existing
+  foreground/pull-to-refresh cadence (EV-53) — no new polling. Resend
+  re-opens the share sheet with the existing code, no backend call.
 
 ## P4 Polish
 - [x] **EV-50** Motion pass: pebbleDrop, beam spring, coinSlide, stampIn,
@@ -114,32 +125,40 @@ execution order. AC = acceptance criteria.
   sync, see the draft, approve, verify the event lands in Google Calendar.
 
 ## Security & access architecture review (Umur, 2026-07-19 — do before wider rollout)
-- [ ] **EV-80** Revisit backend security/access end to end now that the API is
-  public (api.thisiseven.app): auth token lifetimes + refresh rotation, HS256
-  shared-secret vs asymmetric JWT signing, rate limiting/abuse protection on
-  auth + sync endpoints, GoTrue signup policy (open email signup is still on
-  for debug), household-scoping audit, secrets handling (backend/.env),
-  debug-build HTTP paths, tunnel exposure surface, and dependency/image
-  update cadence. Outcome: a written threat-model + hardening plan, then the
-  fixes.
+- [~] **EV-80** Revisit backend security/access end to end **before** the API
+  goes public at api.thisiseven.app (correction, 2026-08-02: PRD.md still has
+  the tunnel as post-MVP/needs Umur's approval — it isn't public yet, so this
+  gates the launch rather than following it): auth token lifetimes + refresh
+  rotation, HS256 shared-secret vs asymmetric JWT signing, rate
+  limiting/abuse protection on auth + sync endpoints, GoTrue signup policy
+  (open signup + autoconfirm is a prod compose setting, not debug-only —
+  see doc), household-scoping audit (passed — 103 `household_id`-scoped
+  queries checked, all server-derived), secrets handling (backend/.env,
+  gitignored, passed), debug-build HTTP paths (client-side gates only, no
+  real boundary), tunnel exposure surface, and dependency/image update
+  cadence (no Dependabot/Renovate today). Threat-model + hardening plan
+  written: `docs/product/SECURITY-REVIEW.md`. Remaining: the actual fixes,
+  prioritized High → Low in that doc (signup policy + join-endpoint
+  throttling first).
 
 ## Post-MVP parking lot
-Push notifications · public API via Cloudflare tunnel (api.thisiseven.app) ·
+Push notifications · public API via Cloudflare tunnel (api.thisiseven.app,
+confirmed still not stood up as of 2026-08-02 — do EV-80's fixes first) ·
 TestFlight (needs explicit approval) · Android · uneven splits · week
 history browser · calendar retry/external-change reconciliation (mac
 prototype has it; port later).
 
 ## P7 Financial sources (local-first)
-- [x] **EV-80** Local statement import: parse bank CSV exports on device,
+- [x] **EV-83** Local statement import: parse bank CSV exports on device,
   deduplicate transactions, and suggest read-only matches to pending household
   amounts. Statement data and matching choices live in an app-specific,
   device-only Keychain record; old UserDefaults data migrates once. AC: no
   bank credentials, statement uploads, or payment APIs exist in the app.
-- [ ] **EV-81** Bunq sandbox discovery: configure a separate Bunq sandbox OAuth
+- [ ] **EV-84** Bunq sandbox discovery: configure a separate Bunq sandbox OAuth
   client and backend callback, run read-only account/payment retrieval against
   sandbox data, and map it through the existing statement matcher. AC: no
   production credentials, payment creation endpoints, or real-account calls.
-- [ ] **EV-82** Production banking decision: complete privacy, security, and
+- [ ] **EV-85** Production banking decision: complete privacy, security, and
   regulatory review before enabling an OAuth connection to another person's
   financial data. AC: explicit per-user consent, server-side encrypted token
   storage, revocation, retention policy, and confirmed applicable PSD2/AISP

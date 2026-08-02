@@ -166,14 +166,24 @@ struct MainScaffold: View {
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage("even-google-prompted") private var googlePrompted = false
     @AppStorage("even-seen-invite-reveal") private var seenInviteReveal = false
+    @AppStorage("even-seen-partner-joined") private var seenPartnerJoined = false
     @AppStorage("even-notif-prompted") private var notifPrompted = false
     @State private var currentExtra: OnboardingExtra?
     @State private var showProfile = false
+    /// Session-only (not AppStorage): the waiting-for-partner screen is
+    /// dismissible, but should resurface on a later launch while still solo.
+    @State private var dismissedWaitingThisSession = false
 
-    enum OnboardingExtra: Identifiable {
-        case inviteReveal, google, notifications
+    enum OnboardingExtra: Identifiable, Equatable {
+        case inviteReveal, waitingForPartner, partnerJoined, google, notifications
         var id: Int {
-            switch self { case .inviteReveal: 0; case .google: 1; case .notifications: 2 }
+            switch self {
+            case .inviteReveal: 0
+            case .waitingForPartner: 1
+            case .partnerJoined: 2
+            case .google: 3
+            case .notifications: 4
+            }
         }
     }
 
@@ -216,21 +226,38 @@ struct MainScaffold: View {
             }
         }
         .onChange(of: model.googleStatus?.connected) { _, _ in advanceExtras() }
-        .onChange(of: model.household?.members.count) { _, _ in advanceExtras() }
+        .onChange(of: model.household?.members.count) { _, _ in
+            // If the waiting screen is up when the partner lands, swap
+            // straight to the celebration instead of waiting for a manual
+            // dismiss — same dismiss-then-advance beat as the other extras.
+            if currentExtra == .waitingForPartner, model.household?.partner != nil {
+                currentExtra = nil
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { advanceExtras() }
+            } else {
+                advanceExtras()
+            }
+        }
         .promptCover(isPresented: Binding(get: { currentExtra != nil },
                                           set: { if !$0 { currentExtra = nil } })) {
             extraView
         }
     }
 
-    /// Post-setup onboarding pages (design 06 → 08 → 10), each shown once,
-    /// all suppressed for the UI test suites.
+    /// Post-setup onboarding pages (design 05 → 06 → 08 → 10), each shown
+    /// once (waiting-for-partner can resurface — see dismissedWaitingThisSession),
+    /// all suppressed for the UI test suites. Google-connect is gated on the
+    /// household having a partner, per the Household Setup design.
     private func advanceExtras() {
         guard currentExtra == nil, !skipOnboardingExtras else { return }
-        if !seenInviteReveal, model.household?.partner == nil, model.household != nil {
+        let hasPartner = model.household?.partner != nil
+        if !seenInviteReveal, !hasPartner, model.household != nil {
             currentExtra = .inviteReveal
+        } else if !hasPartner, model.household != nil, seenInviteReveal, !dismissedWaitingThisSession {
+            currentExtra = .waitingForPartner
+        } else if hasPartner, !seenPartnerJoined {
+            currentExtra = .partnerJoined
         } else if !googlePrompted, GoogleConnectConfig.isEnabled,
-                  model.googleStatus?.connected == false {
+                  model.googleStatus?.connected == false, hasPartner {
             currentExtra = .google
         } else if !notifPrompted, model.googleStatus != nil {
             currentExtra = .notifications
@@ -243,6 +270,18 @@ struct MainScaffold: View {
         case .inviteReveal:
             InviteRevealView(model: model) {
                 seenInviteReveal = true
+                currentExtra = nil
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { advanceExtras() }
+            }
+        case .waitingForPartner:
+            WaitingForPartnerView(model: model) {
+                dismissedWaitingThisSession = true
+                currentExtra = nil
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { advanceExtras() }
+            }
+        case .partnerJoined:
+            PartnerJoinedView(model: model) {
+                seenPartnerJoined = true
                 currentExtra = nil
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { advanceExtras() }
             }

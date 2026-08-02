@@ -287,6 +287,172 @@ struct InviteRevealView: View {
     }
 }
 
+// MARK: - 05 · waiting for partner
+
+/// Shown after the creator dismisses the invite reveal, for as long as the
+/// household is still solo. Dismissible (unlike the design mock, which has
+/// no way out) — the app is fully usable solo while this is closed, and the
+/// screen can resurface on a later launch if still nobody has joined.
+struct WaitingForPartnerView: View {
+    @Bindable var model: AppModel
+    let done: () -> Void
+    @Environment(\.palette) private var palette
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 7) {
+                ScaleGlyph()
+                    .stroke(palette.ink, style: StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round))
+                    .frame(width: 15, height: 15)
+                Text("Even")
+                    .font(EvenFont.serif(18, .semibold, italic: true))
+                    .foregroundStyle(palette.ink)
+            }
+            .padding(.top, 46)
+
+            Text("All yours so far. Even starts mattering at two.")
+                .font(EvenFont.serif(13.5, italic: true))
+                .foregroundStyle(palette.sub)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+                .padding(.top, 34)
+
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 8) {
+                    Text("YOUR PARTNER ISN'T IN YET")
+                        .capsLabel(9, tracking: 1.6)
+                        .foregroundStyle(palette.sub)
+                    Spacer()
+                    Circle().fill(palette.teal.opacity(0.5)).frame(width: 7, height: 7)
+                }
+                HStack(spacing: 12) {
+                    Text(model.household?.inviteCode.uppercased() ?? "")
+                        .font(EvenFont.serif(25, .medium))
+                        .kerning(4)
+                        .foregroundStyle(palette.ink)
+                    Spacer()
+                    resendButton
+                }
+            }
+            .padding(15)
+            .background(RoundedRectangle(cornerRadius: 16).fill(palette.card))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(palette.line, lineWidth: 1))
+            .padding(.top, 18)
+
+            Text("The moment your partner joins with this code, the beam gets its second pan and the week starts counting for both of you.")
+                .font(EvenFont.serif(14.5, italic: true))
+                .foregroundStyle(Color(hex: 0x6E6353))
+                .multilineTextAlignment(.center)
+                .lineSpacing(3)
+                .frame(maxWidth: .infinity)
+                .padding(.top, 24)
+
+            Spacer()
+
+            HStack {
+                Spacer()
+                Button(action: done) {
+                    Text("CONTINUE TO EVEN")
+                        .capsLabel(10, tracking: 1.4)
+                        .foregroundStyle(palette.sub)
+                        .underline()
+                }
+                Spacer()
+            }
+            .padding(.bottom, 30)
+        }
+        .padding(.horizontal, 20)
+        .background(palette.bg.ignoresSafeArea())
+    }
+
+    /// Re-opens the share sheet with the same, still-valid code — no
+    /// backend call, since invite codes don't expire or rotate.
+    private var resendButton: some View {
+        ShareLink(item: "Join our household on Even — invite code \(model.household?.inviteCode ?? "")") {
+            Text("RESEND")
+                .capsLabel(11, tracking: 0.6)
+                .foregroundStyle(palette.bg)
+                .padding(.horizontal, 16)
+                .frame(height: 38)
+                .background(RoundedRectangle(cornerRadius: 9).fill(palette.ink))
+        }
+        .buttonStyle(PressScaleStyle())
+    }
+}
+
+// MARK: - 06 · partner joined
+
+/// One-time celebration the moment the household completes. Copy is
+/// phrased so it reads correctly whichever side of the join it's shown to
+/// (creator or the partner who just joined), unlike the design mock's
+/// creator-only "X joined Y" framing.
+struct PartnerJoinedView: View {
+    @Bindable var model: AppModel
+    let done: () -> Void
+    @Environment(\.palette) private var palette
+
+    private var partnerInitial: String {
+        guard let first = model.household?.partner?.displayName.first else { return "?" }
+        return String(first).uppercased()
+    }
+
+    private var meInitial: String {
+        guard let first = model.household?.me?.displayName.first else { return "?" }
+        return String(first).uppercased()
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Spacer()
+
+            ZStack {
+                avatar(initial: meInitial, color: model.household?.me.map { palette.member($0.color) } ?? palette.clay)
+                    .offset(x: -30)
+                avatar(initial: partnerInitial, color: model.household?.partner.map { palette.member($0.color) } ?? palette.teal)
+                    .offset(x: 30)
+            }
+            .frame(height: 44)
+
+            Text("Two pans on the beam.")
+                .font(EvenFont.serif(27, .medium))
+                .foregroundStyle(palette.ink)
+                .multilineTextAlignment(.center)
+                .padding(.top, 20)
+
+            Text("\(model.household?.partner?.displayName ?? "Your partner") is in \(model.household?.name ?? "the household"). The code has retired — this household is full.")
+                .font(EvenFont.serif(14.5, italic: true))
+                .foregroundStyle(palette.sub)
+                .multilineTextAlignment(.center)
+                .lineSpacing(3)
+                .frame(maxWidth: 250)
+                .padding(.top, 12)
+
+            if GoogleConnectConfig.isEnabled, model.googleStatus?.connected != true {
+                Text("NEXT — CONNECT GMAIL & CALENDAR")
+                    .capsLabel(10, tracking: 1.6)
+                    .foregroundStyle(palette.sub)
+                    .padding(.top, 22)
+            }
+
+            Spacer()
+
+            PrimaryButton(title: "Continue", action: done)
+                .padding(.bottom, 30)
+        }
+        .padding(.horizontal, 28)
+        .background(palette.bg.ignoresSafeArea())
+    }
+
+    private func avatar(initial: String, color: Color) -> some View {
+        Text(initial)
+            .font(EvenFont.sans(16, .bold))
+            .foregroundStyle(palette.card)
+            .frame(width: 44, height: 44)
+            .background(Circle().fill(color))
+            .overlay(Circle().stroke(palette.bg, lineWidth: 3))
+    }
+}
+
 // MARK: - 10 · notifications ask
 
 struct NotificationsPromptView: View {
