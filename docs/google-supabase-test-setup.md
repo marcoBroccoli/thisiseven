@@ -25,7 +25,8 @@ The app first imports messages labeled `HouseholdTodo` when that label exists. I
 The iOS target adds the live mobile test flow:
 
 - Create an OAuth client of type `iOS` for bundle ID `local.household-command-center.ios`.
-- Put the client ID and reverse client ID URL scheme into `MobileApp/Config/Google.xcconfig` before building the iPhone app.
+- Put the client ID and reverse client ID URL scheme into the Even app
+  `CFBundleURLTypes` / Info.plist (see `ios/project.yml`) before building.
 - The Settings screen pre-fills the bundled iOS client ID; no client secret is used.
 - Tap **Connect Google** to use the native Google Sign-In session.
 - Google Sign-In manages the iOS session and refreshes access tokens as needed.

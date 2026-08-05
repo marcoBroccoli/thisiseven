@@ -35,6 +35,34 @@
                ReferencedContainer = "container:Even.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "7696E617268E6F7F63B80873"
+               BuildableName = "EvenWatch.app"
+               BlueprintName = "EvenWatch"
+               ReferencedContainer = "container:Even.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "48147F5C2261286143F23737"
+               BuildableName = "EvenWatchWidgetsExtension.appex"
+               BlueprintName = "EvenWatchWidgetsExtension"
+               ReferencedContainer = "container:Even.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction

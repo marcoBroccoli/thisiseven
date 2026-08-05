@@ -1,11 +1,12 @@
+import DI
+import EvenApp
 import SwiftUI
-import EvenMobile
 
 @main
-struct EvenApp: App {
+struct EvenAppEntry: App {
     var body: some Scene {
         WindowGroup {
-            EvenRootView()
+            EvenAppRootView()
         }
     }
 }

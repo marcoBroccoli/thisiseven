@@ -5,9 +5,9 @@ tasks fall as weighted pebbles onto a balance scale, bills get approved (never
 auto-added), money settles weekly, and Sunday ends with a ten-minute reset ritual.
 
 **Users:** exactly one couple per household — Umur + Beste. MVP is iOS only.
-**Design source of truth:** `docs/design/even-play.dc.html` (Claude Design export)
-and the token table in `docs/design/README.md`. The design's "Ada/Umut" are
-placeholder names; real names come from onboarding.
+**Design source of truth:** `docs/even-design-system/` (Claude Design flows) plus the
+token table in `docs/design/README.md`. Product Features map 1:1 to those flows.
+The design's "Ada/Umut" are placeholder names; real names come from onboarding.
 
 **Hard rule: no mock data.** The app ships empty. Every task, draft, expense,
 appreciation and trade is created by a real signed-in user. Demo seeds
@@ -18,7 +18,7 @@ appreciation and trade is created by a real signed-in user. Demo seeds
 ## Architecture (mirrors the Kilo house pattern, self-hosted auth)
 
 ```
-iPhone (SwiftUI, EvenMobile target in this repo)
+iPhone (SwiftUI, EvenKit Features via EvenApp → Even shell)
    │  Sign in with Apple → identityToken
    ▼
 evend — Go backend (chi + pgx) in Docker on the Mac mini, 127.0.0.1:8091

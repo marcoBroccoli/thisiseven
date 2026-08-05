@@ -26,5 +26,6 @@ entrances; things gently land rather than fade. Voice: warm, ritual-based —
 
 ## Live surfaces
 
-- **thisiseven.app** — coming-soon page (`web/coming-soon/`), Cloudflare Pages
-  project `thisiseven`. Deploy: see `web/coming-soon/` note in the root CLAUDE.md.
+- **thisiseven.app** — coming-soon page (`docs/web/coming-soon/`), Cloudflare Pages
+  project `thisiseven`. Deploy: see coming-soon note in the root CLAUDE.md.
+  Visual flows: `docs/even-design-system/`.

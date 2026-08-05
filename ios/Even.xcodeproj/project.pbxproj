@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0A9C0281C5792B3C51DF4B46 /* EvenWatchWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BBDDAB9B4AEDD5149420DEC2 /* EvenWatchWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		11EB501584EEC0179413FDAB /* EvenCaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 485A1F14A32A42EC812D3FEC /* EvenCaptureTests.swift */; };
 		13170EB5F01F31BEFBA32669 /* EvenApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A95A43EE2CE1E45F9972E3E5 /* EvenApp.swift */; };
 		168D82537F06FA083AD66FE7 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1FDF0626C25D9F1D3CE11B6C /* Assets.xcassets */; };
@@ -15,20 +16,33 @@
 		1DCDE3C1A99388A46D64C08A /* WidgetTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EB5B3CE129810AF99B146EB /* WidgetTheme.swift */; };
 		246E0F9E06127BDD74C21234 /* SourceSans3.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 94828603FF4B0F4CA386EFE1 /* SourceSans3.ttf */; };
 		30310A663002B44962F9816A /* EvenWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 937BCF87495D9A6E6E8CF776 /* EvenWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		4FE3A4E29E07D25B50E950FC /* DI in Frameworks */ = {isa = PBXBuildFile; productRef = 69BCD86B47C32B4A9791A21D /* DI */; };
 		527B5B3FC73C73894D73C0B1 /* LockWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = C688FC6E0628DFA9807BE19F /* LockWidgets.swift */; };
+		5C8DACC994FA11FE4F833056 /* EvenWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2D07DE49563D3086849042C /* EvenWatchApp.swift */; };
+		6F9FC0F69A8B62EA5F76B17E /* EvenWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = D1EA31DAE6E54C9B701AEFB6 /* EvenWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		821468CA8DC9C28DA7DFF161 /* EvenE2ETests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0AAF5AFC5B42AA346D03E33 /* EvenE2ETests.swift */; };
 		8351BB659FA3BB3CBFB26E39 /* EvenCore in Frameworks */ = {isa = PBXBuildFile; productRef = ECE4C1DBF9EB08B2BEBF418F /* EvenCore */; };
 		913AC9278E61AF9F75A83C7D /* Provider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F78212281B874F7A9927CE9 /* Provider.swift */; };
+		97337179DADD98893FD04B03 /* EvenCore in Frameworks */ = {isa = PBXBuildFile; productRef = BC8855C5959238DB961D5E1E /* EvenCore */; };
+		B135015F35DAB6F6D9DB3719 /* EvenCore in Frameworks */ = {isa = PBXBuildFile; productRef = 77FE1BA83888A92694C148ED /* EvenCore */; };
 		B13B405352CFEEDD3214FE1B /* EvenWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D4D615724B500AF5E6A94D3 /* EvenWidgetsBundle.swift */; };
 		C4EB1926A7F34D55C3D46572 /* Newsreader-Italic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F84BCAA71BD336B04B69B68C /* Newsreader-Italic.ttf */; };
+		C6F7D07CF4EC6930686731C1 /* EvenWatchWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9669C03F557E06C8D97CDD70 /* EvenWatchWidgetsBundle.swift */; };
 		C8A5C12511F304D4D93CCEC7 /* SourceSans3-Italic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = C4ADA82FF8A71056A43540F9 /* SourceSans3-Italic.ttf */; };
 		CEDE401B661D23F2C09659D5 /* PhysicsStressTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 931341DE12ABBB762C4D3C5F /* PhysicsStressTests.swift */; };
 		D00504C2514047A20CFC44F7 /* BalanceBeam.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1182C0E4AB68527AC6FBE676 /* BalanceBeam.swift */; };
-		D9A79A3430AED369FE1207BE /* EvenMobile in Frameworks */ = {isa = PBXBuildFile; productRef = C1DC674DFF5C0654B3196823 /* EvenMobile */; };
+		D9A79A3430AED369FE1207BE /* EvenApp in Frameworks */ = {isa = PBXBuildFile; productRef = A6DC0A51FEB0E6B47C26F761 /* EvenApp */; };
 		F863305B3CD8C7433A2ED336 /* HomeWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 945D790C562599D7F4AA0CDF /* HomeWidgets.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		42BC9672B1888341120E7DA6 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 02664969AF66D3EC327AFD67 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 48147F5C2261286143F23737;
+			remoteInfo = EvenWatchWidgetsExtension;
+		};
 		61E2292931CBB666CAB5E5D4 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 02664969AF66D3EC327AFD67 /* Project object */;
@@ -43,9 +57,27 @@
 			remoteGlobalIDString = 5F980592C3BF0FBD9861ECC8;
 			remoteInfo = Even;
 		};
+		E647A11E9594F97A54C2348D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 02664969AF66D3EC327AFD67 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7696E617268E6F7F63B80873;
+			remoteInfo = EvenWatch;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
+		19B809BDF0DBFD02526EFE16 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				6F9FC0F69A8B62EA5F76B17E /* EvenWatch.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		60D45C89537A15EE1993E52E /* Embed Foundation Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -53,6 +85,7 @@
 			dstSubfolderSpec = 13;
 			files = (
 				30310A663002B44962F9816A /* EvenWidgetsExtension.appex in Embed Foundation Extensions */,
+				0A9C0281C5792B3C51DF4B46 /* EvenWatchWidgetsExtension.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -76,11 +109,15 @@
 		937BCF87495D9A6E6E8CF776 /* EvenWidgetsExtension.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = EvenWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		945D790C562599D7F4AA0CDF /* HomeWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeWidgets.swift; sourceTree = "<group>"; };
 		94828603FF4B0F4CA386EFE1 /* SourceSans3.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = SourceSans3.ttf; sourceTree = "<group>"; };
+		9669C03F557E06C8D97CDD70 /* EvenWatchWidgetsBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvenWatchWidgetsBundle.swift; sourceTree = "<group>"; };
 		9F78212281B874F7A9927CE9 /* Provider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Provider.swift; sourceTree = "<group>"; };
+		A2D07DE49563D3086849042C /* EvenWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvenWatchApp.swift; sourceTree = "<group>"; };
 		A95A43EE2CE1E45F9972E3E5 /* EvenApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvenApp.swift; sourceTree = "<group>"; };
 		AEA39CF6AF81E4C3FFCDD70C /* EvenUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = EvenUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		BBDDAB9B4AEDD5149420DEC2 /* EvenWatchWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = EvenWatchWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		C4ADA82FF8A71056A43540F9 /* SourceSans3-Italic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SourceSans3-Italic.ttf"; sourceTree = "<group>"; };
 		C688FC6E0628DFA9807BE19F /* LockWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockWidgets.swift; sourceTree = "<group>"; };
+		D1EA31DAE6E54C9B701AEFB6 /* EvenWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EvenWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E3446E7667BA618A453D43C4 /* Even.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Even.entitlements; sourceTree = "<group>"; };
 		F0AAF5AFC5B42AA346D03E33 /* EvenE2ETests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvenE2ETests.swift; sourceTree = "<group>"; };
 		F84BCAA71BD336B04B69B68C /* Newsreader-Italic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Newsreader-Italic.ttf"; sourceTree = "<group>"; };
@@ -91,7 +128,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				D9A79A3430AED369FE1207BE /* EvenMobile in Frameworks */,
+				D9A79A3430AED369FE1207BE /* EvenApp in Frameworks */,
+				4FE3A4E29E07D25B50E950FC /* DI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -103,9 +141,33 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		9D59095ECEA0D96CED8933D6 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				97337179DADD98893FD04B03 /* EvenCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C7D1637778CFC7D6B7E29773 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B135015F35DAB6F6D9DB3719 /* EvenCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		0E7758EC4CF732F91578C2C7 /* EvenWatchWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				9669C03F557E06C8D97CDD70 /* EvenWatchWidgetsBundle.swift */,
+			);
+			path = EvenWatchWidgets;
+			sourceTree = "<group>";
+		};
 		43AC4B346ED2F5989C6B07E1 /* EvenUITests */ = {
 			isa = PBXGroup;
 			children = (
@@ -163,11 +225,21 @@
 			path = EvenWidgets;
 			sourceTree = "<group>";
 		};
+		AE9F013C710473E546437D72 /* EvenWatch */ = {
+			isa = PBXGroup;
+			children = (
+				A2D07DE49563D3086849042C /* EvenWatchApp.swift */,
+			);
+			path = EvenWatch;
+			sourceTree = "<group>";
+		};
 		DD9A6E7905D52CC377512774 /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				42223694485ED1E379B25DCB /* Even.app */,
 				AEA39CF6AF81E4C3FFCDD70C /* EvenUITests.xctest */,
+				D1EA31DAE6E54C9B701AEFB6 /* EvenWatch.app */,
+				BBDDAB9B4AEDD5149420DEC2 /* EvenWatchWidgetsExtension.appex */,
 				937BCF87495D9A6E6E8CF776 /* EvenWidgetsExtension.appex */,
 			);
 			name = Products;
@@ -178,6 +250,8 @@
 			children = (
 				633EF34419996FEE49CB3FA1 /* EvenApp */,
 				43AC4B346ED2F5989C6B07E1 /* EvenUITests */,
+				AE9F013C710473E546437D72 /* EvenWatch */,
+				0E7758EC4CF732F91578C2C7 /* EvenWatchWidgets */,
 				8704E78E22B3F1A63BBCF58A /* EvenWidgets */,
 				600707A17DA28F23972E90F5 /* Packages */,
 				DD9A6E7905D52CC377512774 /* Products */,
@@ -187,6 +261,25 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		48147F5C2261286143F23737 /* EvenWatchWidgetsExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1B19B220AFB30A2E99517BC5 /* Build configuration list for PBXNativeTarget "EvenWatchWidgetsExtension" */;
+			buildPhases = (
+				1C1D1170BDED1EBE0C2423E3 /* Sources */,
+				9D59095ECEA0D96CED8933D6 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = EvenWatchWidgetsExtension;
+			packageProductDependencies = (
+				BC8855C5959238DB961D5E1E /* EvenCore */,
+			);
+			productName = EvenWatchWidgetsExtension;
+			productReference = BBDDAB9B4AEDD5149420DEC2 /* EvenWatchWidgetsExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		48A344419D70185C515AC65F /* EvenUITests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = A658404AAC45D8DE4404DDE5 /* Build configuration list for PBXNativeTarget "EvenUITests" */;
@@ -213,15 +306,19 @@
 				29CDD730B0B811E5BC2274B9 /* Resources */,
 				5270AB94B1205BF7EEA65533 /* Frameworks */,
 				60D45C89537A15EE1993E52E /* Embed Foundation Extensions */,
+				19B809BDF0DBFD02526EFE16 /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				E758B56BFDF12F5EC856C6D0 /* PBXTargetDependency */,
+				3789ECECA7737CA4B77CF1F4 /* PBXTargetDependency */,
+				B0A90AAB8A23A04C01DC0D16 /* PBXTargetDependency */,
 			);
 			name = Even;
 			packageProductDependencies = (
-				C1DC674DFF5C0654B3196823 /* EvenMobile */,
+				A6DC0A51FEB0E6B47C26F761 /* EvenApp */,
+				69BCD86B47C32B4A9791A21D /* DI */,
 			);
 			productName = Even;
 			productReference = 42223694485ED1E379B25DCB /* Even.app */;
@@ -247,6 +344,25 @@
 			productReference = 937BCF87495D9A6E6E8CF776 /* EvenWidgetsExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		7696E617268E6F7F63B80873 /* EvenWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B9A75247B1751E0BD61264FE /* Build configuration list for PBXNativeTarget "EvenWatch" */;
+			buildPhases = (
+				5E56C6A3C87A6BFB4D0CEC3E /* Sources */,
+				C7D1637778CFC7D6B7E29773 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = EvenWatch;
+			packageProductDependencies = (
+				77FE1BA83888A92694C148ED /* EvenCore */,
+			);
+			productName = EvenWatch;
+			productReference = D1EA31DAE6E54C9B701AEFB6 /* EvenWatch.app */;
+			productType = "com.apple.product-type.application";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -256,6 +372,10 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					48147F5C2261286143F23737 = {
+						DevelopmentTeam = C3XSV85364;
+						ProvisioningStyle = Automatic;
+					};
 					48A344419D70185C515AC65F = {
 						DevelopmentTeam = C3XSV85364;
 						ProvisioningStyle = Automatic;
@@ -266,6 +386,10 @@
 					};
 					68716960EC6E57F3F1FBCA9E = {
 						DevelopmentTeam = C3XSV85364;
+					};
+					7696E617268E6F7F63B80873 = {
+						DevelopmentTeam = C3XSV85364;
+						ProvisioningStyle = Automatic;
 					};
 				};
 			};
@@ -289,6 +413,8 @@
 				5F980592C3BF0FBD9861ECC8 /* Even */,
 				68716960EC6E57F3F1FBCA9E /* EvenWidgetsExtension */,
 				48A344419D70185C515AC65F /* EvenUITests */,
+				7696E617268E6F7F63B80873 /* EvenWatch */,
+				48147F5C2261286143F23737 /* EvenWatchWidgetsExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -316,6 +442,14 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		1C1D1170BDED1EBE0C2423E3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C6F7D07CF4EC6930686731C1 /* EvenWatchWidgetsBundle.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		21DDA32A34ACD08E0FBC6291 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -324,6 +458,14 @@
 				19BA6F9E80E5AFB954B0A481 /* EvenDemoWalkTests.swift in Sources */,
 				821468CA8DC9C28DA7DFF161 /* EvenE2ETests.swift in Sources */,
 				CEDE401B661D23F2C09659D5 /* PhysicsStressTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5E56C6A3C87A6BFB4D0CEC3E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5C8DACC994FA11FE4F833056 /* EvenWatchApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -351,10 +493,20 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		3789ECECA7737CA4B77CF1F4 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7696E617268E6F7F63B80873 /* EvenWatch */;
+			targetProxy = E647A11E9594F97A54C2348D /* PBXContainerItemProxy */;
+		};
 		985BAB66F7116FB4450CEE72 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 5F980592C3BF0FBD9861ECC8 /* Even */;
 			targetProxy = AE24C435B4DB1D86687A5664 /* PBXContainerItemProxy */;
+		};
+		B0A90AAB8A23A04C01DC0D16 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 48147F5C2261286143F23737 /* EvenWatchWidgetsExtension */;
+			targetProxy = 42BC9672B1888341120E7DA6 /* PBXContainerItemProxy */;
 		};
 		E758B56BFDF12F5EC856C6D0 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -364,6 +516,48 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		41A38306DDFDAB4B13FF548C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 8;
+				DEVELOPMENT_TEAM = C3XSV85364;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.umuryavuz.even.watchkitapp.widgets;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 11.0;
+			};
+			name = Release;
+		};
+		4A0D144DF6292D65C3B9A116 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 8;
+				DEVELOPMENT_TEAM = C3XSV85364;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.umuryavuz.even.watchkitapp.widgets;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 11.0;
+			};
+			name = Debug;
+		};
 		5AF8859DE91232BEE9E82414 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -519,11 +713,10 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
@@ -548,6 +741,23 @@
 				TEST_TARGET_NAME = Even;
 			};
 			name = Debug;
+		};
+		D1085E6A31F18266E7ABCF3C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 8;
+				DEVELOPMENT_TEAM = C3XSV85364;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.umuryavuz.even.watchkitapp;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 11.0;
+			};
+			name = Release;
 		};
 		DEAD7EFE63ADD9CB3E23E0EE /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -600,21 +810,46 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
 		};
+		FBAB92BBC0875D77C0DB755A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 8;
+				DEVELOPMENT_TEAM = C3XSV85364;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.umuryavuz.even.watchkitapp;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 11.0;
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		1B19B220AFB30A2E99517BC5 /* Build configuration list for PBXNativeTarget "EvenWatchWidgetsExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4A0D144DF6292D65C3B9A116 /* Debug */,
+				41A38306DDFDAB4B13FF548C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		285D29D9BE56C29E5984F782 /* Build configuration list for PBXNativeTarget "Even" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -642,6 +877,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
+		B9A75247B1751E0BD61264FE /* Build configuration list for PBXNativeTarget "EvenWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FBAB92BBC0875D77C0DB755A /* Debug */,
+				D1085E6A31F18266E7ABCF3C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		D7FAA41EA9A91966CE426A7C /* Build configuration list for PBXProject "Even" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -661,9 +905,21 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		C1DC674DFF5C0654B3196823 /* EvenMobile */ = {
+		69BCD86B47C32B4A9791A21D /* DI */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = EvenMobile;
+			productName = DI;
+		};
+		77FE1BA83888A92694C148ED /* EvenCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = EvenCore;
+		};
+		A6DC0A51FEB0E6B47C26F761 /* EvenApp */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = EvenApp;
+		};
+		BC8855C5959238DB961D5E1E /* EvenCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = EvenCore;
 		};
 		ECE4C1DBF9EB08B2BEBF418F /* EvenCore */ = {
 			isa = XCSwiftPackageProductDependency;
