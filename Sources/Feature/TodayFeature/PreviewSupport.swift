@@ -6,14 +6,14 @@ import TasksClient
 import WidgetClient
 
 public enum TodayPreviewSupport {
-    public static func populated() -> StoreOf<TodayFeature> {
-        var state = TodayFeature.State()
+    public static func populated() -> StoreOf<TodayReducer> {
+        var state = TodayReducer.State()
         state.summary = PreviewData.summary
         state.me = PreviewData.ada
         state.partner = PreviewData.umut
         state.isLoading = false
         return Store(initialState: state) {
-            TodayFeature()
+            TodayReducer()
         } withDependencies: {
             $0.summaryClient.fetch = { PreviewData.summary }
             $0.tasksClient.toggle = { _ in PreviewData.laundry }
@@ -23,14 +23,14 @@ public enum TodayPreviewSupport {
         }
     }
 
-    public static func empty() -> StoreOf<TodayFeature> {
-        var state = TodayFeature.State()
+    public static func empty() -> StoreOf<TodayReducer> {
+        var state = TodayReducer.State()
         state.summary = PreviewData.summaryEmpty
         state.me = PreviewData.ada
         state.partner = PreviewData.umut
         state.isLoading = false
         return Store(initialState: state) {
-            TodayFeature()
+            TodayReducer()
         } withDependencies: {
             $0.summaryClient.fetch = { PreviewData.summaryEmpty }
             $0.widgetClient.publish = { _ in }
@@ -38,11 +38,11 @@ public enum TodayPreviewSupport {
         }
     }
 
-    public static func loading() -> StoreOf<TodayFeature> {
-        var state = TodayFeature.State()
+    public static func loading() -> StoreOf<TodayReducer> {
+        var state = TodayReducer.State()
         state.isLoading = true
         return Store(initialState: state) {
-            TodayFeature()
+            TodayReducer()
         } withDependencies: {
             $0.summaryClient.fetch = {
                 try await Task.sleep(nanoseconds: 10_000_000_000)

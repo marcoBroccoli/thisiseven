@@ -3,10 +3,9 @@ import Design
 import EvenCore
 import GoogleClient
 import NotificationsClient
-import SwiftUI
 
 @Reducer
-public struct ConnectionsFeature {
+public struct ConnectionsReducer {
     @ObservableState
     public struct State: Equatable {
         public var statusLine = "Not connected"
@@ -16,15 +15,21 @@ public struct ConnectionsFeature {
         public init() {}
     }
 
-    public enum Action {
-        case appear
+    public enum Action: ViewAction {
+        case view(View)
         case statusLoaded(connected: Bool, email: String?)
         case statusFailed(String)
-        case connectTapped
         case connectSucceeded
         case connectFailed(String)
-        case skipTapped
         case delegate(Delegate)
+
+        @CasePathable
+        public enum View: Equatable, Sendable {
+            case appear
+            case connectTapped
+            case skipTapped
+        }
+
         @CasePathable
         public enum Delegate: Equatable {
             case finished
@@ -39,9 +44,9 @@ public struct ConnectionsFeature {
     public var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
-            case .appear:
+            case .view(.appear):
                 if EvenLaunchArguments.skipGooglePrompt {
-                    return .send(.skipTapped)
+                    return .send(.view(.skipTapped))
                 }
                 return .run { [googleClient] send in
                     do {
@@ -59,7 +64,7 @@ public struct ConnectionsFeature {
                 state.statusLine = "Status unavailable"
                 state.error = message
                 return .none
-            case .connectTapped:
+            case .view(.connectTapped):
                 state.working = true
                 return .run { [googleClient] send in
                     do {
@@ -77,7 +82,7 @@ public struct ConnectionsFeature {
                 state.working = false
                 state.error = message
                 return .none
-            case .skipTapped:
+            case .view(.skipTapped):
                 return finishWithNotificationPrompt()
             case .delegate:
                 return .none
@@ -91,63 +96,4 @@ public struct ConnectionsFeature {
             await send(.delegate(.finished))
         }
     }
-}
-
-public struct ConnectionsFeatureView: View {
-    @Bindable public var store: StoreOf<ConnectionsFeature>
-
-    public init(store: StoreOf<ConnectionsFeature>) {
-        self.store = store
-    }
-
-    public var body: some View {
-        EvenScreenChrome(eyebrow: "Email & Calendar", title: "Connect Gmail\n& Calendar.") {
-            Text("Bills become drafts in a shared Approval Inbox. Your partner approves before anything becomes a task.")
-                .font(.system(size: 15.5))
-                .foregroundStyle(Color(hex: 0x6E6353))
-                .padding(.top, 12)
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text(store.statusLine)
-                    .font(.system(size: 18, design: .serif))
-                if let email = store.email {
-                    Text(email)
-                        .font(.system(size: 13))
-                        .foregroundStyle(EvenTokens.stone)
-                }
-            }
-            .padding(18)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(EvenTokens.paperCard)
-            .clipShape(RoundedRectangle(cornerRadius: 14))
-            .padding(.top, 28)
-
-            if let error = store.error {
-                Text(error)
-                    .font(.caption)
-                    .foregroundStyle(EvenTokens.terracotta)
-                    .padding(.top, 12)
-            }
-
-            Spacer()
-
-            EvenPrimaryButton(store.working ? "Connecting…" : "Connect Google", enabled: !store.working) {
-                store.send(.connectTapped)
-            }
-            Button("Skip for now") { store.send(.skipTapped) }
-                .font(.system(size: 15, design: .serif))
-                .foregroundStyle(EvenTokens.stone)
-                .frame(maxWidth: .infinity)
-                .padding(.top, 14)
-        }
-        .onAppear { store.send(.appear) }
-    }
-}
-
-#Preview("Connections · disconnected") {
-    ConnectionsFeatureView(store: ConnectionsPreviewSupport.disconnected())
-}
-
-#Preview("Connections · connected") {
-    ConnectionsFeatureView(store: ConnectionsPreviewSupport.connected())
 }

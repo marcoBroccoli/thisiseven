@@ -5,14 +5,14 @@ import DraftsClient
 import EvenCore
 
 public enum InboxPreviewSupport {
-    public static func populated() -> StoreOf<InboxFeature> {
-        var state = InboxFeature.State()
+    public static func populated() -> StoreOf<InboxReducer> {
+        var state = InboxReducer.State()
         state.drafts = IdentifiedArray(uniqueElements: PreviewData.pendingDrafts)
         state.me = PreviewData.ada
         state.partner = PreviewData.umut
         state.isLoading = false
         return Store(initialState: state) {
-            InboxFeature()
+            InboxReducer()
         } withDependencies: {
             $0.draftsClient.pending = { PreviewData.pendingDrafts }
             $0.draftsClient.update = { id, _ in
@@ -32,19 +32,19 @@ public enum InboxPreviewSupport {
         }
     }
 
-    public static func empty() -> StoreOf<InboxFeature> {
-        var state = InboxFeature.State()
+    public static func empty() -> StoreOf<InboxReducer> {
+        var state = InboxReducer.State()
         state.isLoading = false
         return Store(initialState: state) {
-            InboxFeature()
+            InboxReducer()
         } withDependencies: {
             $0.draftsClient.pending = { [] }
             $0.authClient.householdMembers = { (PreviewData.ada, PreviewData.umut) }
         }
     }
 
-    public static func calendar() -> StoreOf<InboxFeature> {
-        var state = InboxFeature.State()
+    public static func calendar() -> StoreOf<InboxReducer> {
+        var state = InboxReducer.State()
         state.surface = .calendar
         state.calendarItems = PreviewData.calendarMonth.items
         state.calendarMonthTitle = "August 2026"
@@ -52,7 +52,7 @@ public enum InboxPreviewSupport {
         state.partner = PreviewData.umut
         state.isLoading = false
         return Store(initialState: state) {
-            InboxFeature()
+            InboxReducer()
         } withDependencies: {
             $0.draftsClient.pending = { [] }
             $0.calendarClient.window = { _, _ in PreviewData.calendarMonth }

@@ -4,64 +4,35 @@ import ConnectionsFeature
 import Foundation
 import HouseholdSetupFeature
 import InboxFeature
+import LoginFeature
 import OnboardingFeature
 import TodayFeature
-
-@Reducer
-public struct MainReducer {
-    @ObservableState
-    public struct State: Equatable {
-        public var inbox = InboxFeature.State()
-        public var today = TodayFeature.State()
-        public var tab: Tab = .today
-        public init() {}
-
-        public enum Tab: Equatable, Sendable {
-            case inbox, today
-        }
-    }
-
-    public enum Action {
-        case inbox(InboxFeature.Action)
-        case today(TodayFeature.Action)
-        case selectTab(State.Tab)
-    }
-
-    public init() {}
-
-    public var body: some ReducerOf<Self> {
-        Scope(state: \.inbox, action: \.inbox) { InboxFeature() }
-        Scope(state: \.today, action: \.today) { TodayFeature() }
-        Reduce { state, action in
-            switch action {
-            case let .selectTab(tab):
-                state.tab = tab
-                return .none
-            case .inbox, .today:
-                return .none
-            }
-        }
-    }
-}
 
 @Reducer
 public struct AppReducer {
     @ObservableState
     public enum State: Equatable {
         case booting
-        case onboarding(OnboardingFeature.State)
-        case householdSetup(HouseholdSetupFeature.State)
-        case connections(ConnectionsFeature.State)
-        case ready(MainReducer.State)
+        case login(LoginReducer.State)
+        case onboarding(OnboardingReducer.State)
+        case householdSetup(HouseholdSetupReducer.State)
+        case connections(ConnectionsReducer.State)
+        case ready(MainTabReducer.State)
     }
 
-    public enum Action {
-        case appStarted
+    public enum Action: ViewAction {
+        case view(View)
         case bootstrapResponse(AuthBootstrapResult)
-        case onboarding(OnboardingFeature.Action)
-        case householdSetup(HouseholdSetupFeature.Action)
-        case connections(ConnectionsFeature.Action)
-        case ready(MainReducer.Action)
+        case login(LoginReducer.Action)
+        case onboarding(OnboardingReducer.Action)
+        case householdSetup(HouseholdSetupReducer.Action)
+        case connections(ConnectionsReducer.Action)
+        case ready(MainTabReducer.Action)
+
+        @CasePathable
+        public enum View: Equatable, Sendable {
+            case appStarted
+        }
     }
 
     @Dependency(\.authClient) var authClient
@@ -71,7 +42,7 @@ public struct AppReducer {
     public var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
-            case .appStarted:
+            case .view(.appStarted):
                 return .run { [authClient] send in
                     await send(.bootstrapResponse(await authClient.bootstrap()))
                 }
@@ -79,37 +50,43 @@ public struct AppReducer {
             case let .bootstrapResponse(result):
                 switch result {
                 case .signedOut:
-                    state = .onboarding(OnboardingFeature.State())
+                    state = .login(LoginReducer.State())
                 case .needsHousehold:
-                    state = .householdSetup(HouseholdSetupFeature.State())
+                    // Already signed in, past login — skip how-it-works.
+                    state = .householdSetup(HouseholdSetupReducer.State())
                 case .ready:
-                    state = .ready(MainReducer.State())
+                    state = .ready(MainTabReducer.State())
                 }
                 return .none
 
-            case .onboarding(.delegate(.needsHousehold)):
-                state = .householdSetup(HouseholdSetupFeature.State())
+            case .login(.delegate(.needsHousehold)):
+                state = .onboarding(.weigh)
                 return .none
 
-            case .onboarding(.delegate(.alreadyReady)):
-                state = .ready(MainReducer.State())
+            case .login(.delegate(.alreadyReady)):
+                state = .ready(MainTabReducer.State())
+                return .none
+
+            case .onboarding(.delegate(.finished)):
+                state = .householdSetup(HouseholdSetupReducer.State())
                 return .none
 
             case .householdSetup(.delegate(.finished)):
-                state = .connections(ConnectionsFeature.State())
+                state = .connections(ConnectionsReducer.State())
                 return .none
 
             case .connections(.delegate(.finished)):
-                state = .ready(MainReducer.State())
+                state = .ready(MainTabReducer.State())
                 return .none
 
-            case .onboarding, .householdSetup, .connections, .ready:
+            case .login, .onboarding, .householdSetup, .connections, .ready:
                 return .none
             }
         }
-        .ifCaseLet(\.onboarding, action: \.onboarding) { OnboardingFeature() }
-        .ifCaseLet(\.householdSetup, action: \.householdSetup) { HouseholdSetupFeature() }
-        .ifCaseLet(\.connections, action: \.connections) { ConnectionsFeature() }
-        .ifCaseLet(\.ready, action: \.ready) { MainReducer() }
+        .ifCaseLet(\.login, action: \.login) { LoginReducer() }
+        .ifCaseLet(\.onboarding, action: \.onboarding) { OnboardingReducer() }
+        .ifCaseLet(\.householdSetup, action: \.householdSetup) { HouseholdSetupReducer() }
+        .ifCaseLet(\.connections, action: \.connections) { ConnectionsReducer() }
+        .ifCaseLet(\.ready, action: \.ready) { MainTabReducer() }
     }
 }

@@ -21,6 +21,8 @@ let package = Package(
         .library(name: "WidgetClient", targets: ["WidgetClient"]),
         .library(name: "NotificationsClient", targets: ["NotificationsClient"]),
         .library(name: "DI", targets: ["DI"]),
+        .library(name: "SplashFeature", targets: ["SplashFeature"]),
+        .library(name: "LoginFeature", targets: ["LoginFeature"]),
         .library(name: "OnboardingFeature", targets: ["OnboardingFeature"]),
         .library(name: "HouseholdSetupFeature", targets: ["HouseholdSetupFeature"]),
         .library(name: "ConnectionsFeature", targets: ["ConnectionsFeature"]),
@@ -96,7 +98,9 @@ let package = Package(
                 ],
                 path: "Sources/Core/DI"
             ),
-            feature("OnboardingFeature", extra: ["AuthClient"]),
+            feature("SplashFeature"),
+            feature("LoginFeature", extra: ["AuthClient"]),
+            feature("OnboardingFeature"),
             feature("HouseholdSetupFeature", extra: ["HouseholdClient"]),
             feature("ConnectionsFeature", extra: ["GoogleClient", "NotificationsClient"]),
             feature("InboxFeature", extra: ["DraftsClient", "CalendarClient", "NotificationsClient", "AuthClient"]),
@@ -105,7 +109,11 @@ let package = Package(
                 name: "EvenApp",
                 dependencies: [
                     "EvenCore", "Design", "AuthClient", "DI",
-                    "OnboardingFeature", "HouseholdSetupFeature", "ConnectionsFeature",
+                    "HouseholdClient", "GoogleClient", "NotificationsClient",
+                    "DraftsClient", "TasksClient", "SummaryClient", "CalendarClient",
+                    "WidgetClient",
+                    "SplashFeature", "LoginFeature", "OnboardingFeature",
+                    "HouseholdSetupFeature", "ConnectionsFeature",
                     "InboxFeature", "TodayFeature",
                     tca,
                 ],
@@ -118,8 +126,13 @@ let package = Package(
                 path: "Tests/EvenAppTests"
             ),
             .testTarget(
+                name: "LoginFeatureTests",
+                dependencies: ["LoginFeature", "AuthClient", "EvenCore", tca],
+                path: "Tests/LoginFeatureTests"
+            ),
+            .testTarget(
                 name: "OnboardingFeatureTests",
-                dependencies: ["OnboardingFeature", "AuthClient", "EvenCore", tca],
+                dependencies: ["OnboardingFeature", tca],
                 path: "Tests/OnboardingFeatureTests"
             ),
             .testTarget(

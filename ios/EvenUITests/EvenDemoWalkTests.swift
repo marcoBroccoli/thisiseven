@@ -19,6 +19,7 @@ final class EvenDemoWalkTests: XCTestCase {
         app.launch()
 
         // Sign in as the capture household (trimmed out of the final footage).
+        XCTAssertTrue(app.buttons["dev-email-signin"].waitForExistence(timeout: 10))
         app.buttons["dev-email-signin"].tap()
         let email = app.textFields["auth-email"]
         XCTAssertTrue(email.waitForExistence(timeout: 8)); email.tap(); email.typeText("capture-umur@even.dev")

@@ -3,12 +3,12 @@ import XCTest
 /// Containment stress: 16 max-size balls at full tilt must stay in the
 /// bucket. Screenshots are the evidence; run with -only-testing.
 final class PhysicsStressTests: XCTestCase {
-
-    func testBucketContainment() throws {
+    func testBucketContainment() {
         let app = XCUIApplication()
         app.launchArguments = ["--reset-session", "--skip-google-prompt", "--physics-stress"]
         app.launch()
 
+        XCTAssertTrue(app.buttons["dev-email-signin"].waitForExistence(timeout: 10))
         app.buttons["dev-email-signin"].tap()
         let email = app.textFields["auth-email"]
         XCTAssertTrue(email.waitForExistence(timeout: 8))
@@ -21,7 +21,7 @@ final class PhysicsStressTests: XCTestCase {
         app.buttons["Sign in"].tap()
 
         XCTAssertTrue(app.buttons["profile-button"].waitForExistence(timeout: 15))
-        sleep(7)   // let the pile drop and fully settle
+        sleep(7) // let the pile drop and fully settle
         snap(app, "90-stress-light")
 
         toggleDark(app)

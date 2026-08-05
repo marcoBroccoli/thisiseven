@@ -17,11 +17,16 @@ Open **`Even.xcworkspace`** (only the `.xcodeproj`).
 ```
 Sources/
   Core/       # EvenCore, *Client, *ClientLive, DI
-  Feature/    # *Feature, EvenApp
+  Feature/    # *Feature targets, EvenApp
   Design/     # Design target root (tokens + primitives)
 ```
 
 One `Package.swift`. Targets keep their names; only **paths** are layered.
+
+Inside each Feature (recipe §4): `*Reducer.swift` + `*View.swift` as
+**siblings**. Optional `Views/` only for extra helper views (no reducer).
+Sub-features nest the same way (e.g. `Composer/ComposerReducer.swift` +
+`ComposerView.swift`).
 
 ## Platforms
 
@@ -49,10 +54,26 @@ No macOS app. Build/test via Xcode / `xcodebuild`.
 11. **Every `*View` has `#Preview` in the same file.** Mocks are centralized:
     `EvenCore/PreviewData` (domain), `Design/PreviewSupport` (chrome),
     `*Feature/PreviewSupport` (Store factories), `EvenApp/PreviewSupport` (root).
+12. **Flow Features** expose `#Preview("… · flow")` on the main view, backed by
+    `PreviewSupport.flow()` with TCA `withDependencies` client mocks (no Live /
+    network). Step snapshots are secondary.
+13. **Native nav + large titles** — pages that need titles/actions use
+    `navigationTitle` + `.navigationBarTitleDisplayMode(.large)` + `toolbar`;
+    custom chrome in content / `safeAreaInset` / toolbar placements (recipe
+    §4). Immersive welcome/splash may stay chrome-less. Compact page labels
+    (e.g. how-it-works) use `.inline` — never promote into `.large`.
+14. **`@ViewAction(for:)` on Feature views** — views `send(…)` view intents
+    only; effect/delegate actions stay off the view surface (recipe §5).
 
 ## Boot path
 
-`.booting` → `.onboarding` / `.householdSetup` / `.connections` / `.ready(MainReducer)`  
+`.booting` (SplashFeature chrome) →  
+`.login` (LoginFeature) →  
+`.onboarding` (how-it-works enum pages) →  
+`.householdSetup` → `.connections` → `.ready(MainTabReducer)`  
+
+Bootstrap shortcuts: signed-out → login; needs-household (already signed in) →
+household setup; ready → Today.  
 Main chrome: **Today** + **Inbox** only. Money / Weekly Reset deferred until designed.
 
 ## Current state

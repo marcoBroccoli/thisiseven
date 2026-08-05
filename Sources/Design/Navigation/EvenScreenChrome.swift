@@ -29,7 +29,7 @@ public struct EvenScreenChrome<Content: View>: View {
         .padding(.top, 64)
         .padding(.bottom, 40)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(EvenTokens.paperRaised.ignoresSafeArea())
+        .evenPaperBackground()
     }
 }
 

@@ -4,12 +4,12 @@ import XCTest
 /// in light and dark mode. Not a correctness test — an evidence generator.
 /// Stage data first: scratchpad/stage-capture.sh (capture-umur@even.dev).
 final class EvenCaptureTests: XCTestCase {
-
-    func testCaptureScreens() throws {
+    func testCaptureScreens() {
         // iOS offers to save the typed password; swat the sheet away.
         addUIInterruptionMonitor(withDescription: "password save") { alert in
             for label in ["Not Now", "Never for This Website", "Cancel"]
-            where alert.buttons[label].exists {
+                where alert.buttons[label].exists
+            {
                 alert.buttons[label].tap()
                 return true
             }
@@ -20,7 +20,8 @@ final class EvenCaptureTests: XCTestCase {
         app.launchArguments = ["--reset-session", "--skip-google-prompt"]
         app.launch()
 
-        // Sign in as the capture account.
+        // Sign in as the capture account (after splash draw → welcome).
+        XCTAssertTrue(app.buttons["dev-email-signin"].waitForExistence(timeout: 10))
         app.buttons["dev-email-signin"].tap()
         let email = app.textFields["auth-email"]
         XCTAssertTrue(email.waitForExistence(timeout: 8))
@@ -52,7 +53,7 @@ final class EvenCaptureTests: XCTestCase {
         sleep(1)
         snap(app, "03-todos-dark")
         go(app, "Schedule"); snap(app, "04-schedule-dark")
-        app.buttons["dark-toggle"].tap()   // leave the app in light mode
+        app.buttons["dark-toggle"].tap() // leave the app in light mode
     }
 
     private func forceTap(_ element: XCUIElement) {
@@ -65,7 +66,8 @@ final class EvenCaptureTests: XCTestCase {
 
     private func go(_ app: XCUIApplication, _ tab: String) {
         app.tabBars.buttons.matching(
-            NSPredicate(format: "label BEGINSWITH %@", tab)).firstMatch.tap()
+            NSPredicate(format: "label BEGINSWITH %@", tab)
+        ).firstMatch.tap()
         sleep(1)
     }
 
@@ -80,13 +82,14 @@ final class EvenCaptureTests: XCTestCase {
 /// Evidence generator for the stepwise-tilt physics: signs in, then
 /// relaunches with --physics-stress N at several counts × both palettes.
 final class EvenStressCaptureTests: XCTestCase {
-    func testCaptureTiltSteps() throws {
+    func testCaptureTiltSteps() {
         var app = XCUIApplication()
         app.launchArguments = ["--skip-google-prompt"]
         app.launch()
 
         // Sign in if the welcome screen is up (session may be cleared).
-        if app.buttons["dev-email-signin"].waitForExistence(timeout: 6) {
+        // Splash draw (~1.75s) runs before welcome.
+        if app.buttons["dev-email-signin"].waitForExistence(timeout: 10) {
             app.buttons["dev-email-signin"].tap()
             let email = app.textFields["auth-email"]
             XCTAssertTrue(email.waitForExistence(timeout: 8))
@@ -110,7 +113,7 @@ final class EvenStressCaptureTests: XCTestCase {
                 if dark != isDarkNow(app) {
                     toggleDark(app)
                 }
-                sleep(6)   // let balls drop and the beam settle
+                sleep(6) // let balls drop and the beam settle
                 let shot = XCTAttachment(screenshot: app.screenshot())
                 shot.name = "tilt-\(count)-\(dark ? "dark" : "light")"
                 shot.lifetime = .keepAlways
@@ -119,24 +122,24 @@ final class EvenStressCaptureTests: XCTestCase {
         }
     }
 
-    private func isDarkNow(_ app: XCUIApplication) -> Bool {
+    private func isDarkNow(_: XCUIApplication) -> Bool {
         // The profile sheet's toggle shows "sun.max" (label Sun) in dark mode;
         // callers must have the sheet open when they care. We instead track
         // the last state we set — captures always start from light.
         Self.darkNow
     }
+
     static var darkNow = false
 }
 
-
 /// Profile-sheet evidence: light + dark.
 final class EvenProfileCaptureTests: XCTestCase {
-    func testCaptureTodayCollapse() throws {
+    func testCaptureTodayCollapse() {
         var app = XCUIApplication()
         app.launchArguments = ["--reset-session", "--skip-google-prompt"]
         app.launch()
         // The capture household has enough rows to actually scroll.
-        if app.buttons["dev-email-signin"].waitForExistence(timeout: 6) {
+        if app.buttons["dev-email-signin"].waitForExistence(timeout: 10) {
             app.buttons["dev-email-signin"].tap()
             let email = app.textFields["auth-email"]
             XCTAssertTrue(email.waitForExistence(timeout: 8))
@@ -164,13 +167,13 @@ final class EvenProfileCaptureTests: XCTestCase {
         app.swipeDown()
     }
 
-    func testCaptureProfile() throws {
+    func testCaptureProfile() {
         let app = XCUIApplication()
         app.launchArguments = ["--skip-google-prompt"]
         app.launch()
         XCTAssertTrue(app.buttons["profile-button"].waitForExistence(timeout: 20))
         for name in ["profile-light", "profile-dark"] {
-            for _ in 0..<4 where !app.buttons["dark-toggle"].exists {
+            for _ in 0 ..< 4 where !app.buttons["dark-toggle"].exists {
                 app.buttons["profile-button"].tap()
                 if app.buttons["dark-toggle"].waitForExistence(timeout: 3) { break }
             }
@@ -183,7 +186,7 @@ final class EvenProfileCaptureTests: XCTestCase {
                 app.buttons["dark-toggle"].tap()
                 sleep(1)
             } else {
-                app.buttons["dark-toggle"].tap()   // back to light
+                app.buttons["dark-toggle"].tap() // back to light
                 if app.buttons["sheet-close"].waitForExistence(timeout: 3) {
                     app.buttons["sheet-close"].tap()
                 }
@@ -196,7 +199,7 @@ extension XCTestCase {
     /// Dark toggle moved into the profile sheet (toolbar avatar chip).
     func toggleDark(_ app: XCUIApplication) {
         let toggle = app.buttons["dark-toggle"]
-        for _ in 0..<4 where !toggle.exists {
+        for _ in 0 ..< 4 where !toggle.exists {
             app.buttons["profile-button"].tap()
             if toggle.waitForExistence(timeout: 3) { break }
         }

@@ -1,22 +1,22 @@
 import ComposableArchitecture
 import EvenCore
 import HouseholdClient
-import HouseholdSetupFeature
+import HouseholdSetupReducer
 import XCTest
 
 @MainActor
 final class HouseholdSetupFeatureTests: XCTestCase {
     func testCreatePathSucceedsAndRevealsInvite() async {
-        var state = HouseholdSetupFeature.State()
+        var state = HouseholdSetupReducer.State()
         state.path = .create
         state.name = "The Attic"
         let store = TestStore(initialState: state) {
-            HouseholdSetupFeature()
+            HouseholdSetupReducer()
         } withDependencies: {
             $0.householdClient.create = { _, _ in PreviewData.household }
         }
 
-        await store.send(.submitCreate) {
+        await store.send(.view(.submitCreate)) {
             $0.working = true
         }
         await store.receive(\.createSucceeded) {
@@ -28,16 +28,16 @@ final class HouseholdSetupFeatureTests: XCTestCase {
 
     func testJoinFailureSurfacesError() async {
         struct Boom: Error {}
-        var state = HouseholdSetupFeature.State()
+        var state = HouseholdSetupReducer.State()
         state.path = .join
         state.inviteCode = "BAD"
         let store = TestStore(initialState: state) {
-            HouseholdSetupFeature()
+            HouseholdSetupReducer()
         } withDependencies: {
             $0.householdClient.join = { _, _ in throw Boom() }
         }
 
-        await store.send(.submitJoin) {
+        await store.send(.view(.submitJoin)) {
             $0.working = true
         }
         await store.receive(\.joinFailed) {

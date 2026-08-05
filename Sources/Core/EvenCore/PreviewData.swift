@@ -143,7 +143,7 @@ public enum PreviewData {
             needsReply: false,
             suggestedReply: nil,
             replyText: nil,
-            replyStatus: .none
+            replyStatus: DraftReplyStatus.none
         )
     }
 

@@ -1,110 +1,13 @@
 import ComposableArchitecture
 import Design
 import EvenCore
-import HouseholdClient
 import SwiftUI
 
-@Reducer
-public struct HouseholdSetupFeature {
-    @ObservableState
-    public struct State: Equatable {
-        public var path: Path = .choice
-        public var name: String = ""
-        public var inviteCode: String = ""
-        public var displayName: String = ""
-        public var inviteReveal: String?
-        public var error: String?
-        public var working = false
-        public init() {}
-    }
+@ViewAction(for: HouseholdSetupReducer.self)
+public struct HouseholdSetupView: View {
+    @Bindable public var store: StoreOf<HouseholdSetupReducer>
 
-    public enum Path: Equatable, Sendable {
-        case choice, create, inviteReveal, join, waiting
-    }
-
-    public enum Action: BindableAction {
-        case binding(BindingAction<State>)
-        case createTapped
-        case joinTapped
-        case submitCreate
-        case submitJoin
-        case continueAfterInvite
-        case createSucceeded(Household)
-        case createFailed(String)
-        case joinSucceeded(Household)
-        case joinFailed(String)
-        case delegate(Delegate)
-        public enum Delegate: Equatable {
-            case finished
-        }
-    }
-
-    @Dependency(\.householdClient) var householdClient
-
-    public init() {}
-
-    public var body: some ReducerOf<Self> {
-        BindingReducer()
-        Reduce { state, action in
-            switch action {
-            case .binding:
-                return .none
-            case .createTapped:
-                state.path = .create
-                state.error = nil
-                return .none
-            case .joinTapped:
-                state.path = .join
-                state.error = nil
-                return .none
-            case .submitCreate:
-                state.working = true
-                let name = state.name.trimmingCharacters(in: .whitespacesAndNewlines)
-                let display = state.displayName.isEmpty ? "Me" : state.displayName
-                return .run { [householdClient] send in
-                    do {
-                        try await send(.createSucceeded(await householdClient.create(name, display)))
-                    } catch {
-                        await send(.createFailed(String(describing: error)))
-                    }
-                }
-            case .submitJoin:
-                state.working = true
-                let code = state.inviteCode.trimmingCharacters(in: .whitespacesAndNewlines)
-                let display = state.displayName.isEmpty ? "Me" : state.displayName
-                return .run { [householdClient] send in
-                    do {
-                        try await send(.joinSucceeded(await householdClient.join(code, display)))
-                    } catch {
-                        await send(.joinFailed(String(describing: error)))
-                    }
-                }
-            case let .createSucceeded(household):
-                state.working = false
-                state.inviteReveal = household.inviteCode
-                state.path = .inviteReveal
-                return .none
-            case .joinSucceeded:
-                state.working = false
-                state.path = .waiting
-                return .send(.delegate(.finished))
-            case let .createFailed(message), let .joinFailed(message):
-                state.working = false
-                state.error = message
-                return .none
-            case .continueAfterInvite:
-                return .send(.delegate(.finished))
-            case .delegate:
-                return .none
-            }
-        }
-    }
-}
-
-public struct HouseholdSetupFeatureView: View {
-    @Bindable public var store: StoreOf<HouseholdSetupFeature>
-
-    public init(store: StoreOf<HouseholdSetupFeature>) {
+    public init(store: StoreOf<HouseholdSetupReducer>) {
         self.store = store
     }
 
@@ -123,7 +26,7 @@ public struct HouseholdSetupFeatureView: View {
         .padding(.top, 64)
         .padding(.bottom, 40)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(EvenTokens.paperRaised.ignoresSafeArea())
+        .evenPaperBackground()
     }
 
     @ViewBuilder
@@ -145,14 +48,14 @@ public struct HouseholdSetupFeatureView: View {
                 subtitle: "You'll get a code to share",
                 id: "Start our household"
             ) {
-                store.send(.createTapped)
+                send(.createTapped)
             }
             pathButton(
                 title: "Join with a code",
                 subtitle: "Your partner already started",
                 id: "mode-join"
             ) {
-                store.send(.joinTapped)
+                send(.joinTapped)
             }
             .padding(.top, 12)
 
@@ -170,7 +73,7 @@ public struct HouseholdSetupFeatureView: View {
                 enabled: !store.name.isEmpty && !store.working,
                 accessibilityId: "create-household"
             ) {
-                store.send(.submitCreate)
+                send(.submitCreate)
             }
 
         case .inviteReveal:
@@ -193,7 +96,7 @@ public struct HouseholdSetupFeatureView: View {
                 .accessibilityIdentifier("invite-code-label")
             Spacer()
             EvenPrimaryButton("Continue", accessibilityId: "invite-continue") {
-                store.send(.continueAfterInvite)
+                send(.continueAfterInvite)
             }
 
         case .join:
@@ -210,7 +113,7 @@ public struct HouseholdSetupFeatureView: View {
                 enabled: !store.inviteCode.isEmpty && !store.working,
                 accessibilityId: "join-household"
             ) {
-                store.send(.submitJoin)
+                send(.submitJoin)
             }
 
         case .waiting:
@@ -223,7 +126,7 @@ public struct HouseholdSetupFeatureView: View {
                 .foregroundStyle(Color(hex: 0x6E6353))
                 .padding(.top, 10)
             Spacer()
-            EvenPrimaryButton("Continue") { store.send(.continueAfterInvite) }
+            EvenPrimaryButton("Continue") { send(.continueAfterInvite) }
         }
     }
 
@@ -260,18 +163,22 @@ public struct HouseholdSetupFeatureView: View {
     }
 }
 
+#Preview("Household · flow") {
+    HouseholdSetupView(store: HouseholdSetupPreviewSupport.flow())
+}
+
 #Preview("Household · choice") {
-    HouseholdSetupFeatureView(store: HouseholdSetupPreviewSupport.choice())
+    HouseholdSetupView(store: HouseholdSetupPreviewSupport.choice())
 }
 
 #Preview("Household · create") {
-    HouseholdSetupFeatureView(store: HouseholdSetupPreviewSupport.create())
+    HouseholdSetupView(store: HouseholdSetupPreviewSupport.create())
 }
 
 #Preview("Household · invite") {
-    HouseholdSetupFeatureView(store: HouseholdSetupPreviewSupport.inviteReveal())
+    HouseholdSetupView(store: HouseholdSetupPreviewSupport.inviteReveal())
 }
 
 #Preview("Household · join") {
-    HouseholdSetupFeatureView(store: HouseholdSetupPreviewSupport.join())
+    HouseholdSetupView(store: HouseholdSetupPreviewSupport.join())
 }

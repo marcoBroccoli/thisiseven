@@ -22,6 +22,8 @@ public struct EvenPrimaryButton: View {
         Button(action: action) {
             Text(title)
                 .font(.system(size: 16, weight: .medium, design: .serif))
+                .contentTransition(.numericText())
+                .animation(EvenMotion.reveal, value: title)
                 .frame(maxWidth: .infinity)
                 .frame(height: 50)
                 .foregroundStyle(EvenTokens.paperRaised)

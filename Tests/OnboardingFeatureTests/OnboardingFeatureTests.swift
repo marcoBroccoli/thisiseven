@@ -1,43 +1,44 @@
-import AuthClient
 import ComposableArchitecture
-import EvenCore
 import OnboardingFeature
 import XCTest
 
 @MainActor
 final class OnboardingFeatureTests: XCTestCase {
-    func testSignInNeedsHouseholdAdvancesToHowItWorks() async {
-        let store = TestStore(initialState: OnboardingFeature.State()) {
-            OnboardingFeature()
-        } withDependencies: {
-            $0.authClient.signInEmail = { _, _ in .needsHousehold(userId: PreviewData.adaId) }
+    func testPagesAdvanceThenFinish() async {
+        let store = TestStore(initialState: OnboardingReducer.State.weigh) {
+            OnboardingReducer()
         }
 
-        await store.send(.debugEmailSignIn(email: "a@b.c", password: "x")) {
-            $0.working = true
-            $0.error = nil
+        await store.send(.view(.nextTapped)) {
+            $0 = .drafts
         }
-        await store.receive(\.signInSucceeded) {
-            $0.working = false
-            $0.step = .howItWorks
-            $0.howItWorksPage = 1
+        await store.send(.view(.nextTapped)) {
+            $0 = .sunday
         }
+        await store.send(.view(.nextTapped))
+        await store.receive(\.delegate.finished)
     }
 
-    func testHowItWorksPagesThenDelegatesNeedsHousehold() async {
-        var state = OnboardingFeature.State(step: .howItWorks)
-        state.howItWorksPage = 1
-        let store = TestStore(initialState: state) {
-            OnboardingFeature()
+    func testBackStepsThroughPages() async {
+        let store = TestStore(initialState: OnboardingReducer.State.sunday) {
+            OnboardingReducer()
         }
 
-        await store.send(.nextHowItWorks) {
-            $0.howItWorksPage = 2
+        await store.send(.view(.backTapped)) {
+            $0 = .drafts
         }
-        await store.send(.nextHowItWorks) {
-            $0.howItWorksPage = 3
+        await store.send(.view(.backTapped)) {
+            $0 = .weigh
         }
-        await store.send(.nextHowItWorks)
-        await store.receive(\.delegate.needsHousehold)
+        await store.send(.view(.backTapped))
+    }
+
+    func testSkipFinishesImmediately() async {
+        let store = TestStore(initialState: OnboardingReducer.State.weigh) {
+            OnboardingReducer()
+        }
+
+        await store.send(.view(.skipTapped))
+        await store.receive(\.delegate.finished)
     }
 }
