@@ -26,6 +26,20 @@ final class HouseholdSetupFeatureTests: XCTestCase {
         }
     }
 
+    func testBackFromCreateReturnsToChoice() async {
+        var state = HouseholdSetupReducer.State()
+        state.path = .create
+        state.error = "stale"
+        let store = TestStore(initialState: state) {
+            HouseholdSetupReducer()
+        }
+
+        await store.send(.view(.backTapped)) {
+            $0.path = .choice
+            $0.error = nil
+        }
+    }
+
     func testJoinFailureSurfacesError() async {
         struct Boom: Error {}
         var state = HouseholdSetupReducer.State()

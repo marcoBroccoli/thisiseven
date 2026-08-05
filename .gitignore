@@ -1,6 +1,7 @@
 .build/
 .swiftpm/
 .superpowers/
+.cursor/skills/**/scripts/__pycache__/
 DerivedData/
 **/xcuserdata/
 *.xcuserdata/

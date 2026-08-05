@@ -15,6 +15,10 @@ public struct HouseholdSetupReducer {
         public var error: String?
         public var working = false
         public init() {}
+
+        public var showsBack: Bool {
+            path == .create || path == .join
+        }
     }
 
     public enum Path: Equatable, Sendable {
@@ -34,6 +38,7 @@ public struct HouseholdSetupReducer {
         public enum View: Equatable, Sendable {
             case createTapped
             case joinTapped
+            case backTapped
             case submitCreate
             case submitJoin
             case continueAfterInvite
@@ -60,6 +65,10 @@ public struct HouseholdSetupReducer {
                 return .none
             case .view(.joinTapped):
                 state.path = .join
+                state.error = nil
+                return .none
+            case .view(.backTapped):
+                state.path = .choice
                 state.error = nil
                 return .none
             case .view(.submitCreate):

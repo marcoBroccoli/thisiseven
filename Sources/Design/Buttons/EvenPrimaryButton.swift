@@ -19,7 +19,10 @@ public struct EvenPrimaryButton: View {
     }
 
     public var body: some View {
-        Button(action: action) {
+        Button {
+            guard enabled else { return }
+            action()
+        } label: {
             Text(title)
                 .font(.system(size: 16, weight: .medium, design: .serif))
                 .contentTransition(.numericText())
@@ -27,13 +30,17 @@ public struct EvenPrimaryButton: View {
                 .frame(maxWidth: .infinity)
                 .frame(height: 50)
                 .foregroundStyle(EvenTokens.paperRaised)
-                .background(EvenTokens.espresso)
+                // Solid muted fill when disabled. Avoid `.disabled` — SwiftUI fades
+                // disabled controls and the paper grain shows through.
+                .background(enabled ? EvenTokens.espresso : EvenTokens.stone)
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         }
         .buttonStyle(.plain)
-        .disabled(!enabled)
-        .opacity(enabled ? 1 : 0.45)
+        .allowsHitTesting(enabled)
+        .animation(EvenMotion.reveal, value: enabled)
         .accessibilityIdentifier(accessibilityId ?? title)
+        .accessibilityAddTraits(enabled ? [] : .isStaticText)
+        .accessibilityRemoveTraits(enabled ? [] : .isButton)
     }
 }
 
