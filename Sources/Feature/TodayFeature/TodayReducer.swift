@@ -14,7 +14,8 @@ public struct TodayReducer {
         public var me: Member?
         public var partner: Member?
         public var error: String?
-        public var isLoading = false
+        /// Starts true so the first frame paints a redacted skeleton, not empty.
+        public var isLoading = true
         @Presents public var composer: ComposerReducer.State?
         public init() {}
     }

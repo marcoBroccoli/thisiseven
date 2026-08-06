@@ -3,6 +3,7 @@
     import Design
     import EvenCore
     import SwiftUI
+    import VisualEffects
 
     @ViewAction(for: TodayReducer.self)
     public struct TodayView: View {
@@ -16,7 +17,7 @@
             NavigationStack {
                 Group {
                     if store.isLoading && store.summary == nil {
-                        ProgressView().tint(EvenTokens.espresso)
+                        TodayLoadingSkeleton()
                     } else if let summary = store.summary {
                         ScrollView {
                             VStack(alignment: .leading, spacing: 0) {
@@ -88,24 +89,8 @@
         }
 
         private var header: some View {
-            HStack(spacing: 7) {
-                EvenScaleGlyph()
-                    .stroke(
-                        EvenTokens.espresso,
-                        style: StrokeStyle(
-                            lineWidth: EvenScaleGlyph.lineWidth(forSide: 15),
-                            lineCap: .round,
-                            lineJoin: .round
-                        )
-                    )
-                    .frame(width: 15, height: 15)
-                Text("Even")
-                    .font(.system(size: 18, weight: .semibold, design: .serif))
-                    .italic()
-                    .foregroundStyle(EvenTokens.espresso)
-                Spacer()
-            }
-            .padding(.top, 56)
+            EvenBrandMark(showsTrailingSpacer: true)
+                .padding(.top, 56)
         }
 
         private var emptyBeam: some View {
@@ -173,6 +158,62 @@
                 return String(store.me?.displayName.prefix(1) ?? "A")
             }
             return String(store.partner?.displayName.prefix(1) ?? "U")
+        }
+    }
+
+    /// Placeholder layout matching Today chrome — redacted until summary arrives.
+    struct TodayLoadingSkeleton: View {
+        var body: some View {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    EvenBrandMark(showsTrailingSpacer: true)
+                        .padding(.top, 56)
+                        .unredacted()
+
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(EvenTokens.espresso.opacity(0.12))
+                        .frame(height: 240)
+                        .padding(.top, 8)
+
+                    Text("Loading this week’s balance…")
+                        .font(.system(size: 14, design: .serif))
+                        .italic()
+                        .padding(.top, 8)
+
+                    Text("CHORES")
+                        .font(.system(size: 9.5, weight: .semibold))
+                        .tracking(1.5)
+                        .padding(.top, 18)
+
+                    ForEach(0 ..< 3, id: \.self) { _ in
+                        HStack(spacing: 10) {
+                            Image(systemName: "circle")
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Placeholder chore title")
+                                    .font(.system(size: 15, design: .serif))
+                                Text("TODAY · WEEKLY")
+                                    .font(.system(size: 8.5, weight: .semibold))
+                                    .tracking(0.6)
+                            }
+                            Spacer()
+                            Text("A")
+                                .font(.system(size: 8.5, weight: .bold))
+                                .frame(width: 20, height: 20)
+                                .background(Circle().fill(EvenTokens.stone))
+                        }
+                        .padding(.vertical, 11)
+                        .overlay(alignment: .bottom) {
+                            EvenTokens.espresso.opacity(0.055).frame(height: 1)
+                        }
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 40)
+                .foregroundStyle(EvenTokens.espresso)
+            }
+            .evenScrollOnPaper()
+            .loading(true)
+            .accessibilityLabel("Loading today")
         }
     }
 

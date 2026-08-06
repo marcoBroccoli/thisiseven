@@ -19,9 +19,7 @@ final class TodayFeatureTests: XCTestCase {
         }
         store.exhaustivity = .off
 
-        await store.send(.view(.appear)) {
-            $0.isLoading = true
-        }
+        await store.send(.view(.appear))
         await store.receive(\.summaryLoaded) {
             $0.isLoading = false
             $0.summary = PreviewData.summary
@@ -36,6 +34,7 @@ final class TodayFeatureTests: XCTestCase {
         var state = TodayReducer.State()
         state.summary = PreviewData.summary
         state.me = PreviewData.ada
+        state.isLoading = false
         let id = PreviewData.laundry.id
 
         let store = TestStore(initialState: state) {
