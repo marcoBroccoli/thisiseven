@@ -27,8 +27,8 @@ Quick orientation:
   over paper grain (`EvenPrimaryButton`).
 - `.buttonStyle(.plain)` cards need `.contentShape` on the full shape or only
   text receives taps.
-- Feature root = only `*Reducer` / `*View` / `*View+Watch`; everything else in
-  subfolders (`Preview/`, `Components/`, `Views/`, nested surfaces…).
+- Feature root = only `*Reducer` / `*View`; Watch stubs in `Watch/`, everything
+  else in subfolders (`Preview/`, `Components/`, `Views/`, nested surfaces…).
 - Peel into `Views/` only when the shell shows more than one state/step;
   single-screen Features stay inline on the main `*View` (atoms →
   `Components/`). Shell owns shared chrome — including the footer via

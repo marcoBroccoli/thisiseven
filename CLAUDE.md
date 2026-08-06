@@ -153,9 +153,11 @@ Learned from how-it-works / beam work — follow these on every Feature screen:
 ### Feature module layout (hard rule)
 - At the **Feature target root**, only:
   - `*Reducer.swift`
-  - `*View.swift`
-  - `*View+Watch.swift` (watchOS compile stub / platform pair)
+  - `*View.swift` (iOS — whole file `#if os(iOS)`)
 - Everything else lives in a subfolder:
+  - `Watch/*View+Watch.swift` — watchOS compile stub / platform pair
+    (`#if os(watchOS)`). Same for nested surfaces:
+    `Review/Watch/ReviewView+Watch.swift`
   - `Preview/PreviewSupport.swift` — canvas Store factories
   - `Components/` — atoms / format helpers / skeleton fixtures (Inbox)
   - `Views/` — multi-step path bodies + step chrome (Connections, Household…)
