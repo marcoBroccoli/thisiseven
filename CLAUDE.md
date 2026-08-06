@@ -150,17 +150,33 @@ Learned from how-it-works / beam work — follow these on every Feature screen:
   **always** add `.contentShape` on the full rounded rect so padding / empty
   space is tappable, not only the text glyphs.
 
+### Feature module layout (hard rule)
+- At the **Feature target root**, only:
+  - `*Reducer.swift`
+  - `*View.swift`
+  - `*View+Watch.swift` (watchOS compile stub / platform pair)
+- Everything else lives in a subfolder:
+  - `Preview/PreviewSupport.swift` — canvas Store factories
+  - `Components/` — atoms / format helpers / skeleton fixtures (Inbox)
+  - `Views/` — multi-step path bodies + step chrome (Connections, Household…)
+  - Nested surfaces keep their own reducer+view at **that** folder’s root
+    (`Review/`, `Composer/`, `MainTab/`) — same rule recursively
+  - App-only extras under named folders (`EvenApp/Demo/`, …)
+- Portable doctrine: Personal recipe `ios-tca-kit.md` → §4 “Feature folder
+  layout”.
+
 ### Multi-step Feature layout
 - Peel into `Views/` only when the shell shows **more than one** distinct
   state/step (path switch). A single-screen Feature (e.g. Inbox / Today)
-  stays inline on the main `*View` — don’t invent a one-file `Views/` wrapper.
+  keeps body on the main `*View`; extracted structs go under `Components/` —
+  don’t invent a one-file `Views/` wrapper just to hold atoms.
 - When multi-step: shell `*View` next to `*Reducer` owns `NavigationStack`,
   path switch, and shared chrome (error banner, **footer**, motion). Each
   step lives under `Views/` (`HouseholdChoiceView`, `ConnectionsWhyView`, …)
   sharing the same store — no per-step reducers unless the step earns its own
   Feature. Steps own **body content only**.
 - Shared step typography / layout lives in a chrome helper
-  (`HouseholdSetupChrome`, `ConnectionsSetupChrome`); atoms in `*Components`.
+  (`HouseholdSetupChrome`, `ConnectionsSetupChrome`); atoms in `Components/`.
 - Variable-width rows (invite code letter tiles) must **flex to the proposed
   width** — fixed tile sizes that exceed the content width widen the parent
   and clip leading copy off-screen.
@@ -193,14 +209,57 @@ Learned from how-it-works / beam work — follow these on every Feature screen:
   origin (Connections why screen “mixed up” layout).
 
 ### Portable kits (`Sources/Shared/`)
-- App-agnostic UI that will leave Even (today: `ToastUI`) lives under
-  `Shared/`, owns its resources (e.g. `.metal`), and takes style/motion via
-  configuration + environment — **no** `EvenTokens` / `EvenMotion`.
+- App-agnostic UI that will leave Even (`ToastUI`, `SheetUI`, `VisualEffects`)
+  lives under `Shared/`, owns its resources (e.g. `.metal`), and takes
+  style/motion via configuration + environment — **no** `EvenTokens` /
+  `EvenMotion`.
 - Even skin is a thin Design bridge (`ToastConfiguration+Even`,
   `.evenToastHost()`). Product copy (“Couldn’t reach Google”) stays in the
   Feature that talks to that service, not in the kit.
 - Features present through `ToastClient` → `ToastHostCenter`; the Feature
-  root attaches `.evenToastHost()` (local overlay, not a global `UIWindow`).
+  root attaches **`.evenToastHost()`** (never raw `.toastHost(.even)` at the
+  call site — keep the Design bridge as the only Even→ToastUI seam).
+- Loading chrome: `VisualEffects` → **`.loading(isLoading)`** (redacted
+  placeholder + shimmer + no hit testing while on). Do **not** hand-chain
+  `.redacted` + `.shimmering` on Feature skeletons.
+
+### View composition (invalidation)
+- Portable doctrine: Personal recipe `ios-tca-kit.md` → §4 “View composition”.
+- Factor screen sections into **`struct …: View`** with **narrow inputs**
+  (Inbox: `InboxDraftCard`, `InboxCalendarRow`, … under `Components/`) —
+  not large `private var foo: some View` computed properties on the shell.
+- Computed `some View` helpers are fine for tiny local fragments; they do
+  **not** create an invalidation boundary.
+- Single-screen Features still stay on the main `*View`; extracted structs
+  live in `Components/` (no fake `Views/` peel).
+
+### Navigation chrome packs
+- Repeated stack chrome → Design packs, not copy-paste per Feature:
+  **`.evenPaperNavigationChrome()`** (paper + inline title mode + clear bar +
+  espresso tint), **`.evenScrollOnPaper()`** (scroll fill hidden).
+- Compact wordmark → **`EvenBrandMark`** (Inbox principal, Today header) —
+  don’t re-draw glyph + “Even” inline.
+- Toolbar *items* stay at the call site; packs only own the repetitive modifiers.
+
+### Initial loading / skeletons
+- Default list/summary `isLoading` **true** so the first frame is a skeleton,
+  not empty / spinner.
+- On **re-appear** (tab revisit): only set `isLoading = true` when the list is
+  still empty — never flash skeleton over already-loaded drafts/summary.
+- Skeleton rows use **Feature-local placeholders** (`InboxSkeletonData`), never
+  `PreviewData` / preview fixtures inside production view code.
+- Prefer applying `.loading(isLoading)` to layout that mirrors the loaded UI;
+  pull-to-refresh keeps the system spinner when content is already on screen.
+
+### Preview clients & lag
+- Portable doctrine: Personal recipe `ios-tca-kit.md` → §7 “Preview clients”.
+- Canvas lag / failure paths: **`PreviewDelay.delayed` / `delayedThrow`** in
+  EvenCore — no ad-hoc `Task.sleep` in Feature `PreviewSupport`.
+- Happy-path canvas defaults live on each client’s **`previewValue`**
+  (`AuthClient`, `DraftsClient`, `CalendarClient`, …). Feature factories only
+  override seams they need (lag, empty, hang, failure).
+- `ToastClient.hosted()` = real host path; **`ToastClient.silent()`** for
+  snapshot previews that must not present toasts.
 
 ### Drawn success marks
 - Prefer a `Shape` + `.trim` stroke over an SF Symbol pop-in. Delay, draw the
