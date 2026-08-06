@@ -4,6 +4,8 @@ import ComposableArchitecture
 import DraftsClient
 import EvenCore
 import Foundation
+import ToastClient
+import ToastUI
 
 @Reducer
 public struct InboxReducer {
@@ -17,7 +19,6 @@ public struct InboxReducer {
         public var calendarMonthTitle = ""
         public var me: Member?
         public var partner: Member?
-        public var showStamp = false
         @Presents public var review: ReviewReducer.State?
         public init() {}
 
@@ -30,17 +31,14 @@ public struct InboxReducer {
         case view(View)
         case membersLoaded(Member?, Member?)
         case draftsLoaded([Draft])
-        case loadFailed(String)
         case review(PresentationAction<ReviewReducer.Action>)
         case approve(UUID)
         case dismiss(UUID)
         case approved(UUID)
         case dismissed(UUID)
-        case actionFailed(String)
-        case showStamp
-        case hideStamp
         case calendarLoaded(CalendarResponse)
-        case calendarFailed(String)
+        /// Toast — `ToastClient` → feature `.toastHost(.even)`.
+        case presentToast(Toast)
         case delegate(Delegate)
 
         @CasePathable
@@ -58,7 +56,7 @@ public struct InboxReducer {
     @Dependency(\.draftsClient) var draftsClient
     @Dependency(\.calendarClient) var calendarClient
     @Dependency(\.authClient) var authClient
-    @Dependency(\.continuousClock) var clock
+    @Dependency(\.toastClient) var toastClient
 
     public init() {}
 
@@ -85,11 +83,6 @@ public struct InboxReducer {
                 state.drafts = IdentifiedArray(uniqueElements: drafts)
                 return .none
 
-            case let .loadFailed(message):
-                state.isLoading = false
-                state.error = message
-                return .none
-
             case let .view(.selectDraft(id)):
                 guard let draft = state.drafts[id: id] else { return .none }
                 state.review = ReviewReducer.State(draft: draft, me: state.me, partner: state.partner)
@@ -114,7 +107,7 @@ public struct InboxReducer {
                         _ = try await draftsClient.approve(id)
                         await send(.approved(id))
                     } catch {
-                        await send(.actionFailed(String(describing: error)))
+                        await send(.presentToast(.inboxFailure(error, .approve)))
                     }
                 }
 
@@ -133,7 +126,7 @@ public struct InboxReducer {
                         _ = try await draftsClient.approve(id)
                         await send(.approved(id))
                     } catch {
-                        await send(.actionFailed(String(describing: error)))
+                        await send(.presentToast(.inboxFailure(error, .approve)))
                     }
                 }
 
@@ -143,32 +136,18 @@ public struct InboxReducer {
                         _ = try await draftsClient.dismiss(id)
                         await send(.dismissed(id))
                     } catch {
-                        await send(.actionFailed(String(describing: error)))
+                        await send(.presentToast(.inboxFailure(error, .dismiss)))
                     }
                 }
 
             case let .approved(id):
                 state.drafts.remove(id: id)
-                return .run { [clock] send in
-                    await send(.showStamp)
-                    try await clock.sleep(for: .seconds(1.6))
-                    await send(.hideStamp)
-                }
+                return toastEffect(
+                    Toast(message: "Approved → task + calendar event", tone: .success)
+                )
 
             case let .dismissed(id):
                 state.drafts.remove(id: id)
-                return .none
-
-            case let .actionFailed(message):
-                state.error = message
-                return .none
-
-            case .showStamp:
-                state.showStamp = true
-                return .none
-
-            case .hideStamp:
-                state.showStamp = false
                 return .none
 
             case let .view(.selectSurface(surface)):
@@ -181,9 +160,12 @@ public struct InboxReducer {
                 state.calendarMonthTitle = monthTitle(from: response.from)
                 return .none
 
-            case let .calendarFailed(message):
-                state.error = message
-                return .none
+            case let .presentToast(toast):
+                if toast.tone == .error {
+                    state.isLoading = false
+                    state.error = toast.message
+                }
+                return toastEffect(toast)
 
             case .delegate:
                 return .none
@@ -199,7 +181,7 @@ public struct InboxReducer {
             do {
                 try await send(.draftsLoaded(await draftsClient.pending()))
             } catch {
-                await send(.loadFailed(String(describing: error)))
+                await send(.presentToast(.inboxFailure(error, .load)))
             }
         }
     }
@@ -216,8 +198,14 @@ public struct InboxReducer {
                 let response = try await calendarClient.window(f.string(from: start), f.string(from: end))
                 await send(.calendarLoaded(response))
             } catch {
-                await send(.calendarFailed(String(describing: error)))
+                await send(.presentToast(.inboxFailure(error, .calendar)))
             }
+        }
+    }
+
+    private func toastEffect(_ toast: Toast) -> Effect<Action> {
+        .run { [toastClient] _ in
+            await toastClient.show(toast)
         }
     }
 
@@ -227,5 +215,24 @@ public struct InboxReducer {
         guard let date = f.date(from: iso) else { return iso }
         f.dateFormat = "MMMM yyyy"
         return f.string(from: date)
+    }
+}
+
+extension Toast {
+    enum InboxFailure {
+        case load, approve, dismiss, calendar
+
+        var fallback: String {
+            switch self {
+            case .load: "Couldn’t load inbox"
+            case .approve: "Couldn’t approve draft"
+            case .dismiss: "Couldn’t dismiss draft"
+            case .calendar: "Couldn’t load calendar"
+            }
+        }
+    }
+
+    static func inboxFailure(_ error: Error, _ kind: InboxFailure) -> Toast {
+        .failure(from: error, offline: "Couldn’t reach Even", fallback: kind.fallback)
     }
 }

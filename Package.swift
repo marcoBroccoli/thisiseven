@@ -11,6 +11,7 @@ let package = Package(
     products: [
         .library(name: "EvenCore", targets: ["EvenCore"]),
         .library(name: "ToastUI", targets: ["ToastUI"]),
+        .library(name: "SheetUI", targets: ["SheetUI"]),
         .library(name: "Design", targets: ["Design"]),
         .library(name: "AuthClient", targets: ["AuthClient"]),
         .library(name: "HouseholdClient", targets: ["HouseholdClient"]),
@@ -64,12 +65,21 @@ let package = Package(
             )
         }
 
+        // iOS-only kit — SPM still compiles Feature targets for watchOS, but must
+        // not pull UIKit sheet chrome into the Watch graph.
+        let sheetUI_iOS: Target.Dependency = .target(
+            name: "SheetUI",
+            condition: .when(platforms: [.iOS])
+        )
+
         return [
             .target(name: "EvenCore", path: "Sources/Core/EvenCore"),
             // Standalone, app-agnostic UI kit — no EvenCore/Design/token
             // references, owns its own shader bundle. Destined for the shared
             // components package; keep it that way.
             .target(name: "ToastUI", path: "Sources/Shared/ToastUI"),
+            // Portable auto-sizing sheet — brand-free; Features pass surface/content.
+            .target(name: "SheetUI", path: "Sources/Shared/SheetUI"),
             .target(
                 name: "Design",
                 dependencies: ["ToastUI"],
@@ -125,7 +135,13 @@ let package = Package(
             feature("OnboardingFeature"),
             feature("HouseholdSetupFeature", extra: ["HouseholdClient"]),
             feature("ConnectionsFeature", extra: ["GoogleClient", "NotificationsClient", "ToastClient", "ToastUI"]),
-            feature("InboxFeature", extra: ["DraftsClient", "CalendarClient", "NotificationsClient", "AuthClient"]),
+            feature(
+                "InboxFeature",
+                extra: [
+                    "DraftsClient", "CalendarClient", "NotificationsClient", "AuthClient",
+                    sheetUI_iOS, "ToastClient", "ToastUI",
+                ]
+            ),
             feature("TodayFeature", extra: ["TasksClient", "SummaryClient", "WidgetClient", "AuthClient"]),
             .target(
                 name: "EvenApp",
@@ -169,7 +185,7 @@ let package = Package(
             ),
             .testTarget(
                 name: "InboxFeatureTests",
-                dependencies: ["InboxFeature", "EvenCore", "DraftsClient", "CalendarClient", "AuthClient", tca],
+                dependencies: ["InboxFeature", "EvenCore", "DraftsClient", "CalendarClient", "AuthClient", "ToastClient", "ToastUI", tca],
                 path: "Tests/InboxFeatureTests"
             ),
             .testTarget(

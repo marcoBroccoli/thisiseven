@@ -2,7 +2,8 @@ import AuthClient
 import ComposableArchitecture
 import DraftsClient
 import EvenCore
-import InboxReducer
+import InboxFeature
+import ToastClient
 import XCTest
 
 @MainActor
@@ -13,7 +14,6 @@ final class InboxFeatureTests: XCTestCase {
         } withDependencies: {
             $0.draftsClient.pending = { PreviewData.pendingDrafts }
             $0.authClient.householdMembers = { (PreviewData.ada, PreviewData.umut) }
-            $0.continuousClock = ImmediateClock()
         }
         store.exhaustivity = .off
 
@@ -30,10 +30,11 @@ final class InboxFeatureTests: XCTestCase {
         }
     }
 
-    func testApproveRemovesDraftAndShowsStamp() async {
+    func testApproveRemovesDraftAndToasts() async {
         var state = InboxReducer.State()
         state.drafts = IdentifiedArray(uniqueElements: PreviewData.pendingDrafts)
         let id = PreviewData.pendingDrafts[0].id
+        var toasted: String?
 
         let store = TestStore(initialState: state) {
             InboxReducer()
@@ -44,7 +45,9 @@ final class InboxFeatureTests: XCTestCase {
                     task: PreviewData.waterBill
                 )
             }
-            $0.continuousClock = ImmediateClock()
+            $0.toastClient.show = { toast in
+                toasted = toast.message
+            }
         }
         store.exhaustivity = .off
 
@@ -52,12 +55,7 @@ final class InboxFeatureTests: XCTestCase {
         await store.receive(\.approved) {
             $0.drafts.remove(id: id)
         }
-        await store.receive(\.showStamp) {
-            $0.showStamp = true
-        }
-        await store.receive(\.hideStamp) {
-            $0.showStamp = false
-        }
+        XCTAssertEqual(toasted, "Approved → task + calendar event")
     }
 
     func testSelectDraftPresentsReview() async {

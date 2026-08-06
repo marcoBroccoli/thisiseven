@@ -3,6 +3,7 @@ import CalendarClient
 import ComposableArchitecture
 import DraftsClient
 import EvenCore
+import ToastClient
 
 public enum InboxPreviewSupport {
     public static func populated() -> StoreOf<InboxReducer> {
@@ -29,6 +30,7 @@ public enum InboxPreviewSupport {
             }
             $0.authClient.householdMembers = { (PreviewData.ada, PreviewData.umut) }
             $0.calendarClient.window = { _, _ in PreviewData.calendarMonth }
+            $0.toastClient = .hosted()
         }
     }
 
@@ -40,6 +42,7 @@ public enum InboxPreviewSupport {
         } withDependencies: {
             $0.draftsClient.pending = { [] }
             $0.authClient.householdMembers = { (PreviewData.ada, PreviewData.umut) }
+            $0.toastClient = .hosted()
         }
     }
 
@@ -57,6 +60,7 @@ public enum InboxPreviewSupport {
             $0.draftsClient.pending = { [] }
             $0.calendarClient.window = { _, _ in PreviewData.calendarMonth }
             $0.authClient.householdMembers = { (PreviewData.ada, PreviewData.umut) }
+            $0.toastClient = .hosted()
         }
     }
 }
