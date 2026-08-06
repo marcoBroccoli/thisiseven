@@ -79,9 +79,8 @@ public enum InboxPreviewSupport {
         return Store(initialState: state) {
             InboxReducer()
         } withDependencies: {
-            $0.calendarClient.window = { _, _ in
-                try await PreviewDelay.delayed(.seconds(60)) PreviewData.calendarMonth
-            }
+            let calendar = PreviewDelay.delayed(.seconds(60)) { PreviewData.calendarMonth }
+            $0.calendarClient.window = { _, _ in try await calendar() }
         }
     }
 }
