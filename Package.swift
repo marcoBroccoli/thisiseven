@@ -12,6 +12,7 @@ let package = Package(
         .library(name: "EvenCore", targets: ["EvenCore"]),
         .library(name: "ToastUI", targets: ["ToastUI"]),
         .library(name: "SheetUI", targets: ["SheetUI"]),
+        .library(name: "VisualEffects", targets: ["VisualEffects"]),
         .library(name: "Design", targets: ["Design"]),
         .library(name: "AuthClient", targets: ["AuthClient"]),
         .library(name: "HouseholdClient", targets: ["HouseholdClient"]),
@@ -80,9 +81,11 @@ let package = Package(
             .target(name: "ToastUI", path: "Sources/Shared/ToastUI"),
             // Portable auto-sizing sheet — brand-free; Features pass surface/content.
             .target(name: "SheetUI", path: "Sources/Shared/SheetUI"),
+            // Portable visual effects (shimmer, …) — brand-free; no Even tokens.
+            .target(name: "VisualEffects", path: "Sources/Shared/VisualEffects"),
             .target(
                 name: "Design",
-                dependencies: ["ToastUI"],
+                dependencies: ["ToastUI", "VisualEffects"],
                 path: "Sources/Design",
                 resources: [.process("Assets.xcassets")]
             ),
@@ -139,10 +142,13 @@ let package = Package(
                 "InboxFeature",
                 extra: [
                     "DraftsClient", "CalendarClient", "NotificationsClient", "AuthClient",
-                    sheetUI_iOS, "ToastClient", "ToastUI",
+                    sheetUI_iOS, "ToastClient", "ToastUI", "VisualEffects",
                 ]
             ),
-            feature("TodayFeature", extra: ["TasksClient", "SummaryClient", "WidgetClient", "AuthClient"]),
+            feature(
+                "TodayFeature",
+                extra: ["TasksClient", "SummaryClient", "WidgetClient", "AuthClient", "VisualEffects"]
+            ),
             .target(
                 name: "EvenApp",
                 dependencies: [
@@ -185,7 +191,10 @@ let package = Package(
             ),
             .testTarget(
                 name: "InboxFeatureTests",
-                dependencies: ["InboxFeature", "EvenCore", "DraftsClient", "CalendarClient", "AuthClient", "ToastClient", "ToastUI", tca],
+                dependencies: [
+                    "InboxFeature", "EvenCore", "DraftsClient", "CalendarClient", "AuthClient",
+                    "ToastClient", "ToastUI", tca,
+                ],
                 path: "Tests/InboxFeatureTests"
             ),
             .testTarget(
