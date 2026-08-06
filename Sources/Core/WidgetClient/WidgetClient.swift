@@ -10,6 +10,11 @@ public struct WidgetClient: Sendable {
 
 extension WidgetClient: TestDependencyKey {
     public static let testValue = WidgetClient()
+
+    /// Canvas default — discard publishes.
+    public static let previewValue = WidgetClient(
+        publish: { _ in }
+    )
 }
 
 public extension DependencyValues {

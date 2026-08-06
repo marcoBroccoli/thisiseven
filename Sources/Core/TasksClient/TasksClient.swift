@@ -24,6 +24,13 @@ public enum TasksClientError: Error, Sendable {
 
 extension TasksClient: TestDependencyKey {
     public static let testValue = TasksClient()
+
+    /// Canvas default — create/toggle return the laundry fixture.
+    public static let previewValue = TasksClient(
+        create: { _ in PreviewData.laundry },
+        toggle: { _ in PreviewData.laundry },
+        delete: { _ in }
+    )
 }
 
 public extension DependencyValues {

@@ -16,6 +16,11 @@ public enum SummaryClientError: Error, Sendable {
 
 extension SummaryClient: TestDependencyKey {
     public static let testValue = SummaryClient()
+
+    /// Canvas default — populated week summary.
+    public static let previewValue = SummaryClient(
+        fetch: { PreviewData.summary }
+    )
 }
 
 public extension DependencyValues {

@@ -3,11 +3,10 @@ import Design
 import EvenCore
 import Foundation
 import GoogleClient
-import NotificationsClient
 import ToastClient
 
 /// Preview / canvas factories. Client closures are the FreeFlex-style “use cases”:
-/// override + `Task.sleep` to exercise real loading / error paths in the reducer.
+/// override + `PreviewDelay` to exercise real loading / error paths in the reducer.
 public enum ConnectionsPreviewSupport {
     public static let defaultStatusLag: Duration = .milliseconds(800)
     public static let defaultConnectLag: Duration = .seconds(2)
@@ -24,9 +23,9 @@ public enum ConnectionsPreviewSupport {
         } withDependencies: { deps in
             mockConnections(
                 &deps,
-                status: delayed(statusLag) { PreviewData.googleDisconnected },
-                connect: delayed(connectLag),
-                disconnect: delayed(.milliseconds(400)),
+                status: PreviewDelay.delayed(statusLag) { PreviewData.googleDisconnected },
+                connect: PreviewDelay.delayed(connectLag),
+                disconnect: PreviewDelay.delayed(.milliseconds(400)),
                 presentToasts: true
             )
         }
@@ -41,9 +40,9 @@ public enum ConnectionsPreviewSupport {
         } withDependencies: { deps in
             mockConnections(
                 &deps,
-                status: delayed(statusLag) { PreviewData.googleConnected },
-                connect: delayed(defaultConnectLag),
-                disconnect: delayed(.milliseconds(400)),
+                status: PreviewDelay.delayed(statusLag) { PreviewData.googleConnected },
+                connect: PreviewDelay.delayed(defaultConnectLag),
+                disconnect: PreviewDelay.delayed(.milliseconds(400)),
                 presentToasts: true
             )
         }
@@ -58,9 +57,9 @@ public enum ConnectionsPreviewSupport {
         } withDependencies: { deps in
             mockConnections(
                 &deps,
-                status: delayed(.milliseconds(200)) { PreviewData.googleDisconnected },
-                connect: delayedThrow(connectLag, URLError(.notConnectedToInternet)),
-                disconnect: delayed(.milliseconds(400)),
+                status: PreviewDelay.delayed(.milliseconds(200)) { PreviewData.googleDisconnected },
+                connect: PreviewDelay.delayedThrow(connectLag, URLError(.notConnectedToInternet)),
+                disconnect: PreviewDelay.delayed(.milliseconds(400)),
                 presentToasts: true
             )
         }
@@ -78,9 +77,9 @@ public enum ConnectionsPreviewSupport {
                 &deps,
                 status: statusLag == .zero
                     ? { throw URLError(.timedOut) }
-                    : delayedThrow(statusLag, URLError(.timedOut)),
-                connect: delayed(defaultConnectLag),
-                disconnect: delayed(.milliseconds(400)),
+                    : PreviewDelay.delayedThrow(statusLag, URLError(.timedOut)),
+                connect: PreviewDelay.delayed(defaultConnectLag),
+                disconnect: PreviewDelay.delayed(.milliseconds(400)),
                 presentToasts: true
             )
         }
@@ -98,9 +97,9 @@ public enum ConnectionsPreviewSupport {
         } withDependencies: { deps in
             mockConnections(
                 &deps,
-                status: delayed(.milliseconds(100)) { PreviewData.googleConnected },
-                connect: delayed(defaultConnectLag),
-                disconnect: delayed(disconnectLag),
+                status: PreviewDelay.delayed(.milliseconds(100)) { PreviewData.googleConnected },
+                connect: PreviewDelay.delayed(defaultConnectLag),
+                disconnect: PreviewDelay.delayed(disconnectLag),
                 presentToasts: true
             )
         }
@@ -170,9 +169,9 @@ public enum ConnectionsPreviewSupport {
             let status = connected ? PreviewData.googleConnected : PreviewData.googleDisconnected
             mockConnections(
                 &deps,
-                status: delayed(.milliseconds(50)) { status },
-                connect: delayed(.milliseconds(50)),
-                disconnect: delayed(.milliseconds(50))
+                status: PreviewDelay.delayed(.milliseconds(50)) { status },
+                connect: PreviewDelay.delayed(.milliseconds(50)),
+                disconnect: PreviewDelay.delayed(.milliseconds(50))
             )
         }
     }
@@ -186,9 +185,9 @@ public enum ConnectionsPreviewSupport {
         } withDependencies: { deps in
             mockConnections(
                 &deps,
-                status: delayed(.seconds(60)) { PreviewData.googleDisconnected },
-                connect: delayed(.seconds(60)),
-                disconnect: delayed(.seconds(60))
+                status: PreviewDelay.delayed(.seconds(60)) { PreviewData.googleDisconnected },
+                connect: PreviewDelay.delayed(.seconds(60)),
+                disconnect: PreviewDelay.delayed(.seconds(60))
             )
         }
     }
@@ -203,40 +202,6 @@ public enum ConnectionsPreviewSupport {
         deps.googleClient.status = status
         deps.googleClient.connect = connect
         deps.googleClient.disconnect = disconnect
-        deps.notificationsClient.requestAuthorization = { true }
-        if presentToasts {
-            // Same path as Live: feature `.evenToastHost()` + real auto-dismiss.
-            deps.toastClient = .hosted()
-        } else {
-            deps.toastClient.show = { _ in }
-        }
-    }
-
-    private static func delayed(
-        _ lag: Duration
-    ) -> @Sendable () async throws -> Void {
-        {
-            try await Task.sleep(for: lag)
-        }
-    }
-
-    private static func delayed<Value: Sendable>(
-        _ lag: Duration,
-        _ value: @escaping @Sendable () -> Value
-    ) -> @Sendable () async throws -> Value {
-        {
-            try await Task.sleep(for: lag)
-            return value()
-        }
-    }
-
-    private static func delayedThrow<Value: Sendable>(
-        _ lag: Duration,
-        _ error: URLError
-    ) -> @Sendable () async throws -> Value {
-        {
-            try await Task.sleep(for: lag)
-            throw error
-        }
+        deps.toastClient = presentToasts ? .hosted() : .silent()
     }
 }

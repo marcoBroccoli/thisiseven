@@ -20,6 +20,12 @@ public enum HouseholdClientError: Error, Sendable {
 
 extension HouseholdClient: TestDependencyKey {
     public static let testValue = HouseholdClient()
+
+    /// Canvas default — create/join return The Attic.
+    public static let previewValue = HouseholdClient(
+        create: { _, _ in PreviewData.household },
+        join: { _, _ in PreviewData.household }
+    )
 }
 
 public extension DependencyValues {

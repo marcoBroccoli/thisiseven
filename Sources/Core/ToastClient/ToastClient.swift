@@ -33,6 +33,11 @@ public extension ToastClient {
             }
         )
     }
+
+    /// No-op — for canvas snapshots that shouldn't present toasts.
+    static func silent() -> ToastClient {
+        ToastClient(show: { _ in }, dismiss: {})
+    }
 }
 
 extension ToastClient: TestDependencyKey {

@@ -1,11 +1,10 @@
-import AuthClient
 import ComposableArchitecture
 import EvenCore
 import SummaryClient
-import TasksClient
-import WidgetClient
 
 public enum TodayPreviewSupport {
+    public static let defaultLoadLag: Duration = .seconds(10)
+
     public static func populated() -> StoreOf<TodayReducer> {
         var state = TodayReducer.State()
         state.summary = PreviewData.summary
@@ -14,12 +13,6 @@ public enum TodayPreviewSupport {
         state.isLoading = false
         return Store(initialState: state) {
             TodayReducer()
-        } withDependencies: {
-            $0.summaryClient.fetch = { PreviewData.summary }
-            $0.tasksClient.toggle = { _ in PreviewData.laundry }
-            $0.tasksClient.create = { _ in PreviewData.laundry }
-            $0.widgetClient.publish = { _ in }
-            $0.authClient.householdMembers = { (PreviewData.ada, PreviewData.umut) }
         }
     }
 
@@ -33,22 +26,18 @@ public enum TodayPreviewSupport {
             TodayReducer()
         } withDependencies: {
             $0.summaryClient.fetch = { PreviewData.summaryEmpty }
-            $0.widgetClient.publish = { _ in }
-            $0.authClient.householdMembers = { (PreviewData.ada, PreviewData.umut) }
         }
     }
 
-    public static func loading() -> StoreOf<TodayReducer> {
+    public static func loading(
+        loadLag: Duration = defaultLoadLag
+    ) -> StoreOf<TodayReducer> {
         var state = TodayReducer.State()
         state.isLoading = true
         return Store(initialState: state) {
             TodayReducer()
         } withDependencies: {
-            $0.summaryClient.fetch = {
-                try await Task.sleep(nanoseconds: 10_000_000_000)
-                return PreviewData.summary
-            }
-            $0.authClient.householdMembers = { (PreviewData.ada, PreviewData.umut) }
+            $0.summaryClient.fetch = PreviewDelay.delayed(loadLag) { PreviewData.summary }
         }
     }
 }

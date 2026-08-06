@@ -25,6 +25,23 @@ public enum DraftsClientError: Error, Sendable {
 
 extension DraftsClient: TestDependencyKey {
     public static let testValue = DraftsClient()
+
+    /// Canvas default — pending fixtures; approve/dismiss resolve against PreviewData.
+    public static let previewValue = DraftsClient(
+        pending: { PreviewData.pendingDrafts },
+        update: { id, _ in
+            PreviewData.pendingDrafts.first { $0.id == id } ?? PreviewData.pendingDrafts[0]
+        },
+        approve: { _ in
+            EvenAPIClient.ApproveResponse(
+                draft: PreviewData.pendingDrafts[0],
+                task: PreviewData.waterBill
+            )
+        },
+        dismiss: { id in
+            PreviewData.pendingDrafts.first { $0.id == id } ?? PreviewData.pendingDrafts[0]
+        }
+    )
 }
 
 public extension DependencyValues {

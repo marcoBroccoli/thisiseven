@@ -20,6 +20,12 @@ public enum CalendarClientError: Error, Sendable {
 
 extension CalendarClient: TestDependencyKey {
     public static let testValue = CalendarClient()
+
+    /// Canvas default — August fixture window; sync is a no-op success.
+    public static let previewValue = CalendarClient(
+        window: { _, _ in PreviewData.calendarMonth },
+        sync: { PreviewData.calendarSync }
+    )
 }
 
 public extension DependencyValues {

@@ -31,6 +31,17 @@ public struct AuthClient: Sendable {
 
 extension AuthClient: TestDependencyKey {
     public static let testValue = AuthClient()
+
+    /// Canvas default — Ada/Umut household; sign-in lands on household setup.
+    public static let previewValue = AuthClient(
+        bootstrap: { .signedOut },
+        signInWithApple: { _, _ in .needsHousehold(userId: PreviewData.adaId) },
+        signInEmail: { _, _ in .needsHousehold(userId: PreviewData.adaId) },
+        signUpEmail: { _, _ in .needsHousehold(userId: PreviewData.adaId) },
+        signOut: {},
+        refreshIdentity: { .signedOut },
+        householdMembers: { (PreviewData.ada, PreviewData.umut) }
+    )
 }
 
 public extension DependencyValues {

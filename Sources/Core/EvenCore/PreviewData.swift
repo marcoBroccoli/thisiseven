@@ -191,6 +191,15 @@ public enum PreviewData {
 
     public static let widgetSnapshot = EvenWidgetSnapshot.placeholder
 
+    public static let calendarSync = CalendarSyncResult(
+        calendarId: "preview-household-cal",
+        imported: 0,
+        updated: 0,
+        deleted: 0,
+        unchanged: 2,
+        lastSyncedAt: Date(timeIntervalSince1970: 1_720_000_000)
+    )
+
     public static let calendarMonth = CalendarResponse(
         from: "2026-08-01",
         to: "2026-08-31",

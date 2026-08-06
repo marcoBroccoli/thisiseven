@@ -10,6 +10,12 @@ public struct NotificationsClient: Sendable {
 
 extension NotificationsClient: TestDependencyKey {
     public static let testValue = NotificationsClient()
+
+    /// Canvas default — permission granted; schedule is a no-op.
+    public static let previewValue = NotificationsClient(
+        requestAuthorization: { true },
+        scheduleReminders: {}
+    )
 }
 
 public extension DependencyValues {
