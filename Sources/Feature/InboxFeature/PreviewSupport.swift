@@ -1,12 +1,16 @@
-import AuthClient
 import CalendarClient
 import ComposableArchitecture
 import DraftsClient
 import EvenCore
-import ToastClient
 
+/// Preview / canvas factories. Client closures lag so pull-to-refresh
+/// (and other effect paths) show a real spinner in Xcode previews.
 public enum InboxPreviewSupport {
-    public static func populated() -> StoreOf<InboxReducer> {
+    public static let defaultRefreshLag: Duration = .seconds(1)
+
+    public static func populated(
+        refreshLag: Duration = defaultRefreshLag
+    ) -> StoreOf<InboxReducer> {
         var state = InboxReducer.State()
         state.drafts = IdentifiedArray(uniqueElements: PreviewData.pendingDrafts)
         state.me = PreviewData.ada
@@ -15,38 +19,39 @@ public enum InboxPreviewSupport {
         return Store(initialState: state) {
             InboxReducer()
         } withDependencies: {
-            $0.draftsClient.pending = { PreviewData.pendingDrafts }
-            $0.draftsClient.update = { id, _ in
-                PreviewData.pendingDrafts.first { $0.id == id } ?? PreviewData.pendingDrafts[0]
-            }
-            $0.draftsClient.approve = { _ in
-                EvenAPIClient.ApproveResponse(
-                    draft: PreviewData.pendingDrafts[0],
-                    task: PreviewData.waterBill
-                )
-            }
-            $0.draftsClient.dismiss = { id in
-                PreviewData.pendingDrafts.first { $0.id == id } ?? PreviewData.pendingDrafts[0]
-            }
-            $0.authClient.householdMembers = { (PreviewData.ada, PreviewData.umut) }
-            $0.calendarClient.window = { _, _ in PreviewData.calendarMonth }
-            $0.toastClient = .hosted()
+            let pending = PreviewDelay.delayed(refreshLag) { PreviewData.pendingDrafts }
+            let calendar = PreviewDelay.delayed(refreshLag) { PreviewData.calendarMonth }
+            $0.draftsClient.pending = pending
+            $0.calendarClient.window = { _, _ in try await calendar() }
         }
     }
 
-    public static func empty() -> StoreOf<InboxReducer> {
+    public static func empty(
+        refreshLag: Duration = defaultRefreshLag
+    ) -> StoreOf<InboxReducer> {
         var state = InboxReducer.State()
         state.isLoading = false
         return Store(initialState: state) {
             InboxReducer()
         } withDependencies: {
-            $0.draftsClient.pending = { [] }
-            $0.authClient.householdMembers = { (PreviewData.ada, PreviewData.umut) }
-            $0.toastClient = .hosted()
+            $0.draftsClient.pending = PreviewDelay.delayed(refreshLag) { [] }
         }
     }
 
-    public static func calendar() -> StoreOf<InboxReducer> {
+    /// Seeded skeleton — effects hang so loading chrome stays visible.
+    public static func loading() -> StoreOf<InboxReducer> {
+        var state = InboxReducer.State()
+        state.isLoading = true
+        return Store(initialState: state) {
+            InboxReducer()
+        } withDependencies: {
+            $0.draftsClient.pending = PreviewDelay.delayed(.seconds(60)) { PreviewData.pendingDrafts }
+        }
+    }
+
+    public static func calendar(
+        refreshLag: Duration = defaultRefreshLag
+    ) -> StoreOf<InboxReducer> {
         var state = InboxReducer.State()
         state.surface = .calendar
         state.calendarItems = PreviewData.calendarMonth.items
@@ -57,10 +62,26 @@ public enum InboxPreviewSupport {
         return Store(initialState: state) {
             InboxReducer()
         } withDependencies: {
-            $0.draftsClient.pending = { [] }
-            $0.calendarClient.window = { _, _ in PreviewData.calendarMonth }
-            $0.authClient.householdMembers = { (PreviewData.ada, PreviewData.umut) }
-            $0.toastClient = .hosted()
+            let calendar = PreviewDelay.delayed(refreshLag) { PreviewData.calendarMonth }
+            $0.draftsClient.pending = PreviewDelay.delayed(refreshLag) { [] }
+            $0.calendarClient.window = { _, _ in try await calendar() }
+        }
+    }
+
+    /// Calendar surface with hanging window fetch — skeleton stays up.
+    public static func calendarLoading() -> StoreOf<InboxReducer> {
+        var state = InboxReducer.State()
+        state.surface = .calendar
+        state.isLoading = false
+        state.isCalendarLoading = true
+        state.me = PreviewData.ada
+        state.partner = PreviewData.umut
+        return Store(initialState: state) {
+            InboxReducer()
+        } withDependencies: {
+            $0.calendarClient.window = { _, _ in
+                try await PreviewDelay.delayed(.seconds(60)) PreviewData.calendarMonth
+            }
         }
     }
 }

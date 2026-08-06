@@ -12,8 +12,9 @@ public struct InboxReducer {
     @ObservableState
     public struct State: Equatable {
         public var drafts: IdentifiedArrayOf<Draft> = []
-        public var isLoading = false
-        public var error: String?
+        /// Starts true so the first frame paints a loading skeleton, not empty.
+        public var isLoading = true
+        public var isCalendarLoading = false
         public var surface: Surface = .inbox
         public var calendarItems: [CalendarItem] = []
         public var calendarMonthTitle = ""
@@ -32,24 +33,19 @@ public struct InboxReducer {
         case membersLoaded(Member?, Member?)
         case draftsLoaded([Draft])
         case review(PresentationAction<ReviewReducer.Action>)
-        case approve(UUID)
         case dismiss(UUID)
         case approved(UUID)
         case dismissed(UUID)
         case calendarLoaded(CalendarResponse)
-        /// Toast — `ToastClient` → feature `.toastHost(.even)`.
+        /// Toast — `ToastClient` → feature `.evenToastHost()`.
         case presentToast(Toast)
-        case delegate(Delegate)
 
         @CasePathable
         public enum View: Equatable, Sendable {
             case appear
+            case refresh
             case selectDraft(UUID)
             case selectSurface(State.Surface)
-        }
-
-        public enum Delegate: Equatable {
-            case openToday
         }
     }
 
@@ -64,7 +60,10 @@ public struct InboxReducer {
         Reduce { state, action in
             switch action {
             case .view(.appear):
-                state.isLoading = true
+                // Don't flash skeleton when drafts are already on screen (tab revisit).
+                if state.drafts.isEmpty {
+                    state.isLoading = true
+                }
                 return .merge(
                     loadDrafts(),
                     .run { [authClient] send in
@@ -120,16 +119,6 @@ public struct InboxReducer {
             case .review:
                 return .none
 
-            case let .approve(id):
-                return .run { [draftsClient] send in
-                    do {
-                        _ = try await draftsClient.approve(id)
-                        await send(.approved(id))
-                    } catch {
-                        await send(.presentToast(.inboxFailure(error, .approve)))
-                    }
-                }
-
             case let .dismiss(id):
                 return .run { [draftsClient] send in
                     do {
@@ -150,12 +139,27 @@ public struct InboxReducer {
                 state.drafts.remove(id: id)
                 return .none
 
+            case .view(.refresh):
+                switch state.surface {
+                case .inbox:
+                    return loadDrafts()
+                case .calendar:
+                    if state.calendarItems.isEmpty {
+                        state.isCalendarLoading = true
+                    }
+                    return loadCalendar()
+                }
+
             case let .view(.selectSurface(surface)):
                 state.surface = surface
                 guard surface == .calendar else { return .none }
+                if state.calendarItems.isEmpty {
+                    state.isCalendarLoading = true
+                }
                 return loadCalendar()
 
             case let .calendarLoaded(response):
+                state.isCalendarLoading = false
                 state.calendarItems = response.items
                 state.calendarMonthTitle = monthTitle(from: response.from)
                 return .none
@@ -163,12 +167,9 @@ public struct InboxReducer {
             case let .presentToast(toast):
                 if toast.tone == .error {
                     state.isLoading = false
-                    state.error = toast.message
+                    state.isCalendarLoading = false
                 }
                 return toastEffect(toast)
-
-            case .delegate:
-                return .none
             }
         }
         .ifLet(\.$review, action: \.review) {
@@ -210,11 +211,8 @@ public struct InboxReducer {
     }
 
     private func monthTitle(from iso: String) -> String {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd"
-        guard let date = f.date(from: iso) else { return iso }
-        f.dateFormat = "MMMM yyyy"
-        return f.string(from: date)
+        guard let date = InboxFormat.day.date(from: iso) else { return iso }
+        return InboxFormat.monthYear.string(from: date)
     }
 }
 
