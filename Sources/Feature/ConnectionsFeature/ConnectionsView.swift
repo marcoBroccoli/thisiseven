@@ -16,13 +16,9 @@
             NavigationStack {
                 pageContent
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    .evenPaperBackground()
-                    .navigationBarTitleDisplayMode(.inline)
                     .toolbar { toolbarContent }
                     .animation(EvenMotion.reveal, value: store.showsBack)
-                    .toolbarBackground(.hidden, for: .navigationBar)
-                    .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
-                    .tint(EvenTokens.espresso)
+                    .evenPaperNavigationChrome()
             }
             .onAppear { send(.appear) }
             // Feature-owned toast chrome; reducer still uses `toastClient.show`.

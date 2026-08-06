@@ -18,10 +18,6 @@
             NavigationStack {
                 pageContent
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    // Paper on the stack *content* (Inbox pattern) — a layer behind
-                    // NavigationStack is covered by the stack's opaque chrome.
-                    .evenPaperBackground()
-                    .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         if store.showsBack {
                             ToolbarItem(placement: .topBarLeading) {
@@ -54,9 +50,9 @@
                         }
                     }
                     .animation(EvenMotion.reveal, value: store.showsBack)
-                    .toolbarBackground(.hidden, for: .navigationBar)
-                    .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
-                    .tint(EvenTokens.espresso)
+                    // Paper on the stack *content* — a layer behind NavigationStack
+                    // is covered by the stack's opaque chrome.
+                    .evenPaperNavigationChrome()
                     .onAppear {
                         illustrationPage = store.pageIndex
                     }
@@ -93,7 +89,7 @@
                 .scrollPosition(id: $illustrationPage)
                 .scrollDisabled(true)
                 .scrollClipDisabled()
-                .scrollContentBackground(.hidden)
+                .evenScrollOnPaper()
             }
             .accessibilityElement(children: .contain)
             .accessibilityLabel("\(store.title). \(store.message)")

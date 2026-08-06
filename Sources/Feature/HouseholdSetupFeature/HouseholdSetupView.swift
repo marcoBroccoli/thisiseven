@@ -16,14 +16,10 @@
             NavigationStack {
                 pageContent
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    // Paper on the stack *content* (Onboarding / Inbox pattern).
-                    .evenPaperBackground()
-                    .navigationBarTitleDisplayMode(.inline)
                     .toolbar { toolbarContent }
                     .animation(EvenMotion.reveal, value: store.showsBack)
-                    .toolbarBackground(.hidden, for: .navigationBar)
-                    .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
-                    .tint(EvenTokens.espresso)
+                    // Paper on the stack *content* (Onboarding / Inbox pattern).
+                    .evenPaperNavigationChrome()
             }
         }
 
