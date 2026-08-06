@@ -51,6 +51,7 @@ Sources/
   Core/       # EvenCore, *Client, *ClientLive, DI
   Feature/    # *Feature, EvenApp
   Design/     # tokens + shared UI primitives
+  Shared/     # portable UI kits (ToastUI, …) — no Even tokens
 ```
 
 - `Core/EvenCore/` — API client, GoTrue auth, Keychain, shared models,
@@ -113,3 +114,129 @@ reply workflow (`needs_reply`, `suggested_reply`, `reply_status`).
   Product Features follow `docs/even-design-system/`.
 - Local git; the remote is `github.com/marcoBroccoli/thisiseven` (shared with
   Marco). No TestFlight/App Store distribution without Umur's explicit "ship it".
+
+## SwiftUI chrome & paper (hard rules)
+
+Learned from how-it-works / beam work — follow these on every Feature screen:
+
+### Paper background
+- Put `.evenPaperBackground()` on the **content inside** `NavigationStack` (see
+  Inbox / Onboarding). A paper layer *behind* the stack is covered by the
+  stack’s opaque chrome → looks like “no background” / flat white.
+- Prefer **one** paper surface for a screen. Nested `EvenPaperBackground` under
+  a clear nav bar misaligns grain vs the body.
+- Horizontal/vertical `ScrollView` paints a system fill — use
+  `.scrollContentBackground(.hidden)` or it covers paper.
+- Root may also paint paper + `.evenGrainOverlay()`; don’t stack a second full
+  grain tile on the same screen without checking the result.
+
+### Navigation bar
+- Keep the **system** bar. Compact page labels → `.inline` or
+  `ToolbarItem(placement: .principal)` with the **app serif**, not a hand-rolled
+  top HStack (e.g. no custom `← BACK` text headers — see Onboarding /
+  HouseholdSetup).
+- Clear the bar with `.toolbarBackground(.hidden)` /
+  `.toolbarBackgroundVisibility(.hidden)` so paper shows through — don’t give
+  the bar its own solid fill unless you intentionally want a different sheet.
+- Back: prefer conditional `ToolbarItem` + `send(…, animation:)` over
+  opacity-ghost buttons that stay in the toolbar when “hidden”.
+
+### Controls on paper (disabled + hit targets)
+- **Never** dim primary CTAs with view `.opacity` or rely on SwiftUI’s
+  `.disabled` fade — grain/paper shows through and labels go muddy.
+  `EvenPrimaryButton` uses a **solid** muted fill (`stone` when off) and
+  `allowsHitTesting` instead of `.disabled` for the visual state.
+- Card-style path buttons (Household choice rows) use `.buttonStyle(.plain)` —
+  **always** add `.contentShape` on the full rounded rect so padding / empty
+  space is tappable, not only the text glyphs.
+
+### Multi-step Feature layout
+- Peel into `Views/` only when the shell shows **more than one** distinct
+  state/step (path switch). A single-screen Feature (e.g. Inbox / Today)
+  stays inline on the main `*View` — don’t invent a one-file `Views/` wrapper.
+- When multi-step: shell `*View` next to `*Reducer` owns `NavigationStack`,
+  path switch, and shared chrome (error banner, **footer**, motion). Each
+  step lives under `Views/` (`HouseholdChoiceView`, `ConnectionsWhyView`, …)
+  sharing the same store — no per-step reducers unless the step earns its own
+  Feature. Steps own **body content only**.
+- Shared step typography / layout lives in a chrome helper
+  (`HouseholdSetupChrome`, `ConnectionsSetupChrome`); atoms in `*Components`.
+- Variable-width rows (invite code letter tiles) must **flex to the proposed
+  width** — fixed tile sizes that exceed the content width widen the parent
+  and clip leading copy off-screen.
+
+### Shared footers (`safeAreaInset`) — always
+- Portable doctrine (roles only): Personal recipe
+  `~/Desktop/Personal/recipes/ios-tca-kit.md` → §4 “Sticky footers / flow CTAs”.
+- Pin every setup / flow CTA strip with `.safeAreaInset(edge: .bottom)` on the
+  **shell** (see `ConnectionsView` + `ConnectionsPathFooter`, Onboarding
+  footer). Do **not** let each path view own its own footer tree.
+- One persistent primary control + optional secondary. Path/state only remaps
+  `State.footer` (title, style, enabled/busy, whether secondary exists) —
+  `primaryTapped` / `secondaryTapped` route in the reducer by `path`.
+- **Morph in place**, don’t replace: google outline → espresso fill must be
+  the *same* button identity animating fill/stroke/icon/title
+  (`ConnectionsFooterPrimaryButton`). Never `switch` between two different
+  button view types on path change — that reads as a fade-out/replace.
+- Secondary is conditional (`if let`). When it leaves, layout animation drops
+  primary to the bottom edge; when it appears, it pushes primary up.
+- Horizontal padding on the **inset content itself**. Parent
+  `.padding(.horizontal)` on the body does **not** reach `safeAreaInset`
+  chrome (Connections footers went edge-to-edge until the inset was padded).
+- Scope path / page `.animation(..., value: path)` to the **body** only —
+  apply it *before* `safeAreaInset`, never after. Animating the whole page
+  (including the inset) makes the CTA cross-fade with the step instead of
+  morphing.
+- Multi-child `@ViewBuilder` content for a step must sit in a `VStack` (or
+  other stack) **before** any `.frame(..., alignment:)`. Framing a bare
+  tuple with `alignment: .topLeading` overlays every child at the same
+  origin (Connections why screen “mixed up” layout).
+
+### Portable kits (`Sources/Shared/`)
+- App-agnostic UI that will leave Even (today: `ToastUI`) lives under
+  `Shared/`, owns its resources (e.g. `.metal`), and takes style/motion via
+  configuration + environment — **no** `EvenTokens` / `EvenMotion`.
+- Even skin is a thin Design bridge (`ToastConfiguration+Even`,
+  `.evenToastHost()`). Product copy (“Couldn’t reach Google”) stays in the
+  Feature that talks to that service, not in the kit.
+- Features present through `ToastClient` → `ToastHostCenter`; the Feature
+  root attaches `.evenToastHost()` (local overlay, not a global `UIWindow`).
+
+### Drawn success marks
+- Prefer a `Shape` + `.trim` stroke over an SF Symbol pop-in. Delay, draw the
+  tick, **then** reveal the pine disc (`ConnectionsDrawnCheckmark`) — fill
+  after the stroke finishes, not before.
+
+### App route after setup
+- `AppReducer` path: boot → login → onboarding → **householdSetup** →
+  **connections** → ready (Today + Inbox). Next design slice after Household
+  is `ConnectionsFeature` / `Email & Calendar Setup.dc.html`.
+
+### Programmatic pagers & art
+- Fixed chrome (footer / CTA) via `safeAreaInset` (rules above); page content
+  in a programmatic `ScrollView` (`scrollPosition`, often
+  `.scrollDisabled(true)`).
+- **`LazyHStack` does not save you** in a short pager — all pages still mount.
+  Gate heavy illustrations to the **active page**, but **reserve height**
+  (`Color.clear.frame(height:)` + `.overlay`) so title/subtitle don’t jump.
+- Appear sequences (beam drop, drafts stamp, Sunday pour) remount via active
+  gating + `onAppear` / cancel on `onDisappear`.
+- Storytelling copy: centered, multiline. Forms stay leading.
+
+### Beam / shared physics
+- Domain-agnostic in `Design` (`EvenBeamScale` + configuration). Features map
+  Summary → config (`EvenBeamScale+Summary`).
+- Heavier left pan must **sink** (SpriteKit positive zRotation). Weight updates
+  as pebbles **enter**, not after a settle timer. Parent balls to pans; seal
+  colliders so nothing falls out. Share % that rides the tilt lives on the
+  beam node, not floating SwiftUI overlays.
+
+### Hygiene
+- Every Feature surface gets an in-file `#Preview`. Single-screen Features:
+  previews on the main `*View`. Multi-step: shell keeps a whole-flow preview;
+  **each** `Views/` step previews that step. One preview per surface unless a
+  variant earns its keep; fixtures from `*PreviewSupport` /
+  `DesignPreviewSupport` only.
+- A11y strings track real fixture values. Durable controls get
+  `accessibilityIdentifier`s for UITests.
+- Ignore `**/xcuserdata/`. Verify with Xcode MCP / `xcodebuild`, not claims.

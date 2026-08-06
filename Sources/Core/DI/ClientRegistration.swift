@@ -6,4 +6,5 @@
 @_exported import NotificationsClientLive
 @_exported import SummaryClientLive
 @_exported import TasksClientLive
+@_exported import ToastClientLive
 @_exported import WidgetClientLive

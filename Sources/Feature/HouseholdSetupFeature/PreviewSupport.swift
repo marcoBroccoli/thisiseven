@@ -51,6 +51,15 @@ public enum HouseholdSetupPreviewSupport {
         }
     }
 
+    public static func waiting() -> StoreOf<HouseholdSetupReducer> {
+        var state = HouseholdSetupReducer.State()
+        state.path = .waiting
+        state.inviteReveal = PreviewData.household.inviteCode
+        return Store(initialState: state) {
+            HouseholdSetupReducer()
+        }
+    }
+
     private static func mockHousehold(_ deps: inout DependencyValues) {
         deps.householdClient.create = { _, _ in PreviewData.household }
         deps.householdClient.join = { _, _ in PreviewData.household }

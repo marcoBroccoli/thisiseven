@@ -453,6 +453,10 @@ public struct GoogleStatus: Codable, Sendable {
 
 public struct GoogleSyncStart: Codable, Sendable {
     public var started: Bool?
+
+    public init(started: Bool? = nil) {
+        self.started = started
+    }
 }
 
 /// One dated item on the shared calendar — a pending draft or a task.

@@ -10,6 +10,7 @@ let package = Package(
     ],
     products: [
         .library(name: "EvenCore", targets: ["EvenCore"]),
+        .library(name: "ToastUI", targets: ["ToastUI"]),
         .library(name: "Design", targets: ["Design"]),
         .library(name: "AuthClient", targets: ["AuthClient"]),
         .library(name: "HouseholdClient", targets: ["HouseholdClient"]),
@@ -20,6 +21,7 @@ let package = Package(
         .library(name: "CalendarClient", targets: ["CalendarClient"]),
         .library(name: "WidgetClient", targets: ["WidgetClient"]),
         .library(name: "NotificationsClient", targets: ["NotificationsClient"]),
+        .library(name: "ToastClient", targets: ["ToastClient"]),
         .library(name: "DI", targets: ["DI"]),
         .library(name: "SplashFeature", targets: ["SplashFeature"]),
         .library(name: "LoginFeature", targets: ["LoginFeature"]),
@@ -64,7 +66,16 @@ let package = Package(
 
         return [
             .target(name: "EvenCore", path: "Sources/Core/EvenCore"),
-            .target(name: "Design", path: "Sources/Design"),
+            // Standalone, app-agnostic UI kit — no EvenCore/Design/token
+            // references, owns its own shader bundle. Destined for the shared
+            // components package; keep it that way.
+            .target(name: "ToastUI", path: "Sources/Shared/ToastUI"),
+            .target(
+                name: "Design",
+                dependencies: ["ToastUI"],
+                path: "Sources/Design",
+                resources: [.process("Assets.xcassets")]
+            ),
             client("AuthClient"),
             clientLive("AuthClient"),
             client("HouseholdClient"),
@@ -84,6 +95,16 @@ let package = Package(
             client("NotificationsClient"),
             clientLive("NotificationsClient"),
             .target(
+                name: "ToastClient",
+                dependencies: ["ToastUI", deps, depsMacros],
+                path: "Sources/Core/ToastClient"
+            ),
+            .target(
+                name: "ToastClientLive",
+                dependencies: ["ToastClient", "ToastUI", deps],
+                path: "Sources/Core/ToastClientLive"
+            ),
+            .target(
                 name: "DI",
                 dependencies: [
                     "AuthClientLive",
@@ -95,6 +116,7 @@ let package = Package(
                     "CalendarClientLive",
                     "WidgetClientLive",
                     "NotificationsClientLive",
+                    "ToastClientLive",
                 ],
                 path: "Sources/Core/DI"
             ),
@@ -102,14 +124,14 @@ let package = Package(
             feature("LoginFeature", extra: ["AuthClient"]),
             feature("OnboardingFeature"),
             feature("HouseholdSetupFeature", extra: ["HouseholdClient"]),
-            feature("ConnectionsFeature", extra: ["GoogleClient", "NotificationsClient"]),
+            feature("ConnectionsFeature", extra: ["GoogleClient", "NotificationsClient", "ToastClient", "ToastUI"]),
             feature("InboxFeature", extra: ["DraftsClient", "CalendarClient", "NotificationsClient", "AuthClient"]),
             feature("TodayFeature", extra: ["TasksClient", "SummaryClient", "WidgetClient", "AuthClient"]),
             .target(
                 name: "EvenApp",
                 dependencies: [
                     "EvenCore", "Design", "AuthClient", "DI",
-                    "HouseholdClient", "GoogleClient", "NotificationsClient",
+                    "HouseholdClient", "GoogleClient", "NotificationsClient", "ToastClient",
                     "DraftsClient", "TasksClient", "SummaryClient", "CalendarClient",
                     "WidgetClient",
                     "SplashFeature", "LoginFeature", "OnboardingFeature",
@@ -142,7 +164,7 @@ let package = Package(
             ),
             .testTarget(
                 name: "ConnectionsFeatureTests",
-                dependencies: ["ConnectionsFeature", "GoogleClient", "NotificationsClient", "EvenCore", tca],
+                dependencies: ["ConnectionsFeature", "GoogleClient", "NotificationsClient", "ToastClient", "ToastUI", "EvenCore", tca],
                 path: "Tests/ConnectionsFeatureTests"
             ),
             .testTarget(

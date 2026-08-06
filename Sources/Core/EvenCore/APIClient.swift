@@ -366,6 +366,11 @@ public extension EvenAPIClient {
         try await get("v1/google/status")
     }
 
+    func googleDisconnect() async throws {
+        struct Empty: Decodable {}
+        let _: Empty = try await post("v1/google/disconnect")
+    }
+
     /// Starts the async scan job; 409 sync_running means one is already live.
     func googleSync() async throws -> GoogleSyncStart {
         try await post("v1/google/sync")

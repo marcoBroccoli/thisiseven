@@ -1,44 +1,242 @@
 import ComposableArchitecture
+import Design
 import EvenCore
+import Foundation
 import GoogleClient
 import NotificationsClient
+import ToastClient
 
+/// Preview / canvas factories. Client closures are the FreeFlex-style “use cases”:
+/// override + `Task.sleep` to exercise real loading / error paths in the reducer.
 public enum ConnectionsPreviewSupport {
-    /// Interactive whole-flow store: status → connect / skip (mocked Google + notifications).
-    public static func flow() -> StoreOf<ConnectionsReducer> {
+    public static let defaultStatusLag: Duration = .milliseconds(800)
+    public static let defaultConnectLag: Duration = .seconds(2)
+
+    // MARK: - Interactive (effect-driven)
+
+    /// Whole flow: status lag → Why; Connect lags then advances to scopes.
+    public static func flow(
+        statusLag: Duration = defaultStatusLag,
+        connectLag: Duration = defaultConnectLag
+    ) -> StoreOf<ConnectionsReducer> {
         Store(initialState: ConnectionsReducer.State()) {
             ConnectionsReducer()
         } withDependencies: { deps in
-            mockConnections(&deps, connected: false)
+            mockConnections(
+                &deps,
+                status: delayed(statusLag) { PreviewData.googleDisconnected },
+                connect: delayed(connectLag),
+                disconnect: delayed(.milliseconds(400)),
+                presentToasts: true
+            )
         }
     }
 
-    public static func disconnected() -> StoreOf<ConnectionsReducer> {
-        var state = ConnectionsReducer.State()
-        state.statusLine = "Not connected"
-        return Store(initialState: state) {
+    /// Appear shows checking, then lands on Connected (already linked).
+    public static func flowAlreadyConnected(
+        statusLag: Duration = defaultStatusLag
+    ) -> StoreOf<ConnectionsReducer> {
+        Store(initialState: ConnectionsReducer.State()) {
             ConnectionsReducer()
         } withDependencies: { deps in
-            mockConnections(&deps, connected: false)
+            mockConnections(
+                &deps,
+                status: delayed(statusLag) { PreviewData.googleConnected },
+                connect: delayed(defaultConnectLag),
+                disconnect: delayed(.milliseconds(400)),
+                presentToasts: true
+            )
         }
     }
 
-    public static func connected() -> StoreOf<ConnectionsReducer> {
+    /// Tap Connect → spinner → error toast (reducer path).
+    public static func flowConnectFails(
+        after connectLag: Duration = defaultConnectLag
+    ) -> StoreOf<ConnectionsReducer> {
+        Store(initialState: ConnectionsReducer.State()) {
+            ConnectionsReducer()
+        } withDependencies: { deps in
+            mockConnections(
+                &deps,
+                status: delayed(.milliseconds(200)) { PreviewData.googleDisconnected },
+                connect: delayedThrow(connectLag, URLError(.notConnectedToInternet)),
+                disconnect: delayed(.milliseconds(400)),
+                presentToasts: true
+            )
+        }
+    }
+
+    /// Appear → error toast (via `toastClient` → `.evenToastHost()`).
+    /// Throws immediately — `Task.sleep` lags often never advance under RenderPreview.
+    public static func flowStatusFails(
+        after statusLag: Duration = .zero
+    ) -> StoreOf<ConnectionsReducer> {
+        Store(initialState: ConnectionsReducer.State()) {
+            ConnectionsReducer()
+        } withDependencies: { deps in
+            mockConnections(
+                &deps,
+                status: statusLag == .zero
+                    ? { throw URLError(.timedOut) }
+                    : delayedThrow(statusLag, URLError(.timedOut)),
+                connect: delayed(defaultConnectLag),
+                disconnect: delayed(.milliseconds(400)),
+                presentToasts: true
+            )
+        }
+    }
+
+    /// Settings: Disconnect lags then returns to Why when exercised.
+    public static func flowDisconnectSlow(
+        after disconnectLag: Duration = .seconds(2)
+    ) -> StoreOf<ConnectionsReducer> {
         var state = ConnectionsReducer.State()
-        state.statusLine = "Connected"
+        state.path = .connected
         state.email = PreviewData.googleConnected.email
         return Store(initialState: state) {
             ConnectionsReducer()
         } withDependencies: { deps in
-            mockConnections(&deps, connected: true)
+            mockConnections(
+                &deps,
+                status: delayed(.milliseconds(100)) { PreviewData.googleConnected },
+                connect: delayed(defaultConnectLag),
+                disconnect: delayed(disconnectLag),
+                presentToasts: true
+            )
         }
     }
 
-    private static func mockConnections(_ deps: inout DependencyValues, connected: Bool) {
-        deps.googleClient.status = {
-            connected ? PreviewData.googleConnected : PreviewData.googleDisconnected
+    // MARK: - Snapshots (seeded state — instant canvas)
+
+    public static func why() -> StoreOf<ConnectionsReducer> {
+        snapshot(.why, connected: false)
+    }
+
+    /// Static “Connecting…” without waiting on effects.
+    public static func whyWorking() -> StoreOf<ConnectionsReducer> {
+        var state = ConnectionsReducer.State()
+        state.path = .why
+        state.working = true
+        return hungStore(state)
+    }
+
+    public static func whyCheckingStatus() -> StoreOf<ConnectionsReducer> {
+        var state = ConnectionsReducer.State()
+        state.path = .why
+        state.isCheckingStatus = true
+        return hungStore(state)
+    }
+
+    public static func scopes() -> StoreOf<ConnectionsReducer> {
+        var state = ConnectionsReducer.State()
+        state.path = .scopes
+        state.email = PreviewData.googleConnected.email
+        return snapshotStore(state, connected: true)
+    }
+
+    public static func connected() -> StoreOf<ConnectionsReducer> {
+        var state = ConnectionsReducer.State()
+        state.path = .connected
+        state.email = PreviewData.googleConnected.email
+        return snapshotStore(state, connected: true)
+    }
+
+    /// Design 04 — Settings manage surface (not on the setup path).
+    public static func settings() -> StoreOf<ConnectionsReducer> {
+        connected()
+    }
+
+    // MARK: - Internals
+
+    private static func snapshot(
+        _ path: ConnectionsReducer.Path,
+        connected: Bool
+    ) -> StoreOf<ConnectionsReducer> {
+        var state = ConnectionsReducer.State()
+        state.path = path
+        if connected {
+            state.email = PreviewData.googleConnected.email
         }
-        deps.googleClient.connect = {}
+        return snapshotStore(state, connected: connected)
+    }
+
+    private static func snapshotStore(
+        _ state: ConnectionsReducer.State,
+        connected: Bool
+    ) -> StoreOf<ConnectionsReducer> {
+        Store(initialState: state) {
+            ConnectionsReducer()
+        } withDependencies: { deps in
+            let status = connected ? PreviewData.googleConnected : PreviewData.googleDisconnected
+            mockConnections(
+                &deps,
+                status: delayed(.milliseconds(50)) { status },
+                connect: delayed(.milliseconds(50)),
+                disconnect: delayed(.milliseconds(50))
+            )
+        }
+    }
+
+    /// Keeps effects from resolving so seeded busy flags stay visible in canvas.
+    private static func hungStore(
+        _ state: ConnectionsReducer.State
+    ) -> StoreOf<ConnectionsReducer> {
+        Store(initialState: state) {
+            ConnectionsReducer()
+        } withDependencies: { deps in
+            mockConnections(
+                &deps,
+                status: delayed(.seconds(60)) { PreviewData.googleDisconnected },
+                connect: delayed(.seconds(60)),
+                disconnect: delayed(.seconds(60))
+            )
+        }
+    }
+
+    private static func mockConnections(
+        _ deps: inout DependencyValues,
+        status: @escaping @Sendable () async throws -> GoogleStatus,
+        connect: @escaping @Sendable () async throws -> Void,
+        disconnect: @escaping @Sendable () async throws -> Void,
+        presentToasts: Bool = false
+    ) {
+        deps.googleClient.status = status
+        deps.googleClient.connect = connect
+        deps.googleClient.disconnect = disconnect
         deps.notificationsClient.requestAuthorization = { true }
+        if presentToasts {
+            // Same path as Live: feature `.evenToastHost()` + real auto-dismiss.
+            deps.toastClient = .hosted()
+        } else {
+            deps.toastClient.show = { _ in }
+        }
+    }
+
+    private static func delayed(
+        _ lag: Duration
+    ) -> @Sendable () async throws -> Void {
+        {
+            try await Task.sleep(for: lag)
+        }
+    }
+
+    private static func delayed<Value: Sendable>(
+        _ lag: Duration,
+        _ value: @escaping @Sendable () -> Value
+    ) -> @Sendable () async throws -> Value {
+        {
+            try await Task.sleep(for: lag)
+            return value()
+        }
+    }
+
+    private static func delayedThrow<Value: Sendable>(
+        _ lag: Duration,
+        _ error: URLError
+    ) -> @Sendable () async throws -> Value {
+        {
+            try await Task.sleep(for: lag)
+            throw error
+        }
     }
 }

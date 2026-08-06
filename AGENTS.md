@@ -8,7 +8,8 @@ commands, and conventions — lives in [`CLAUDE.md`](./CLAUDE.md).** Read it fir
 Quick orientation:
 - `backend/` — the `evend` Go API (all app data; auto-runs SQL migrations on start).
 - SPM package **`EvenKit`** (one package): targets under `Sources/Core/`,
-  `Sources/Feature/`, `Sources/Design/` — folder layers, not separate packages.
+  `Sources/Feature/`, `Sources/Design/`, `Sources/Shared/` — folder layers,
+  not separate packages.
 - Open **`Even.xcworkspace`** (only `ios/Even.xcodeproj`). Platforms: iOS 18+ /
   watchOS 11+ — no macOS app. Build with `xcodebuild` / Xcode.
 - `docs/even-design-system/` — MVP UI contract; Features map to those flows.
@@ -17,3 +18,31 @@ Quick orientation:
 - `docs/product/API.md` — the **API contract, source of truth**. Keep it and
   `backend/internal/api/router.go` in sync.
 - Secrets are referenced by NAME only (`~/.env` on the home server); never commit them.
+
+**SwiftUI chrome (read `CLAUDE.md` → “SwiftUI chrome & paper”):**
+- `.evenPaperBackground()` on content **inside** `NavigationStack`, not behind it.
+- Clear toolbar background; use principal/inline + app serif for compact titles —
+  no hand-rolled `← BACK` headers (Onboarding / HouseholdSetup pattern).
+- Primary disabled = solid muted fill, never `.opacity` / system disabled fade
+  over paper grain (`EvenPrimaryButton`).
+- `.buttonStyle(.plain)` cards need `.contentShape` on the full shape or only
+  text receives taps.
+- Peel into `Views/` only when the shell shows more than one state/step;
+  single-screen Features stay inline on the main `*View`. Shell owns shared
+  chrome — including the footer via `safeAreaInset` (Connections pattern).
+- Flow CTAs: one shell footer, state-driven primary + optional secondary;
+  morph the same control in place — never swap button view types per path.
+  Pad the inset itself; keep path `.animation` on the body only (before inset).
+- Never `.frame(..., alignment:)` a bare multi-child `@ViewBuilder` — stack
+  first or children overlay at one origin.
+- Portable kits (`Sources/Shared/ToastUI`) stay brand-free; Even skin in
+  Design (`ToastConfiguration+Even` / `.evenToastHost()`).
+- Every Feature surface gets an in-file `#Preview` (main view, or shell + each
+  `Views/` step when multi-step); fixtures from `*PreviewSupport` only —
+  see `CLAUDE.md` → Hygiene.
+- Flex variable-width rows (e.g. invite tiles) to the proposed width — don’t let
+  fixed sizes blow the layout and clip leading content.
+- `.scrollContentBackground(.hidden)` on ScrollViews over paper.
+- Short pagers: gate heavy art to the active page; reserve illustration height.
+- Beam physics lives in `Design/`; Features only map domain → configuration.
+- Setup route: household → **connections** (Gmail/Calendar) → ready.

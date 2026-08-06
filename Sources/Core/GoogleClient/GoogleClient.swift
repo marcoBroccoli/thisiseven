@@ -17,6 +17,10 @@ public struct GoogleClient: Sendable {
     public var connect: @Sendable () async throws -> Void = {
         throw GoogleClientError.unimplemented
     }
+
+    public var disconnect: @Sendable () async throws -> Void = {
+        throw GoogleClientError.unimplemented
+    }
 }
 
 public enum GoogleClientError: Error, Sendable {
@@ -25,6 +29,14 @@ public enum GoogleClientError: Error, Sendable {
 
 extension GoogleClient: TestDependencyKey {
     public static let testValue = GoogleClient()
+
+    /// Safe canvas default — no Live / network. Features still override per preview.
+    public static let previewValue = GoogleClient(
+        status: { PreviewData.googleDisconnected },
+        startSync: { GoogleSyncStart(started: false) },
+        connect: {},
+        disconnect: {}
+    )
 }
 
 public extension DependencyValues {
