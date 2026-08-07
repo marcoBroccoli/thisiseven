@@ -46,7 +46,9 @@
         func body(content: Content) -> some View {
             content
                 .toolbarVisibility(.hidden, for: .tabBar)
-                .safeAreaPadding(.bottom, 50)
+                // Bar footprint is 50 (control) + 8 (igTabBarChrome's .padding(4)
+                // top/bottom) = 58 — pad past that so the last row always clears it.
+                .safeAreaPadding(.bottom, 70)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .contentShape(.rect)
                 .simultaneousGesture(

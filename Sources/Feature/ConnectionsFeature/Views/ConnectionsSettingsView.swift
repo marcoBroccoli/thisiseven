@@ -13,32 +13,17 @@
         }
 
         public var body: some View {
-            VStack(alignment: .leading, spacing: 0) {
-                Text("Connections")
-                    .font(.system(size: 27, weight: .medium, design: .serif))
-                    .foregroundStyle(EvenTokens.espresso)
-                    .padding(.horizontal, 8)
+            VStack(alignment: .leading, spacing: 12) {
+                googleCard
 
-                VStack(alignment: .leading, spacing: 12) {
-                    googleCard
-
-                    ConnectionsSetupChrome.italicNote(
-                        "Disconnecting stops new drafts. Approved tasks and past events stay.",
-                        size: 12.5
-                    )
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, 4)
-                }
-                .padding(.horizontal, 8)
-                .padding(.top, 22)
-
-                Spacer(minLength: 0)
+                ConnectionsSetupChrome.italicNote(
+                    "Disconnecting stops new drafts. Approved tasks and past events stay.",
+                    size: 12.5
+                )
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+                .padding(.top, 4)
             }
-            .padding(.horizontal, 20)
-            .padding(.top, ConnectionsSetupChrome.topInset)
-            .padding(.bottom, ConnectionsSetupChrome.bottomInset)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
 
         private var googleCard: some View {

@@ -91,13 +91,12 @@
                 }
 
                 VStack(alignment: .leading, spacing: 10) {
+                    ProfileSectionHeader(title: "CONNECTIONS")
                     if store.googleConnected {
                         ConnectionsSettingsView(
                             store: store.scope(state: \.connections, action: \.connections)
                         )
-                        .padding(.horizontal, -ProfileLayout.pageHorizontal)
                     } else {
-                        ProfileSectionHeader(title: "CONNECTIONS")
                         ProfileConnectGoogleCard(
                             working: store.connections.working || store.connections.isCheckingStatus,
                             onConnect: { send(.connectGoogleTapped) }
