@@ -305,24 +305,20 @@
                 .frame(height: isGoogle ? 52 : 50)
                 .background(primaryFill)
                 .overlay {
-                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    EvenPrimaryButton.shape
                         .stroke(
                             isGoogle ? EvenTokens.espresso.opacity(0.16) : .clear,
                             lineWidth: 1.5
                         )
                 }
-                .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-                .contentShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                .clipShape(EvenPrimaryButton.shape)
+                .contentShape(EvenPrimaryButton.shape)
             }
             .buttonStyle(.plain)
             .allowsHitTesting(enabled)
             .accessibilityIdentifier(button.accessibilityId)
             .accessibilityAddTraits(enabled ? [] : .isStaticText)
             .accessibilityRemoveTraits(enabled ? [] : .isButton)
-        }
-
-        private var cornerRadius: CGFloat {
-            isGoogle ? 12 : 10
         }
 
         private var primaryFill: Color {

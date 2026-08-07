@@ -96,7 +96,7 @@
                 .frame(maxWidth: .infinity)
                 .frame(height: 50)
                 .background(EvenTokens.espresso)
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .clipShape(EvenPrimaryButton.shape)
             }
             .buttonStyle(.plain)
         }

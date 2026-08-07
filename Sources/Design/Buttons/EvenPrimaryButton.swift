@@ -1,6 +1,12 @@
 import SwiftUI
 
 public struct EvenPrimaryButton: View {
+    /// Maximum continuous rounding for full-width ~50pt CTAs — reads with
+    /// sheet / device curvature (not a tight squircle).
+    public static var shape: Capsule {
+        Capsule()
+    }
+
     private let title: String
     private let action: () -> Void
     private let enabled: Bool
@@ -33,7 +39,7 @@ public struct EvenPrimaryButton: View {
                 // Solid muted fill when disabled. Avoid `.disabled` — SwiftUI fades
                 // disabled controls and the paper grain shows through.
                 .background(enabled ? EvenTokens.espresso : EvenTokens.stone)
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .clipShape(Self.shape)
         }
         .buttonStyle(.plain)
         .allowsHitTesting(enabled)

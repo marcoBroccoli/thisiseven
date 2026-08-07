@@ -1,7 +1,7 @@
 import ComposableArchitecture
 import EvenCore
 import HouseholdClient
-import HouseholdSetupReducer
+import HouseholdSetupFeature
 import XCTest
 
 @MainActor

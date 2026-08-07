@@ -14,7 +14,7 @@
         }
 
         public var body: some View {
-            AutoSizingSheetView {
+            AutoSizingSheetView(surface: EvenTokens.paperRaised) {
                 sheetContent
             } footer: {
                 footer

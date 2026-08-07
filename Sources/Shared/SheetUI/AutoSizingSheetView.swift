@@ -70,7 +70,7 @@
     /// - **Scrolling.** The sheet stops growing at its ceiling; a scroll view in the body takes over from
     ///   there. A body without one is clipped instead — bottom-aligned, so its top is what is lost.
     /// - **Animating its own changes**, with the same spring the sheet uses
-    ///   (`.spring(response: 0.35, dampingFraction: 1)`). The sheet resizes with that token and takes
+    ///   (`AutoSizingSheet.contentAnimation`). The sheet resizes with that token and takes
     ///   no animation parameter: the resize cannot inherit the transaction that caused it — it starts a layout
     ///   pass later, once the new height is measured — so the two only land together while both name the same
     ///   curve. A change sent without any animation resizes the sheet abruptly.
@@ -79,9 +79,21 @@
     ///   against each other while it settles: apply `geometryGroup()` to the changing part and its
     ///   container, one call per unit that must not come apart. The footer needs none of this; it is not in the
     ///   body.
+    /// Tokens shared with sheet bodies that animate their own height.
+    public enum AutoSizingSheet {
+        /// Same curve the sheet uses for a resize. Content that grows or shrinks
+        /// must name this animation too — the resize starts a layout pass later
+        /// and cannot inherit the caller's transaction.
+        ///
+        /// Ease-out rather than a long spring: `presentationDetents` is applied
+        /// on every animatable frame (see `SheetHeightModifier`), and a spring's
+        /// long tail is what made Composer inserts feel like low FPS.
+        public static let contentAnimation: Animation = .easeOut(duration: 0.22)
+    }
+
     public struct AutoSizingSheetView<Content: View, Footer: View>: View {
         /// Shared with content that animates its own height changes — see type docs.
-        private let animation: Animation = .spring(response: 0.35, dampingFraction: 1)
+        private let animation: Animation = AutoSizingSheet.contentAnimation
         private let maxHeightFraction: CGFloat
         private let isSwipeToDismissEnabled: Bool
         private let isFooterBackgroundVisible: Bool
@@ -96,6 +108,8 @@
         /// The most recent read, whether or not it has been acted on — see `contentDidMeasure`.
         @State private var latestMeasuredHeight: CGFloat = 0
         @State private var isResizing = false
+        /// Coalesces same-turn measure callbacks into one detent change.
+        @State private var isCommitScheduled = false
         /// Whether the stack's area has been laid out at a real size yet — the gate for the first commit.
         @State private var isContainerSized = false
 
@@ -197,9 +211,12 @@
         private func contentDidMeasure(_ height: CGFloat) {
             let height = height.rounded(.up)
             guard height > 0 else { return }
+            // During a resize the geometry read is the *interpolated* sheet
+            // height, not the body's ideal — stash it and commit once the spring
+            // finishes, or the detent chases itself and content appears to jump.
             latestMeasuredHeight = height
-            guard isContainerSized else { return }
-            commitContentHeight(height)
+            guard isContainerSized, !isResizing else { return }
+            scheduleCommit()
         }
 
         private func containerDidResolve(height: CGFloat) {
@@ -211,6 +228,19 @@
         private func settleAfterArrival() async {
             try? await Task.sleep(for: Layout.arrivalWindow)
             isSettled = true
+        }
+
+        /// An animated `if` insert can report several ideal heights in one turn
+        /// (and again on the next frame). Committing each one starts a new sheet
+        /// spring — often on a half-grown height — so the detent runs twice and
+        /// the form feels laggy. Wait for the turn to settle, then resize once.
+        private func scheduleCommit() {
+            guard !isCommitScheduled else { return }
+            isCommitScheduled = true
+            DispatchQueue.main.async {
+                isCommitScheduled = false
+                commitContentHeight(latestMeasuredHeight)
+            }
         }
 
         private func commitContentHeight(_ height: CGFloat) {
@@ -232,7 +262,11 @@
                 sheetHeight = target
             } completion: {
                 isResizing = false
-                commitContentHeight(latestMeasuredHeight)
+                // Only run a follow-up if the ideal moved again while we were
+                // in flight — avoid a second spring for sub-point noise.
+                if abs(latestMeasuredHeight - contentHeight) >= 1 {
+                    commitContentHeight(latestMeasuredHeight)
+                }
             }
         }
     }
@@ -257,7 +291,15 @@
         }
 
         func body(content: Content) -> some View {
-            content.presentationDetents([.height(height)])
+            // Quantize before hitting UIKit. An Animatable detent otherwise
+            // rebuilds `presentationDetents` ~60×/s with sub-point heights —
+            // each write relayouts the sheet chrome and tanks FPS. Two-point
+            // steps stay visually smooth while cutting the UIKit work in half.
+            content.presentationDetents([.height(Self.quantized(height))])
+        }
+
+        private static func quantized(_ height: CGFloat) -> CGFloat {
+            (height * 0.5).rounded() * 2
         }
     }
 
