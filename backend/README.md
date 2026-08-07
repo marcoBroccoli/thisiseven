@@ -17,6 +17,11 @@ curl -s localhost:8091/healthz   # {"ok":true}
 Listens on `127.0.0.1:8091` (Caddy/`even-api.home` fronts it for LAN),
 Postgres test port `127.0.0.1:5433`.
 
+Household realtime uses `GET /v1/ws/household` (WebSocket). Caddy’s
+`reverse_proxy` upgrades WebSockets by default — no extra config for
+`even-api.home`. `evend` sets `WriteTimeout: 0` so long-lived sockets are
+not killed by the HTTP write deadline.
+
 ## Layout
 
 - `cmd/evend/` — main + embedded migrations (schema_migrations, run at boot)
@@ -46,12 +51,25 @@ Postgres test port `127.0.0.1:5433`.
 ```bash
 # unit (JWT verifier):
 docker run --rm -v "$PWD":/src -w /src golang:1.24-alpine go test ./internal/auth
+# hub / api unit tests (no stack):
+docker run --rm -v "$PWD":/src -w /src golang:1.24-alpine go test ./internal/api -count=1
 # integration (full flow; needs the stack up):
 source .env && docker run --rm -v "$PWD":/src -w /src --network evend_default \
   -e EVEN_TESTDB="postgres://even:${EVEN_DB_PASSWORD}@db:5432/even?sslmode=disable" \
   -e EVEN_GOTRUE_JWT_SECRET="$GOTRUE_JWT_SECRET" \
   golang:1.24-alpine go test ./...
 ```
+
+### Manual: household realtime (two clients)
+
+With `docker compose up` and two sims (or sim + device) signed into the same
+household, both foregrounded on Today:
+
+1. Toggle a chore on A — check + beam update immediately on A.
+2. B should refetch summary over `GET /v1/ws/household` → invalidate →
+   `GET /v1/summary` and update list + beam without pull-to-refresh.
+3. Kill the API briefly — A still toggles locally; on failure toast + reload.
+   When the API returns, sockets reconnect with backoff.
 
 ## Apple sign-in
 

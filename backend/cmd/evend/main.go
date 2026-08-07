@@ -57,6 +57,7 @@ func main() {
 		Google: google.New(cfg.GoogleClientID, cfg.GoogleClientSecret,
 			cfg.GoogleIOSClientID, cfg.GoogleOAuthBase, cfg.GoogleAPIBase),
 		Claude: claude.New(cfg.AnthropicKey, cfg.ClaudeAPIBase, cfg.ClaudeModel),
+		Hub:    api.NewHub(),
 	}
 	if app.Claude.Configured() {
 		slog.Info("claude classifier on")
@@ -73,7 +74,9 @@ func main() {
 		Addr:              cfg.Addr,
 		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
-		WriteTimeout:      30 * time.Second,
+		// WriteTimeout must be 0 for long-lived WebSocket connections; a
+		// positive deadline kills idle WS writes after the timeout.
+		WriteTimeout: 0,
 	}
 
 	go func() {

@@ -26,12 +26,16 @@ type AccessVerifier interface {
 	VerifyAccess(raw string) (string, error)
 }
 
-// RequireAuth gates a subtree behind a valid Bearer access token.
+// RequireAuth gates a subtree behind a valid access token.
+// Accepts `Authorization: Bearer …` or `?access_token=` (WebSocket upgrades).
 func RequireAuth(v AccessVerifier) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			raw := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 			if raw == "" || raw == r.Header.Get("Authorization") {
+				raw = r.URL.Query().Get("access_token")
+			}
+			if raw == "" {
 				Error(w, http.StatusUnauthorized, "unauthorized", "missing bearer token")
 				return
 			}

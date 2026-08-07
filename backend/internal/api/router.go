@@ -61,6 +61,7 @@ func Router(a *API, verifier httpx.AccessVerifier, gotrueURL string) http.Handle
 		r.Use(httpx.PerUserLimit(rate.Every(100*time.Millisecond), 40))
 
 		r.Get("/v1/summary", a.Summary)
+		r.Get("/v1/ws/household", a.HouseholdWS)
 
 		r.Post("/v1/tasks", a.CreateTask)
 		r.Patch("/v1/tasks/{id}", a.UpdateTask)
