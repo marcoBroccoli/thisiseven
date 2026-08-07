@@ -44,6 +44,7 @@ public struct ProfileReducer {
         case avatarDeleteSucceeded(Member)
         case avatarDeleteFailed
         case presentToast(Toast)
+        case delegate(Delegate)
 
         @CasePathable
         public enum View: Equatable, Sendable {
@@ -58,6 +59,12 @@ public struct ProfileReducer {
             case confirmSignOut
             case cancelSignOut
             case connectGoogleTapped
+        }
+
+        @CasePathable
+        public enum Delegate: Equatable {
+            /// Session cleared — App should return to Login.
+            case signedOut
         }
     }
 
@@ -200,9 +207,13 @@ public struct ProfileReducer {
 
             case .view(.confirmSignOut):
                 state.confirmSignOut = false
-                return .run { [authClient] _ in
+                return .run { [authClient] send in
                     await authClient.signOut()
+                    await send(.delegate(.signedOut))
                 }
+
+            case .delegate:
+                return .none
 
             case .view(.connectGoogleTapped):
                 return .send(.connections(.view(.primaryTapped)))

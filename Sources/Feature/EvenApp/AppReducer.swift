@@ -91,6 +91,10 @@ public struct AppReducer {
                 state = .ready(MainTabReducer.State())
                 return .none
 
+            case .ready(.delegate(.signedOut)):
+                state = .login(LoginReducer.State())
+                return .none
+
             case .login, .onboarding, .householdSetup, .connections, .ready:
                 return .none
             }

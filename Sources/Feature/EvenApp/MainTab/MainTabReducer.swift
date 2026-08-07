@@ -28,11 +28,17 @@ public struct MainTabReducer {
         case today(TodayReducer.Action)
         case profile(ProfileReducer.Action)
         case realtime(HouseholdRealtimeEvent)
+        case delegate(Delegate)
 
         @CasePathable
         public enum View: Equatable, Sendable {
             case appear
             case selectTab(State.Tab)
+        }
+
+        @CasePathable
+        public enum Delegate: Equatable {
+            case signedOut
         }
     }
 
@@ -68,6 +74,12 @@ public struct MainTabReducer {
                     return .none
                 }
                 return .send(.today(.view(.refresh)))
+
+            case .profile(.delegate(.signedOut)):
+                return .send(.delegate(.signedOut))
+
+            case .delegate:
+                return .none
 
             case .inbox, .today, .profile:
                 return .none
