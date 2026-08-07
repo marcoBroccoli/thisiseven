@@ -75,10 +75,6 @@ let package = Package(
             name: "SheetUI",
             condition: .when(platforms: [.iOS])
         )
-        let igTabBar_iOS: Target.Dependency = .target(
-            name: "IGTabBar",
-            condition: .when(platforms: [.iOS])
-        )
 
         return [
             .target(name: "EvenCore", path: "Sources/Core/EvenCore"),
@@ -154,14 +150,14 @@ let package = Package(
                 "InboxFeature",
                 extra: [
                     "DraftsClient", "CalendarClient", "NotificationsClient", "AuthClient",
-                    sheetUI_iOS, igTabBar_iOS, "ToastClient", "ToastUI", "VisualEffects",
+                    sheetUI_iOS, "ToastClient", "ToastUI", "VisualEffects",
                 ]
             ),
             feature(
                 "TodayFeature",
                 extra: [
                     "TasksClient", "SummaryClient", "WidgetClient", "AuthClient",
-                    sheetUI_iOS, igTabBar_iOS, "ToastClient", "ToastUI", "VisualEffects",
+                    sheetUI_iOS, "ToastClient", "ToastUI", "VisualEffects",
                 ]
             ),
             feature(
@@ -169,7 +165,7 @@ let package = Package(
                 extra: [
                     "AuthClient", "HouseholdClient", "ConnectionsFeature",
                     "GoogleClient", "NotificationsClient",
-                    igTabBar_iOS, "ToastClient", "ToastUI", "VisualEffects",
+                    "ToastClient", "ToastUI", "VisualEffects",
                 ]
             ),
             .target(
@@ -183,7 +179,6 @@ let package = Package(
                     "SplashFeature", "LoginFeature", "OnboardingFeature",
                     "HouseholdSetupFeature", "ConnectionsFeature",
                     "InboxFeature", "TodayFeature", "ProfileFeature",
-                    igTabBar_iOS,
                     tca,
                 ],
                 path: "Sources/Feature/EvenApp"

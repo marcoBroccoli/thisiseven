@@ -106,7 +106,10 @@
                     .disabled(store.working)
                     .opacity(store.working ? 0.55 : 1)
 
-                #if DEBUG
+                // Also available in simulator Release builds so Instruments
+                // profiling (Xcode Profile action) can sign in; device release
+                // builds never compile it.
+                #if DEBUG || targetEnvironment(simulator)
                     if !Self.isRunningForPreviews {
                         Button("DEV — EMAIL SIGN-IN") { showDebugAuth = true }
                             .font(.system(size: 9, weight: .semibold))
@@ -218,7 +221,7 @@
         }
     }
 
-    #if DEBUG
+    #if DEBUG || targetEnvironment(simulator)
         private struct DebugEmailSheet: View {
             @Environment(\.dismiss) private var dismiss
             @State private var email = "umur@thisiseven.app"

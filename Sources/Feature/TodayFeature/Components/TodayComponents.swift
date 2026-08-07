@@ -1,7 +1,6 @@
 #if os(iOS)
     import Design
     import EvenCore
-    import IGTabBar
     import SwiftUI
     import VisualEffects
 
@@ -51,7 +50,9 @@
         static let checkTick: CGFloat = 12
 
         // Empty / unavailable
-        static let emptyBeamHeight: CGFloat = 180
+        // The beam artwork draws fixed chrome for a 240pt canvas (post base at
+        // y196, WEEK label at y210) — a shorter frame spills it into the copy.
+        static let emptyBeamHeight: CGFloat = beamHeight
         static let emptyStackSpacing: CGFloat = 16
         static let emptySpacerMin: CGFloat = 40
         static let unavailableTop: CGFloat = 48
@@ -65,7 +66,6 @@
         let partner: Member?
         let isLoading: Bool
         let organizeMode: TodayOrganizeMode
-        var tabBarProgress: Binding<CGFloat>?
         let onToggle: (UUID) -> Void
         let onEdit: (UUID) -> Void
         let onDelete: (UUID) -> Void
@@ -104,7 +104,6 @@
             .environment(\.defaultMinListRowHeight, 0)
             .evenScrollOnPaper()
             .refreshable { await onRefresh() }
-            .adoptForIGTabBar(tabBarProgress)
             .animation(EvenMotion.reveal, value: showSkeleton)
             .animation(EvenMotion.reveal, value: summary?.week.index)
         }
@@ -282,10 +281,9 @@
                 EvenBeamScale(
                     summary: Summary(
                         week: Week(id: UUID(), index: weekIndex, startedOn: ""),
-                        pebbles: [
-                            Pebble(memberId: me?.id ?? UUID(), weight: 0),
-                            Pebble(memberId: partner?.id ?? UUID(), weight: 0),
-                        ],
+                        // No pebbles — the beam shows the configured 50/50 share
+                        // on an empty list; weight-0 fakes still draw a ball.
+                        pebbles: [],
                         percentMe: 50,
                         percentPartner: 50,
                         caption: "Nothing on the beam yet.",

@@ -3,7 +3,6 @@
     import ConnectionsFeature
     import Design
     import EvenCore
-    import IGTabBar
     import SwiftUI
     import UIKit
     import VisualEffects
@@ -11,14 +10,9 @@
     @ViewAction(for: ProfileReducer.self)
     public struct ProfileView: View {
         @Bindable public var store: StoreOf<ProfileReducer>
-        private var tabBarProgress: Binding<CGFloat>?
 
-        public init(
-            store: StoreOf<ProfileReducer>,
-            tabBarProgress: Binding<CGFloat>? = nil
-        ) {
+        public init(store: StoreOf<ProfileReducer>) {
             self.store = store
-            self.tabBarProgress = tabBarProgress
         }
 
         public var body: some View {
@@ -37,7 +31,6 @@
                     .padding(.bottom, 28)
                 }
                 .evenScrollOnPaper()
-                .adoptForIGTabBar(tabBarProgress)
                 .toolbar {
                     ToolbarItem(placement: .principal) {
                         EvenBrandMark()

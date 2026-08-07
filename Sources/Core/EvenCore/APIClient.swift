@@ -17,6 +17,14 @@ public enum APIEnvironment: Sendable {
     }
 
     public static var current: APIEnvironment {
+        // Runtime override for dev launches (e.g. simulator against prod):
+        // SIMCTL_CHILD_EVEN_API_ENV=publicCloud xcrun simctl launch …
+        switch ProcessInfo.processInfo.environment["EVEN_API_ENV"] {
+        case "localhost": return .localhost
+        case "home": return .home
+        case "publicCloud", "public": return .publicCloud
+        default: break
+        }
         #if targetEnvironment(simulator)
             return .localhost
         #elseif DEBUG

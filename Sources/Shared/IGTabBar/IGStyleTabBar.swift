@@ -99,6 +99,8 @@
                 for: .valueChanged
             )
             control.onTouchBegan = onInteraction
+            context.coordinator.appliedItems = values.map(item)
+            context.coordinator.appliedConfiguration = configuration
             // Kavsoft: fade track chrome UIImageViews once after layout. Do NOT
             // setBackgroundImage(clear) or re-run this on every update — on iOS
             // 26 segment symbols also sit in top-level UIImageViews and go blank.
@@ -121,10 +123,19 @@
             if uiView.selectedSegmentIndex != selectedIndex {
                 uiView.selectedSegmentIndex = selectedIndex
             }
+            // Progress-driven chrome re-evaluates this representable every scroll
+            // frame — regenerating images / resetting tints each frame relayouts
+            // the UIKit control and stutters the collapse. Only touch the control
+            // when segment content or style actually changed. (Still no chrome
+            // alpha fade re-run here — that blanks icons on iOS 26.)
+            let items = values.map(item)
+            guard context.coordinator.appliedItems != items
+                || context.coordinator.appliedConfiguration != configuration
+            else { return }
+            context.coordinator.appliedItems = items
+            context.coordinator.appliedConfiguration = configuration
             uiView.selectedSegmentTintColor = UIColor(configuration.selectedSegmentTint)
             uiView.tintColor = UIColor(configuration.foreground)
-            // Refresh segment images when badges / symbols change. Do not re-run
-            // the chrome alpha fade — that blanks icons on iOS 26.
             for (index, value) in values.enumerated() where index < uiView.numberOfSegments {
                 uiView.setImage(segmentImage(for: value), forSegmentAt: index)
             }
@@ -153,6 +164,10 @@
 
         public final class Coordinator: NSObject {
             var parent: IGStyleTabBar
+            /// Last-applied segment content + style — lets `updateUIView` skip
+            /// image regeneration on progress-only re-renders.
+            var appliedItems: [IGTabBarItem]?
+            var appliedConfiguration: IGStyleTabBarConfiguration?
             init(parent: IGStyleTabBar) {
                 self.parent = parent
             }

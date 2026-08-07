@@ -100,12 +100,11 @@
                             Button {
                                 onSelectColor(option)
                             } label: {
+                                // Flex to the proposed width — nine fixed swatches
+                                // outgrow the card on 402pt screens and widen the
+                                // whole page.
                                 Circle()
                                     .fill(Color(hex: option.rgb))
-                                    .frame(
-                                        width: ProfileLayout.swatch,
-                                        height: ProfileLayout.swatch
-                                    )
                                     .overlay(
                                         Circle()
                                             .stroke(
@@ -114,6 +113,8 @@
                                             )
                                     )
                                     .contentShape(Circle())
+                                    .aspectRatio(1, contentMode: .fit)
+                                    .frame(maxWidth: ProfileLayout.swatch)
                             }
                             .buttonStyle(.plain)
                             .allowsHitTesting(!isSaving)

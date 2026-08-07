@@ -3,16 +3,24 @@ import SwiftUI
 #if canImport(UIKit)
     import UIKit
 
-    /// Tiled noise matching design-system `data-grain` (≈5.5% multiply).
+    /// Tiled noise matching design-system `data-grain`.
+    ///
+    /// Specks are translucent **black** so the overlay composites with normal
+    /// alpha blending — `.multiply` above the whole app forced the compositor
+    /// off its fast path on every scrolled frame. Rendered at `scale = 1` and
+    /// upsampled so specks blur softly instead of landing as hard 3px blocks.
     private let evenGrainTile: UIImage = {
-        let side = 128
-        let renderer = UIGraphicsImageRenderer(size: CGSize(width: side, height: side))
+        let side = 256
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        format.opaque = false
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: side, height: side), format: format)
         var rng = SystemRandomNumberGenerator()
         return renderer.image { ctx in
             for y in 0 ..< side {
-                for x in 0 ..< side where Bool.random(using: &rng) {
-                    let gray = CGFloat.random(in: 0 ... 1, using: &rng)
-                    ctx.cgContext.setFillColor(UIColor(white: gray, alpha: 1).cgColor)
+                for x in 0 ..< side where Double.random(in: 0 ... 1, using: &rng) < 0.14 {
+                    let alpha = CGFloat.random(in: 0.25 ... 0.9, using: &rng)
+                    ctx.cgContext.setFillColor(UIColor(white: 0, alpha: alpha).cgColor)
                     ctx.cgContext.fill(CGRect(x: x, y: y, width: 1, height: 1))
                 }
             }
@@ -20,11 +28,12 @@ import SwiftUI
     }()
 #endif
 
-/// Subtle paper-grain overlay — pointer-events none, multiply blend.
+/// Subtle paper-grain overlay — pointer-events none, normal alpha blend
+/// (darkening is baked into the tile's black specks).
 public struct EvenGrainOverlay: View {
     public var opacity: Double
 
-    public init(opacity: Double = 0.055) {
+    public init(opacity: Double = 0.04) {
         self.opacity = opacity
     }
 
@@ -33,7 +42,6 @@ public struct EvenGrainOverlay: View {
             Image(uiImage: evenGrainTile)
                 .resizable(resizingMode: .tile)
                 .opacity(opacity)
-                .blendMode(.multiply)
                 .allowsHitTesting(false)
                 .ignoresSafeArea()
         #else
@@ -65,9 +73,10 @@ public extension View {
         background { EvenPaperBackground(color: color) }
     }
 
-    /// Draws grain on top of the view (multiply). Use at the app root so every
-    /// screen — including TabView — shares one paper texture.
-    func evenGrainOverlay(opacity: Double = 0.055) -> some View {
+    /// Draws grain on top of the view. Prefer baking grain into
+    /// ``EvenPaperBackground`` / ``evenPaperBackground`` behind content —
+    /// a root overlay on opaque cards reads as see-through under normal blend.
+    func evenGrainOverlay(opacity: Double = 0.04) -> some View {
         overlay { EvenGrainOverlay(opacity: opacity) }
     }
 }

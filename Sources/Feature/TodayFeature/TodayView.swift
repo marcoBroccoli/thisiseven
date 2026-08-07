@@ -2,20 +2,14 @@
     import ComposableArchitecture
     import Design
     import EvenCore
-    import IGTabBar
     import SwiftUI
 
     @ViewAction(for: TodayReducer.self)
     public struct TodayView: View {
         @Bindable public var store: StoreOf<TodayReducer>
-        private var tabBarProgress: Binding<CGFloat>?
 
-        public init(
-            store: StoreOf<TodayReducer>,
-            tabBarProgress: Binding<CGFloat>? = nil
-        ) {
+        public init(store: StoreOf<TodayReducer>) {
             self.store = store
-            self.tabBarProgress = tabBarProgress
         }
 
         public var body: some View {
@@ -26,7 +20,6 @@
                     partner: store.partner,
                     isLoading: store.isLoading,
                     organizeMode: store.organizeMode,
-                    tabBarProgress: tabBarProgress,
                     onToggle: { send(.toggle($0)) },
                     onEdit: { send(.edit($0)) },
                     onDelete: { send(.delete($0)) },

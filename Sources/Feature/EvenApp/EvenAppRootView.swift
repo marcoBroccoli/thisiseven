@@ -52,7 +52,9 @@
                         }
                     }
                 }
-                .evenGrainOverlay()
+                // Grain lives in `EvenPaperBackground` / `.evenPaperBackground()`
+                // behind content — never as a root overlay on top of cards/rows
+                // (normal-blend speckles read as see-through components).
             }
             .task {
                 if EvenLaunchArguments.resetSession {

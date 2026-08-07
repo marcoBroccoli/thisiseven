@@ -57,6 +57,9 @@ private struct ToastHostModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .toast($host.toast, configuration: configuration)
+            .onAppear {
+                host.activate()
+            }
             .onDisappear {
                 host.deactivate()
             }
@@ -71,6 +74,15 @@ private final class ToastHostController: ObservableObject {
 
     init() {
         // Register in init so early callers can't race past `onAppear`.
+        activate()
+    }
+
+    /// Re-registers on every appear: `onDisappear` unregisters on tab switches
+    /// and pushes, and `init` never re-runs for a surviving StateObject — a
+    /// revisited screen's host would stay dead and toasts silently drop.
+    /// Re-registering also moves the on-screen host to the top of the stack so
+    /// delivery targets the visible screen, not the last-mounted one.
+    func activate() {
         ToastHostCenter.register(
             id: id,
             present: { [weak self] toast in
