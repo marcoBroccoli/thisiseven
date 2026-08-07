@@ -19,10 +19,13 @@ targets:
         product: DI
       - target: EvenWidgetsExtension
         embed: true
-      - target: EvenWatch
-        embed: true
-      - target: EvenWatchWidgetsExtension
-        embed: true
+      # Watch companion scaffold isn't installer-clean yet (watchOS widget
+      # extension fails MobileInstallation's NSExtensionPrincipalClass check) —
+      # unembedded until that's resolved so the iPhone app installs.
+      # - target: EvenWatch
+      #   embed: true
+      # - target: EvenWatchWidgetsExtension
+      #   embed: true
     info:
       path: EvenApp/Info.plist
       properties:
@@ -45,6 +48,7 @@ targets:
           NSExceptionDomains:
             even-api.home:
               NSExceptionAllowsInsecureHTTPLoads: true
+        NSCameraUsageDescription: Even uses your camera to take a profile photo.
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.umuryavuz.even
@@ -140,6 +144,14 @@ targets:
     dependencies:
       - package: EvenKit
         product: EvenCore
+    info:
+      path: EvenWatchWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: Even
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.umuryavuz.even.watchkitapp.widgets

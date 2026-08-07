@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0A9C0281C5792B3C51DF4B46 /* EvenWatchWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BBDDAB9B4AEDD5149420DEC2 /* EvenWatchWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		11EB501584EEC0179413FDAB /* EvenCaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 485A1F14A32A42EC812D3FEC /* EvenCaptureTests.swift */; };
 		13170EB5F01F31BEFBA32669 /* EvenApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A95A43EE2CE1E45F9972E3E5 /* EvenApp.swift */; };
 		168D82537F06FA083AD66FE7 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1FDF0626C25D9F1D3CE11B6C /* Assets.xcassets */; };
@@ -19,7 +18,6 @@
 		4FE3A4E29E07D25B50E950FC /* DI in Frameworks */ = {isa = PBXBuildFile; productRef = 69BCD86B47C32B4A9791A21D /* DI */; };
 		527B5B3FC73C73894D73C0B1 /* LockWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = C688FC6E0628DFA9807BE19F /* LockWidgets.swift */; };
 		5C8DACC994FA11FE4F833056 /* EvenWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2D07DE49563D3086849042C /* EvenWatchApp.swift */; };
-		6F9FC0F69A8B62EA5F76B17E /* EvenWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = D1EA31DAE6E54C9B701AEFB6 /* EvenWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		821468CA8DC9C28DA7DFF161 /* EvenE2ETests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0AAF5AFC5B42AA346D03E33 /* EvenE2ETests.swift */; };
 		8351BB659FA3BB3CBFB26E39 /* EvenCore in Frameworks */ = {isa = PBXBuildFile; productRef = ECE4C1DBF9EB08B2BEBF418F /* EvenCore */; };
 		913AC9278E61AF9F75A83C7D /* Provider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F78212281B874F7A9927CE9 /* Provider.swift */; };
@@ -36,13 +34,6 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		42BC9672B1888341120E7DA6 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 02664969AF66D3EC327AFD67 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 48147F5C2261286143F23737;
-			remoteInfo = EvenWatchWidgetsExtension;
-		};
 		61E2292931CBB666CAB5E5D4 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 02664969AF66D3EC327AFD67 /* Project object */;
@@ -57,27 +48,9 @@
 			remoteGlobalIDString = 5F980592C3BF0FBD9861ECC8;
 			remoteInfo = Even;
 		};
-		E647A11E9594F97A54C2348D /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 02664969AF66D3EC327AFD67 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 7696E617268E6F7F63B80873;
-			remoteInfo = EvenWatch;
-		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		19B809BDF0DBFD02526EFE16 /* Embed Watch Content */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
-			dstSubfolderSpec = 16;
-			files = (
-				6F9FC0F69A8B62EA5F76B17E /* EvenWatch.app in Embed Watch Content */,
-			);
-			name = "Embed Watch Content";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		60D45C89537A15EE1993E52E /* Embed Foundation Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -85,7 +58,6 @@
 			dstSubfolderSpec = 13;
 			files = (
 				30310A663002B44962F9816A /* EvenWidgetsExtension.appex in Embed Foundation Extensions */,
-				0A9C0281C5792B3C51DF4B46 /* EvenWatchWidgetsExtension.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -96,6 +68,7 @@
 		1182C0E4AB68527AC6FBE676 /* BalanceBeam.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BalanceBeam.swift; sourceTree = "<group>"; };
 		13C1CDC5FE2BAE5109126544 /* EvenDemoWalkTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvenDemoWalkTests.swift; sourceTree = "<group>"; };
 		1FDF0626C25D9F1D3CE11B6C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		297B9DFB7936B987BF549076 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		2D4D615724B500AF5E6A94D3 /* EvenWidgetsBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvenWidgetsBundle.swift; sourceTree = "<group>"; };
 		39DA8231A84CF0BBDCAFC8C5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		42223694485ED1E379B25DCB /* Even.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Even.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -164,6 +137,7 @@
 			isa = PBXGroup;
 			children = (
 				9669C03F557E06C8D97CDD70 /* EvenWatchWidgetsBundle.swift */,
+				297B9DFB7936B987BF549076 /* Info.plist */,
 			);
 			path = EvenWatchWidgets;
 			sourceTree = "<group>";
@@ -306,14 +280,11 @@
 				29CDD730B0B811E5BC2274B9 /* Resources */,
 				5270AB94B1205BF7EEA65533 /* Frameworks */,
 				60D45C89537A15EE1993E52E /* Embed Foundation Extensions */,
-				19B809BDF0DBFD02526EFE16 /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				E758B56BFDF12F5EC856C6D0 /* PBXTargetDependency */,
-				3789ECECA7737CA4B77CF1F4 /* PBXTargetDependency */,
-				B0A90AAB8A23A04C01DC0D16 /* PBXTargetDependency */,
 			);
 			name = Even;
 			packageProductDependencies = (
@@ -493,20 +464,10 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		3789ECECA7737CA4B77CF1F4 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 7696E617268E6F7F63B80873 /* EvenWatch */;
-			targetProxy = E647A11E9594F97A54C2348D /* PBXContainerItemProxy */;
-		};
 		985BAB66F7116FB4450CEE72 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 5F980592C3BF0FBD9861ECC8 /* Even */;
 			targetProxy = AE24C435B4DB1D86687A5664 /* PBXContainerItemProxy */;
-		};
-		B0A90AAB8A23A04C01DC0D16 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 48147F5C2261286143F23737 /* EvenWatchWidgetsExtension */;
-			targetProxy = 42BC9672B1888341120E7DA6 /* PBXContainerItemProxy */;
 		};
 		E758B56BFDF12F5EC856C6D0 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -523,6 +484,7 @@
 				CURRENT_PROJECT_VERSION = 8;
 				DEVELOPMENT_TEAM = C3XSV85364;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = EvenWatchWidgets/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -544,6 +506,7 @@
 				CURRENT_PROJECT_VERSION = 8;
 				DEVELOPMENT_TEAM = C3XSV85364;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = EvenWatchWidgets/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
