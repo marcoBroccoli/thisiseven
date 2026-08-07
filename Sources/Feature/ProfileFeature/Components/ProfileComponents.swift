@@ -53,6 +53,9 @@
         var onRemoveAvatar: () -> Void
 
         @State private var pickerItem: PhotosPickerItem?
+        @State private var showSourceChooser = false
+        @State private var showLibrary = false
+        @State private var showCamera = false
 
         var body: some View {
             VStack(alignment: .leading, spacing: 16) {
@@ -152,7 +155,9 @@
         }
 
         private var avatarControl: some View {
-            PhotosPicker(selection: $pickerItem, matching: .images, photoLibrary: .shared()) {
+            Button {
+                showSourceChooser = true
+            } label: {
                 EvenMemberAvatar(
                     memberId: memberId,
                     displayName: displayName,
@@ -174,6 +179,22 @@
             .allowsHitTesting(!isSaving)
             .accessibilityIdentifier("Profile photo")
             .accessibilityLabel("Change profile photo")
+            .confirmationDialog("Profile Photo", isPresented: $showSourceChooser, titleVisibility: .visible) {
+                if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                    Button("Take Photo") { showCamera = true }
+                }
+                Button("Choose from Library") { showLibrary = true }
+                Button("Cancel", role: .cancel) {}
+            }
+            .photosPicker(isPresented: $showLibrary, selection: $pickerItem, matching: .images, photoLibrary: .shared())
+            .fullScreenCover(isPresented: $showCamera) {
+                CameraCapture(isPresented: $showCamera) { data in
+                    if let jpeg = AvatarJPEG.prepare(data) {
+                        onPickJPEG(jpeg)
+                    }
+                }
+                .ignoresSafeArea()
+            }
         }
     }
 
