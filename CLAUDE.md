@@ -83,12 +83,41 @@ trade`. A **task** carries `section` (chore|admin), `weight` (1–3), `recurrenc
 `calendar_sync_state`, last-synced/last-error). A **draft** carries the email
 reply workflow (`needs_reply`, `suggested_reply`, `reply_status`).
 
+### Recurrence is a rule, not stored occurrences
+- One task row per repeat. `due_on` (or the capture date) is the **anchor**;
+  `/v1/summary` returns one entry carrying the current occurrence's state.
+  Per-date expansion happens only in `/v1/calendar` (`{task_id}:{YYYY-MM-DD}`).
+  Do **not** add occurrence rows to Today.
+- A repeat ends never, on `recurrence_until`, or after `recurrence_count`
+  occurrences. A count is the household's **intent**; the server derives
+  `recurrence_until` from it, and *every* occurrence check (summary visibility,
+  toggle eligibility, calendar expansion, Calendar `RRULE`) reads only the date.
+  Keep `resolveRecurrenceEnd` (Go) and `Recurrence.recurrenceEnd` (Swift) in step.
+- `meta_line` describes the **next** occurrence, never the anchor — otherwise a
+  healthy weekly chore reads `21 DAYS OVER · WEEKLY`. Daily / every-2-days omit
+  the date (they are only listed on a due day). See `docs/product/API.md` →
+  Recurrence for the exact phrasing.
+- Composer keeps the “Repeat until” row hidden until a repeat is picked, and
+  clears the bound when it drops back to a one-off (the API rejects an end on
+  `recurrence: "none"`).
+
 ## Commands
 - Open app: `open Even.xcworkspace` (preferred) or `ios/Even.xcodeproj`.
 - iOS app: `cd ios && xcodegen generate`, then build scheme **Even** for an iPhone sim;
   E2E: `xcodebuild … test` (EvenUITests — needs the backend stack up).
-- Go tests: `docker run --rm -v "$PWD/backend":/src -w /src golang:1.24-alpine go test ./...`
-  (no local Go toolchain on this box).
+- Swift tests (all `Tests/` suites): scheme **EvenKitTests** —
+  ```bash
+  xcodebuild test -workspace Even.xcworkspace -scheme EvenKitTests \
+    -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.5'
+  ```
+  It is a shared package scheme (`.swiftpm/xcode/xcshareddata/xcschemes/`) because
+  Xcode's implicit per-product schemes carry a test plan only in the GUI —
+  `xcodebuild test -scheme TodayFeature` fails with "not configured for the test
+  action". Add new `.testTarget`s to that scheme too. The Xcode MCP
+  (`RunAllTests`) only ever runs the **active** scheme's plan.
+- Go tests: `cd backend && go test ./...` (a local Go toolchain is installed).
+  Docker fallback when it is not running:
+  `docker run --rm -v "$PWD/backend":/src -w /src golang:1.24-alpine go test ./...`
 - Backend stack: `cd backend && docker compose up -d --build` (project `evend`:
   api `127.0.0.1:8091` + GoTrue + Postgres `5433`; Caddy route `http://even-api.home`).
 - Stack secrets: `backend/.env` (gitignored) from `~/.env` `THISISEVEN_*` + `GOOGLE_OAUTH_*`.
@@ -211,9 +240,9 @@ Learned from how-it-works / beam work — follow these on every Feature screen:
   origin (Connections why screen “mixed up” layout).
 
 ### Portable kits (`Sources/Shared/`)
-- App-agnostic UI that will leave Even (`ToastUI`, `SheetUI`, `VisualEffects`)
-  lives under `Shared/`, owns its resources (e.g. `.metal`), and takes
-  style/motion via configuration + environment — **no** `EvenTokens` /
+- App-agnostic UI that will leave Even (`ToastUI`, `SheetUI`, `VisualEffects`,
+  `IGTabBar`) lives under `Shared/`, owns its resources (e.g. `.metal`), and
+  takes style/motion via configuration + environment — **no** `EvenTokens` /
   `EvenMotion`.
 - Even skin is a thin Design bridge (`ToastConfiguration+Even`,
   `.evenToastHost()`). Product copy (“Couldn’t reach Google”) stays in the
@@ -224,6 +253,46 @@ Learned from how-it-works / beam work — follow these on every Feature screen:
 - Loading chrome: `VisualEffects` → **`.loading(isLoading)`** (redacted
   placeholder + shimmer + no hit testing while on). Do **not** hand-chain
   `.redacted` + `.shimmering` on Feature skeletons.
+- **`IGTabBar`** = Instagram-style floating segmented control for the **app
+  shell tab bar only** (`MainTabView`: hide system tab bar, overlay
+  `IGStyleTabBar` + `.igTabBarChrome`, drive collapse with
+  `.adoptForIGTabBar` on Today `List` / Inbox `ScrollView`). Pass Even tints
+  via `IGStyleTabBarConfiguration` at the call site.
+- **Never** use `IGTabBar` for in-content filters / organize controls (Today
+  Day · Type · Person). Glass + `UISegmentedControl` chrome fights paper;
+  title segments vanish when track image-views are cleared on recent iOS.
+  In-list filters use Feature SwiftUI chips with Composer chrome (espresso
+  fill / stroke) — see Today `TodayOrganizeChip`.
+- Portable doctrine: Personal recipe `ios-tca-kit.md` → §3 “App-agnostic kits”
+  and §4 “List regroup / filters”.
+
+### Paper `List` chrome (Today)
+- Own row chrome **inside** each List-row struct via `todayPaperListRow()`
+  (zero vertical system insets, page gutter as **leading/trailing
+  `listRowInsets`**, clear background, hidden separators) — call sites stay
+  clean. Do **not** put horizontal `.padding` on the `List` itself when rows
+  use trailing `swipeActions`: padding narrows the scroll container and
+  clips the action tray off the screen edge.
+- Centralize spacing in a Feature-local `TodayLayout` (or equivalent) — one
+  place for page / section / row / marker tokens; no scattered magic numbers.
+- Native `swipeActions`: public API is edge / full-swipe / role / tint /
+  label only — no resize. Prefer SF Symbols + `.labelStyle(.iconOnly)`; size
+  row content (markers) to read against the system tray, don’t invent a
+  parallel swipe kit unless native is abandoned on purpose.
+
+### Client-side list regroup (Today organize)
+- `/v1/summary` still returns chore/admin sections; Day / Type / Person is
+  **client regroup** (`TodayOrganizeMode` + `TodayOrganizer`) — no backend
+  change for organize.
+- Animate regroup by a **flat row array** with stable task identities
+  (`TodayListRow.task` → `task-{uuid}`), not by swapping `Section` ids
+  (`day-overdue` → `type-chore`). Section-id swaps read as fade-out/fade-in;
+  stable task ids + `send(.organize, animation:)` let rows **move**.
+- Do **not** put `.animation(..., value: organizeMode)` on the whole `List`
+  — that cross-fades the beam and every row. Animate the organize state
+  change (TCA `send` animation / spring) and let identity drive moves.
+- Exclusive organize chips sit under the beam, left-aligned; same selection
+  chrome as Composer chips.
 
 ### View composition (invalidation)
 - Portable doctrine: Personal recipe `ios-tca-kit.md` → §4 “View composition”.
@@ -281,6 +350,10 @@ Learned from how-it-works / beam work — follow these on every Feature screen:
   override seams they need (lag, empty, hang, failure).
 - `ToastClient.hosted()` = real host path; **`ToastClient.silent()`** for
   snapshot previews that must not present toasts.
+- **Derived fixtures must match their sources.** `PreviewData.summary.pebbles`
+  are one entry per **done** task (weights 1–3, same shape as
+  `Summary.applyToggleResult`) — never fake aggregates (e.g. weight 5) while
+  every listed task is `done: false`. Beam preview and toggle math stay honest.
 
 ### Drawn success marks
 - Prefer a `Shape` + `.trim` stroke over an SF Symbol pop-in. Delay, draw the

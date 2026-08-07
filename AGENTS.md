@@ -38,9 +38,15 @@ Quick orientation:
   Pad the inset itself; keep path `.animation` on the body only (before inset).
 - Never `.frame(..., alignment:)` a bare multi-child `@ViewBuilder` — stack
   first or children overlay at one origin.
-- Portable kits (`ToastUI`, `SheetUI`, `VisualEffects`) stay brand-free; Even
-  skin in Design. Toasts: `.evenToastHost()`. Loading: `.loading(Bool)` from
-  VisualEffects — not hand-chained redacted + shimmer.
+- Portable kits (`ToastUI`, `SheetUI`, `VisualEffects`, `IGTabBar`) stay
+  brand-free; Even skin in Design / call-site config. Toasts:
+  `.evenToastHost()`. Loading: `.loading(Bool)` from VisualEffects — not
+  hand-chained redacted + shimmer. `IGTabBar` = **app tab bar only**
+  (`MainTabView`); Today organize uses Composer-style chips, never IG glass
+  segments — see `CLAUDE.md` → Portable kits / Paper List / Client-side regroup.
+- Paper `List`: page gutter via row `listRowInsets` (`todayPaperListRow`), not
+  horizontal padding on the `List` (clips `swipeActions`). Regroup with a
+  flat row array + stable task ids; don’t animate the whole List on mode.
 - Pack repeated nav chrome: `.evenPaperNavigationChrome()`,
   `.evenScrollOnPaper()`, `EvenBrandMark` — see `CLAUDE.md`.
 - Factor Feature UI into narrow-input `View` structs (`*Components`), not giant
@@ -52,6 +58,8 @@ Quick orientation:
   (see `CLAUDE.md` → Pull-to-refresh + TCA).
 - Previews: `PreviewDelay` + client `previewValue`; Feature `PreviewSupport`
   only overrides what the canvas needs — see `CLAUDE.md` → Preview clients.
+  Derived canvas fixtures (e.g. beam pebbles) must match source rows (done
+  tasks), not invented aggregates.
 - Every Feature surface gets an in-file `#Preview` (main view, or shell + each
   `Views/` step when multi-step); fixtures from `*PreviewSupport` only —
   see `CLAUDE.md` → Hygiene.
