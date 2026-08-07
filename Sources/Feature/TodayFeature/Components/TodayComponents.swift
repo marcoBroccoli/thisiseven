@@ -324,40 +324,42 @@
         let onDelete: () -> Void
 
         var body: some View {
-            Button(action: onToggle) {
-                HStack(spacing: TodayLayout.rowItemSpacing) {
-                    TodayTaskCheck(done: task.done, ownerColor: ownerColor)
-                    VStack(alignment: .leading, spacing: TodayLayout.titleMetaSpacing) {
-                        Text(task.title)
-                            .font(.system(size: 16, design: .serif))
-                            .strikethrough(task.done)
-                            .foregroundStyle(EvenTokens.espresso)
-                        Text(task.resolvedMetaLine)
-                            .font(.system(size: 9, weight: .semibold))
-                            .tracking(0.6)
-                            .foregroundStyle(EvenTokens.stone)
-                    }
-                    Spacer()
-                    HStack(spacing: TodayLayout.trailingClusterSpacing) {
-                        HStack(spacing: TodayLayout.weightDotSpacing) {
-                            ForEach(0 ..< task.weight, id: \.self) { _ in
-                                Circle()
-                                    .fill(ownerColor)
-                                    .frame(
-                                        width: TodayLayout.weightDot,
-                                        height: TodayLayout.weightDot
-                                    )
-                            }
-                        }
-                        ownerAvatar
-                    }
+            // A whole-row `Button` competes with `.swipeActions`' own gesture
+            // recognizer on iOS 26's floating swipe buttons — taps land on the
+            // row instead of Delete/Edit. Plain tap gesture avoids the conflict.
+            HStack(spacing: TodayLayout.rowItemSpacing) {
+                TodayTaskCheck(done: task.done, ownerColor: ownerColor)
+                VStack(alignment: .leading, spacing: TodayLayout.titleMetaSpacing) {
+                    Text(task.title)
+                        .font(.system(size: 16, design: .serif))
+                        .strikethrough(task.done)
+                        .foregroundStyle(EvenTokens.espresso)
+                    Text(task.resolvedMetaLine)
+                        .font(.system(size: 9, weight: .semibold))
+                        .tracking(0.6)
+                        .foregroundStyle(EvenTokens.stone)
                 }
-                .padding(.vertical, TodayLayout.rowVertical)
-                .padding(.horizontal, TodayLayout.rowHorizontal)
-                .background(TodayRowCapsule(done: task.done))
-                .contentShape(Capsule(style: .continuous))
+                Spacer()
+                HStack(spacing: TodayLayout.trailingClusterSpacing) {
+                    HStack(spacing: TodayLayout.weightDotSpacing) {
+                        ForEach(0 ..< task.weight, id: \.self) { _ in
+                            Circle()
+                                .fill(ownerColor)
+                                .frame(
+                                    width: TodayLayout.weightDot,
+                                    height: TodayLayout.weightDot
+                                )
+                        }
+                    }
+                    ownerAvatar
+                }
             }
-            .buttonStyle(.plain)
+            .padding(.vertical, TodayLayout.rowVertical)
+            .padding(.horizontal, TodayLayout.rowHorizontal)
+            .background(TodayRowCapsule(done: task.done))
+            .contentShape(Capsule(style: .continuous))
+            .onTapGesture(perform: onToggle)
+            .accessibilityAddTraits(.isButton)
             .padding(.vertical, TodayLayout.rowGap / 2)
             .accessibilityIdentifier("check-\(task.title)")
             // Public swipe config is only: edge, full-swipe, role, tint, label.
