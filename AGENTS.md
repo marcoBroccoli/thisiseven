@@ -46,7 +46,10 @@ Quick orientation:
 - Factor Feature UI into narrow-input `View` structs (`*Components`), not giant
   computed `some View` properties on the shell.
 - Skeletons: Feature-local placeholders, not `PreviewData`. Don’t flash
-  `isLoading` on re-appear when content is already loaded.
+  `isLoading` on re-appear when content is already loaded. Empty pull-to-refresh
+  re-enters skeleton; animate skeleton → content. Views only
+  `await send(.refresh).finish()` — refresh/cancel policy lives in the reducer
+  (see `CLAUDE.md` → Pull-to-refresh + TCA).
 - Previews: `PreviewDelay` + client `previewValue`; Feature `PreviewSupport`
   only overrides what the canvas needs — see `CLAUDE.md` → Preview clients.
 - Every Feature surface gets an in-file `#Preview` (main view, or shell + each

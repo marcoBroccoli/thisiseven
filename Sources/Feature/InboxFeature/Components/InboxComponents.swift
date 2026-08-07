@@ -43,26 +43,26 @@
                 VStack(alignment: .leading, spacing: 0) {
                     InboxDraftsHeader(isEmpty: !showSkeleton && drafts.isEmpty)
 
-                    if showSkeleton {
-                        InboxDraftsSkeleton()
-                            .padding(.top, 14)
-                    } else {
-                        ZStack(alignment: .topLeading) {
-                            if drafts.isEmpty {
-                                InboxEmptyState()
-                                    .padding(.top, 48)
-                                    .frame(maxWidth: .infinity)
-                                    .transition(EvenMotion.fadeUp)
-                            } else {
-                                InboxDraftList(
-                                    drafts: drafts,
-                                    onSelectDraft: onSelectDraft
-                                )
+                    ZStack(alignment: .topLeading) {
+                        if showSkeleton {
+                            InboxDraftsSkeleton()
+                                .padding(.top, 14)
                                 .transition(EvenMotion.fadeOnly)
-                            }
+                        } else if drafts.isEmpty {
+                            InboxEmptyState()
+                                .padding(.top, 48)
+                                .frame(maxWidth: .infinity)
+                                .transition(EvenMotion.fadeUp)
+                        } else {
+                            InboxDraftList(
+                                drafts: drafts,
+                                onSelectDraft: onSelectDraft
+                            )
+                            .transition(EvenMotion.fadeUp)
                         }
-                        .animation(EvenMotion.reveal, value: drafts.ids)
                     }
+                    .animation(EvenMotion.reveal, value: showSkeleton)
+                    .animation(EvenMotion.reveal, value: drafts.ids)
                 }
                 .padding(.horizontal, 20)
                 .padding(.bottom, 40)
@@ -227,33 +227,44 @@
                         .italic()
                         .frame(maxWidth: .infinity)
 
-                    if showSkeleton {
-                        InboxCalendarSkeleton(me: me, partner: partner)
-                    } else if items.isEmpty {
-                        Text("No dated items this month yet.")
-                            .font(.system(size: 13, design: .serif))
-                            .italic()
-                            .foregroundStyle(EvenTokens.stone)
-                            .frame(maxWidth: .infinity)
-                            .padding(.top, 40)
-                    } else {
-                        let grouped = Dictionary(grouping: items, by: \.dueOn)
-                        ForEach(grouped.keys.sorted(), id: \.self) { day in
-                            InboxCalendarDayGroup(
-                                day: day,
-                                items: grouped[day] ?? [],
-                                me: me,
-                                partner: partner
-                            )
-                            .padding(.top, 14)
+                    ZStack(alignment: .topLeading) {
+                        if showSkeleton {
+                            InboxCalendarSkeleton(me: me, partner: partner)
+                                .transition(EvenMotion.fadeOnly)
+                        } else if items.isEmpty {
+                            Text("No dated items this month yet.")
+                                .font(.system(size: 13, design: .serif))
+                                .italic()
+                                .foregroundStyle(EvenTokens.stone)
+                                .frame(maxWidth: .infinity)
+                                .padding(.top, 40)
+                                .transition(EvenMotion.fadeUp)
+                        } else {
+                            calendarGroups
+                                .transition(EvenMotion.fadeUp)
                         }
                     }
+                    .animation(EvenMotion.reveal, value: showSkeleton)
+                    .animation(EvenMotion.reveal, value: items.map(\.id))
                 }
                 .padding(.horizontal, 20)
                 .padding(.bottom, 40)
             }
             .evenScrollOnPaper()
             .refreshable { await onRefresh() }
+        }
+
+        private var calendarGroups: some View {
+            let grouped = Dictionary(grouping: items, by: \.dueOn)
+            return ForEach(grouped.keys.sorted(), id: \.self) { day in
+                InboxCalendarDayGroup(
+                    day: day,
+                    items: grouped[day] ?? [],
+                    me: me,
+                    partner: partner
+                )
+                .padding(.top, 14)
+            }
         }
     }
 

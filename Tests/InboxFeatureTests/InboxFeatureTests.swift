@@ -24,10 +24,11 @@ final class InboxFeatureTests: XCTestCase {
             $0.isLoading = false
             $0.drafts = IdentifiedArray(uniqueElements: PreviewData.pendingDrafts)
         }
-        await store.receive(\.membersLoaded) {
-            $0.me = PreviewData.ada
-            $0.partner = PreviewData.umut
-        }
+        // Members load is merged with drafts — either action may land first.
+        // Non-exhaustive receive of drafts may have already skipped members.
+        await store.skipReceivedActions(strict: false)
+        XCTAssertEqual(store.state.me, PreviewData.ada)
+        XCTAssertEqual(store.state.partner, PreviewData.umut)
     }
 
     func testAppearWithExistingDraftsDoesNotFlashLoading() async {
@@ -120,8 +121,11 @@ final class InboxFeatureTests: XCTestCase {
         }
         store.exhaustivity = .off
 
-        await store.send(.view(.refresh))
+        await store.send(.view(.refresh)) {
+            $0.isLoading = true
+        }
         await store.receive(\.draftsLoaded) {
+            $0.isLoading = false
             $0.drafts = IdentifiedArray(uniqueElements: PreviewData.pendingDrafts)
         }
     }

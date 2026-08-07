@@ -5,7 +5,10 @@ public struct LoadingModifier: ViewModifier {
     let isLoading: Bool
     let animation: Animation
 
-    public init(isLoading: Bool, animation: Animation = .default) {
+    public init(
+        isLoading: Bool,
+        animation: Animation = .easeOut(duration: 0.28)
+    ) {
         self.isLoading = isLoading
         self.animation = animation
     }
@@ -28,7 +31,7 @@ public extension View {
     /// separate spinner — so the skeleton mirrors the loaded state.
     func loading(
         _ isLoading: Bool,
-        animation: Animation = .default
+        animation: Animation = .easeOut(duration: 0.28)
     ) -> some View {
         modifier(LoadingModifier(isLoading: isLoading, animation: animation))
     }

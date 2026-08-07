@@ -53,6 +53,7 @@ public struct InboxReducer {
     @Dependency(\.calendarClient) var calendarClient
     @Dependency(\.authClient) var authClient
     @Dependency(\.toastClient) var toastClient
+    @Dependency(\.context) var context
 
     public init() {}
 
@@ -142,12 +143,15 @@ public struct InboxReducer {
             case .view(.refresh):
                 switch state.surface {
                 case .inbox:
-                    return loadDrafts()
+                    // Empty inbox: show skeleton (same as appear). With content,
+                    // keep the list and let `.refreshable` own the spinner.
+                    let empty = state.drafts.isEmpty
+                    if empty { state.isLoading = true }
+                    return loadDrafts(surviveStoreTaskCancellation: empty)
                 case .calendar:
-                    if state.calendarItems.isEmpty {
-                        state.isCalendarLoading = true
-                    }
-                    return loadCalendar()
+                    let empty = state.calendarItems.isEmpty
+                    if empty { state.isCalendarLoading = true }
+                    return loadCalendar(surviveStoreTaskCancellation: empty)
                 }
 
             case let .view(.selectSurface(surface)):
@@ -177,30 +181,77 @@ public struct InboxReducer {
         }
     }
 
-    private func loadDrafts() -> Effect<Action> {
-        .run { [draftsClient] send in
-            do {
-                try await send(.draftsLoaded(await draftsClient.pending()))
-            } catch {
-                await send(.presentToast(.inboxFailure(error, .load)))
-            }
+    private enum CancelID { case drafts, calendar }
+
+    /// - Parameter surviveStoreTaskCancellation: Empty pull-to-refresh swaps in a
+    ///   skeleton; SwiftUI then cancels the refreshable task. That cancels the
+    ///   `StoreTask` from `await send(.refresh).finish()`, and TCA `Send` drops
+    ///   actions while cancelled — loading would stick. In live/preview we hop
+    ///   the fetch off that task. Tests keep a structured await for TestStore.
+    private func loadDrafts(surviveStoreTaskCancellation: Bool = false) -> Effect<Action> {
+        .run { [draftsClient, context, surviveStoreTaskCancellation] send in
+            await Self.runFetch(
+                surviveStoreTaskCancellation: surviveStoreTaskCancellation,
+                context: context,
+                send: send,
+                fetch: { try await draftsClient.pending() },
+                success: { .draftsLoaded($0) },
+                failure: { .presentToast(.inboxFailure($0, .load)) }
+            )
         }
+        .cancellable(id: CancelID.drafts, cancelInFlight: true)
     }
 
-    private func loadCalendar() -> Effect<Action> {
-        .run { [calendarClient] send in
-            let cal = Calendar.current
-            let now = Date()
-            let start = cal.date(from: cal.dateComponents([.year, .month], from: now)) ?? now
-            let end = cal.date(byAdding: DateComponents(month: 1, day: -1), to: start) ?? now
-            let f = ISO8601DateFormatter()
-            f.formatOptions = [.withFullDate]
-            do {
-                let response = try await calendarClient.window(f.string(from: start), f.string(from: end))
-                await send(.calendarLoaded(response))
-            } catch {
-                await send(.presentToast(.inboxFailure(error, .calendar)))
+    private func loadCalendar(surviveStoreTaskCancellation: Bool = false) -> Effect<Action> {
+        .run { [calendarClient, context, surviveStoreTaskCancellation] send in
+            await Self.runFetch(
+                surviveStoreTaskCancellation: surviveStoreTaskCancellation,
+                context: context,
+                send: send,
+                fetch: {
+                    let cal = Calendar.current
+                    let now = Date()
+                    let start = cal.date(from: cal.dateComponents([.year, .month], from: now)) ?? now
+                    let end = cal.date(byAdding: DateComponents(month: 1, day: -1), to: start) ?? now
+                    let f = ISO8601DateFormatter()
+                    f.formatOptions = [.withFullDate]
+                    return try await calendarClient.window(
+                        f.string(from: start),
+                        f.string(from: end)
+                    )
+                },
+                success: { .calendarLoaded($0) },
+                failure: { .presentToast(.inboxFailure($0, .calendar)) }
+            )
+        }
+        .cancellable(id: CancelID.calendar, cancelInFlight: true)
+    }
+
+    private static func runFetch<Value: Sendable>(
+        surviveStoreTaskCancellation: Bool,
+        context: DependencyContext,
+        send: Send<Action>,
+        fetch: @escaping @Sendable () async throws -> Value,
+        success: @escaping @Sendable (Value) -> Action,
+        failure: @escaping @Sendable (Error) -> Action
+    ) async {
+        let fulfill: @MainActor @Sendable (Result<Value, Error>) -> Void = { result in
+            switch result {
+            case let .success(value):
+                send(success(value))
+            case let .failure(error) where error is CancellationError:
+                break
+            case let .failure(error):
+                send(failure(error))
             }
+        }
+
+        if surviveStoreTaskCancellation, context != .test {
+            Task { @MainActor in
+                fulfill(await Result { try await fetch() })
+            }
+        } else {
+            await fulfill(await Result { try await fetch() })
         }
     }
 

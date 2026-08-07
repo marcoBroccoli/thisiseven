@@ -18,6 +18,7 @@
                 Group {
                     if store.isLoading && store.summary == nil {
                         TodayLoadingSkeleton()
+                            .transition(EvenMotion.fadeOnly)
                     } else if let summary = store.summary {
                         ScrollView {
                             VStack(alignment: .leading, spacing: 0) {
@@ -54,14 +55,20 @@
                             .padding(.horizontal, 20)
                             .padding(.bottom, 40)
                         }
+                        .transition(EvenMotion.fadeUp)
                     } else {
                         ContentUnavailableView(
                             "Today",
                             systemImage: "sun.max",
                             description: Text(store.error ?? "No summary yet.")
                         )
+                        .transition(EvenMotion.fadeUp)
                     }
                 }
+                .animation(
+                    EvenMotion.reveal,
+                    value: store.isLoading && store.summary == nil
+                )
                 .evenPaperBackground()
                 .toolbar(.hidden, for: .navigationBar)
                 .safeAreaInset(edge: .top) {

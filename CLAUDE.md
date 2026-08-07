@@ -252,6 +252,25 @@ Learned from how-it-works / beam work — follow these on every Feature screen:
   `PreviewData` / preview fixtures inside production view code.
 - Prefer applying `.loading(isLoading)` to layout that mirrors the loaded UI;
   pull-to-refresh keeps the system spinner when content is already on screen.
+- **Empty pull-to-refresh** must re-enter the skeleton (`isLoading = true` when
+  the list is empty). Populated refresh keeps content + system spinner only.
+- Skeleton → content must **animate**: `ZStack` + `.transition(EvenMotion.fade*)`
+  + `.animation(EvenMotion.reveal, value: showSkeleton)` — never a hard swap.
+
+### Pull-to-refresh + TCA (hard rule)
+- Views stay dumb: `await send(.refresh).finish()` only — **no** empty-checks,
+  finish-skipping, or other effect-lifetime policy in the view.
+- Empty → skeleton can cancel SwiftUI’s refreshable task; that cancels the
+  `StoreTask` from `.finish()`. TCA `Send` **silently drops** actions while
+  `Task.isCancelled` → loading sticks forever if `draftsLoaded` never lands.
+- Own that in the **reducer**: for empty refresh, hop the fetch off the
+  cancelled StoreTask in live/preview; keep a structured await under
+  `DependencyValues.context == .test` so TestStore still observes effects.
+- Do not toast / clear loading via `send` on `CancellationError` — that send
+  is also dropped while cancelled.
+- Merged effects may complete in any order. Non-exhaustive TestStore
+  `receive` of one action can skip the sibling — drain with
+  `skipReceivedActions` or assert state, don’t assume order.
 
 ### Preview clients & lag
 - Portable doctrine: Personal recipe `ios-tca-kit.md` → §7 “Preview clients”.
