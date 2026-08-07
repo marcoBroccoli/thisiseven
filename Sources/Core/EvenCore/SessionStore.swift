@@ -11,7 +11,7 @@ public protocol SessionStorage: Sendable {
 
 /// Keychain-backed storage (kilo pattern: one generic-password item).
 public struct KeychainSessionStorage: SessionStorage {
-    private let store = KeychainDataStore(service: "com.umuryavuz.even.session", account: "gotrue")
+    private let store = KeychainDataStore(service: "com.umurburhanyavuz.even.session", account: "gotrue")
 
     public init() {}
 

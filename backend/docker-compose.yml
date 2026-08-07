@@ -51,7 +51,7 @@ services:
       GOTRUE_MAILER_AUTOCONFIRM: "true"
       # Native Sign in with Apple (id_token grant) — audience is the app bundle id.
       GOTRUE_EXTERNAL_APPLE_ENABLED: "true"
-      GOTRUE_EXTERNAL_APPLE_CLIENT_ID: com.umuryavuz.even
+      GOTRUE_EXTERNAL_APPLE_CLIENT_ID: com.umurburhanyavuz.even
       GOTRUE_EXTERNAL_APPLE_SECRET: unused-native-id-token-flow-only
       GOTRUE_EXTERNAL_APPLE_REDIRECT_URI: http://localhost:8091/auth/callback
     depends_on:

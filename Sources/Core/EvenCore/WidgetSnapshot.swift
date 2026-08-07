@@ -9,7 +9,7 @@ import Foundation
 /// gallery placeholder when nothing has been published yet).
 public struct EvenWidgetSnapshot: Codable, Sendable, Equatable {
     /// Shared App Group both the app and the extension are entitled to.
-    public static let appGroupID = "group.com.umuryavuz.even"
+    public static let appGroupID = "group.com.umurburhanyavuz.even"
     /// Key under which the JSON blob lives in the shared UserDefaults suite.
     public static let defaultsKey = "even.widget.snapshot.v1"
 
