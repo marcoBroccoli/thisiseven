@@ -17,6 +17,7 @@
                 TodayView(store: store.scope(state: \.today, action: \.today))
                 InboxView(store: store.scope(state: \.inbox, action: \.inbox))
             }
+            .task { await send(.appear).finish() }
         }
     }
 #endif

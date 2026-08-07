@@ -2,6 +2,7 @@
     import ComposableArchitecture
     import Design
     import EvenCore
+    import IGTabBar
     import SwiftUI
     import VisualEffects
 
@@ -31,6 +32,7 @@
     struct InboxDraftsSurface: View {
         let drafts: IdentifiedArrayOf<Draft>
         let isLoading: Bool
+        var tabBarProgress: Binding<CGFloat>?
         let onSelectDraft: (UUID) -> Void
         let onRefresh: () async -> Void
 
@@ -69,6 +71,7 @@
             }
             .evenScrollOnPaper()
             .refreshable { await onRefresh() }
+            .adoptForIGTabBar(tabBarProgress)
         }
     }
 
@@ -213,6 +216,7 @@
         let me: Member?
         let partner: Member?
         let isLoading: Bool
+        var tabBarProgress: Binding<CGFloat>?
         let onRefresh: () async -> Void
 
         private var showSkeleton: Bool {
@@ -252,6 +256,7 @@
             }
             .evenScrollOnPaper()
             .refreshable { await onRefresh() }
+            .adoptForIGTabBar(tabBarProgress)
         }
 
         private var calendarGroups: some View {

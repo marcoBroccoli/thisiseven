@@ -1,4 +1,6 @@
 import ComposableArchitecture
+import Foundation
+import HouseholdRealtimeClient
 import InboxFeature
 import TodayFeature
 
@@ -11,8 +13,9 @@ public struct MainTabReducer {
         public var tab: Tab = .today
         public init() {}
 
-        public enum Tab: Equatable, Sendable {
-            case inbox, today
+        public enum Tab: String, CaseIterable, Equatable, Sendable {
+            case today
+            case inbox
         }
     }
 
@@ -20,12 +23,18 @@ public struct MainTabReducer {
         case view(View)
         case inbox(InboxReducer.Action)
         case today(TodayReducer.Action)
+        case realtime(HouseholdRealtimeEvent)
 
         @CasePathable
         public enum View: Equatable, Sendable {
+            case appear
             case selectTab(State.Tab)
         }
     }
+
+    private enum CancelID { case householdRealtime }
+
+    @Dependency(\.householdRealtimeClient) var householdRealtimeClient
 
     public init() {}
 
@@ -34,9 +43,27 @@ public struct MainTabReducer {
         Scope(state: \.today, action: \.today) { TodayReducer() }
         Reduce { state, action in
             switch action {
+            case .view(.appear):
+                return .run { [householdRealtimeClient] send in
+                    for await event in householdRealtimeClient.events() {
+                        await send(.realtime(event))
+                    }
+                }
+                .cancellable(id: CancelID.householdRealtime, cancelInFlight: true)
+
             case let .view(.selectTab(tab)):
                 state.tab = tab
                 return .none
+
+            case let .realtime(event):
+                guard event.invalidatesSummary else { return .none }
+                // Own taps already mutated Today optimistically — skip a second
+                // refetch/beam animation when the actor is me.
+                if let actor = event.actorMemberId, actor == state.today.me?.id {
+                    return .none
+                }
+                return .send(.today(.view(.refresh)))
+
             case .inbox, .today:
                 return .none
             }

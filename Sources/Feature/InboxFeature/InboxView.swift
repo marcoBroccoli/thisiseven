@@ -1,14 +1,20 @@
 #if os(iOS)
     import ComposableArchitecture
     import Design
+    import IGTabBar
     import SwiftUI
 
     @ViewAction(for: InboxReducer.self)
     public struct InboxView: View {
         @Bindable public var store: StoreOf<InboxReducer>
+        private var tabBarProgress: Binding<CGFloat>?
 
-        public init(store: StoreOf<InboxReducer>) {
+        public init(
+            store: StoreOf<InboxReducer>,
+            tabBarProgress: Binding<CGFloat>? = nil
+        ) {
             self.store = store
+            self.tabBarProgress = tabBarProgress
         }
 
         public var body: some View {
@@ -19,6 +25,7 @@
                         InboxDraftsSurface(
                             drafts: store.drafts,
                             isLoading: store.isLoading,
+                            tabBarProgress: tabBarProgress,
                             onSelectDraft: { send(.selectDraft($0)) },
                             onRefresh: { await send(.refresh).finish() }
                         )
@@ -29,6 +36,7 @@
                             me: store.me,
                             partner: store.partner,
                             isLoading: store.isCalendarLoading,
+                            tabBarProgress: tabBarProgress,
                             onRefresh: { await send(.refresh).finish() }
                         )
                     }
