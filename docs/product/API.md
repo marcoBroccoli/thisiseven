@@ -20,7 +20,9 @@ GoTrue mounts these under its own `/token` etc.; evend strips the `/auth` prefix
 
 ## Objects
 ```
-member      {id, display_name, color: "clay"|"teal", is_me}
+member      {id, display_name, color: "#RRGGBB", is_me, has_avatar}
+            // legacy "clay"/"teal" still accepted on write; responses normalize to hex
+            // has_avatar — photo on house server; fetch via GET /v1/members/{id}/avatar
 household   {id, name, invite_code, members: [member]}
 week        {id, index, started_on, closed_at?}          // index: 1,2,3…
 task        {id, title, section: "chore"|"admin", owner_member_id, weight: 1|2|3,
@@ -45,10 +47,22 @@ trade       {id, task_id, task_title, from_member_id, to_member_id, accepted}
 - `GET  /healthz` → `{ok:true}` (no auth)
 - `GET  /v1/me` → `{user_id, member?, household?, week?}` — member/household
   null until onboarded; drives app routing.
-- `POST /v1/households` `{name, display_name}` → household (creator = clay;
-  opens week 1)
+- `PATCH /v1/me` `{display_name?, color?}` → member — update the caller's
+  profile (membership required). At least one field required. `display_name`
+  trimmed, 1–40 chars. `color` is `#RRGGBB` (any sRGB); legacy `clay`|`teal`
+  accepted and stored as terracotta / pine hex. Partners may share a color.
+- `PUT /v1/me/avatar` `multipart/form-data` field `avatar` (JPEG or PNG) →
+  member — store a profile photo on the house server (`EVEN_AVATAR_DIR`).
+  Server resizes to ≤512px on the long edge and re-encodes JPEG ≤500KB.
+  Membership required. Replaces any previous photo.
+- `DELETE /v1/me/avatar` → member — clear the caller's photo.
+- `GET /v1/members/{id}/avatar` → `image/jpeg` — same-household only.
+  `404 no_avatar` when unset. `ETag` from `avatar_updated_at`;
+  `Cache-Control: private, max-age=3600`. Supports `If-None-Match`.
+- `POST /v1/households` `{name, display_name}` → household (creator =
+  `#A6552F` terracotta; opens week 1)
 - `POST /v1/households/join` `{invite_code, display_name}` → household
-  (joiner = teal; 409 `household_full` on 3rd member)
+  (joiner = `#37756D` pine; 409 `household_full` on 3rd member)
 - `GET  /v1/summary` → `{week, pebbles: [{member_id, weight}...ordered oldest→newest],
   percent_me, percent_partner, caption, sections: [{key:"chore"|"admin", label, tasks:[task]}],
   pending_draft_count}`  // caption per design logic

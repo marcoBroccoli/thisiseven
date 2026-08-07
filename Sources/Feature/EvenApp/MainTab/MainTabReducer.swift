@@ -2,6 +2,7 @@ import ComposableArchitecture
 import Foundation
 import HouseholdRealtimeClient
 import InboxFeature
+import ProfileFeature
 import TodayFeature
 
 @Reducer
@@ -10,12 +11,14 @@ public struct MainTabReducer {
     public struct State: Equatable {
         public var inbox = InboxReducer.State()
         public var today = TodayReducer.State()
+        public var profile = ProfileReducer.State()
         public var tab: Tab = .today
         public init() {}
 
         public enum Tab: String, CaseIterable, Equatable, Sendable {
             case today
             case inbox
+            case profile
         }
     }
 
@@ -23,6 +26,7 @@ public struct MainTabReducer {
         case view(View)
         case inbox(InboxReducer.Action)
         case today(TodayReducer.Action)
+        case profile(ProfileReducer.Action)
         case realtime(HouseholdRealtimeEvent)
 
         @CasePathable
@@ -41,6 +45,7 @@ public struct MainTabReducer {
     public var body: some ReducerOf<Self> {
         Scope(state: \.inbox, action: \.inbox) { InboxReducer() }
         Scope(state: \.today, action: \.today) { TodayReducer() }
+        Scope(state: \.profile, action: \.profile) { ProfileReducer() }
         Reduce { state, action in
             switch action {
             case .view(.appear):
@@ -64,7 +69,7 @@ public struct MainTabReducer {
                 }
                 return .send(.today(.view(.refresh)))
 
-            case .inbox, .today:
+            case .inbox, .today, .profile:
                 return .none
             }
         }

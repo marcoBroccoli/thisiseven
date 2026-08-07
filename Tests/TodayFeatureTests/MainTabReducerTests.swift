@@ -74,4 +74,13 @@ final class MainTabReducerTests: XCTestCase {
         await store.finish()
         XCTAssertEqual(fetched.value, 0)
     }
+
+    func testSelectProfileTab() async {
+        let store = TestStore(initialState: MainTabReducer.State()) {
+            MainTabReducer()
+        }
+        await store.send(.view(.selectTab(.profile))) {
+            $0.tab = .profile
+        }
+    }
 }

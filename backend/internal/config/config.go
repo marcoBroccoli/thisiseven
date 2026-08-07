@@ -25,6 +25,9 @@ type Config struct {
 	AnthropicKey  string
 	ClaudeAPIBase string // test override; default https://api.anthropic.com
 	ClaudeModel   string // default claude-haiku-4-5-20251001
+
+	// Profile photos on local disk (compose volume). Default /var/even/avatars.
+	AvatarDir string
 }
 
 func Load() (*Config, error) {
@@ -40,6 +43,7 @@ func Load() (*Config, error) {
 		AnthropicKey:       os.Getenv("ANTHROPIC_API_KEY"),
 		ClaudeAPIBase:      os.Getenv("CLAUDE_API_BASE"),
 		ClaudeModel:        os.Getenv("CLAUDE_MODEL"),
+		AvatarDir:          getenv("EVEN_AVATAR_DIR", "/var/even/avatars"),
 	}
 	if c.DatabaseURL == "" {
 		return nil, fmt.Errorf("EVEN_DATABASE_URL is required")

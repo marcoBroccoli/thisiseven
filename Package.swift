@@ -34,6 +34,7 @@ let package = Package(
         .library(name: "ConnectionsFeature", targets: ["ConnectionsFeature"]),
         .library(name: "InboxFeature", targets: ["InboxFeature"]),
         .library(name: "TodayFeature", targets: ["TodayFeature"]),
+        .library(name: "ProfileFeature", targets: ["ProfileFeature"]),
         .library(name: "EvenApp", targets: ["EvenApp"]),
     ],
     dependencies: [
@@ -163,6 +164,14 @@ let package = Package(
                     sheetUI_iOS, igTabBar_iOS, "ToastClient", "ToastUI", "VisualEffects",
                 ]
             ),
+            feature(
+                "ProfileFeature",
+                extra: [
+                    "AuthClient", "HouseholdClient", "ConnectionsFeature",
+                    "GoogleClient", "NotificationsClient",
+                    igTabBar_iOS, "ToastClient", "ToastUI", "VisualEffects",
+                ]
+            ),
             .target(
                 name: "EvenApp",
                 dependencies: [
@@ -173,7 +182,7 @@ let package = Package(
                     "WidgetClient",
                     "SplashFeature", "LoginFeature", "OnboardingFeature",
                     "HouseholdSetupFeature", "ConnectionsFeature",
-                    "InboxFeature", "TodayFeature",
+                    "InboxFeature", "TodayFeature", "ProfileFeature",
                     igTabBar_iOS,
                     tca,
                 ],
@@ -220,6 +229,14 @@ let package = Package(
                     "AuthClient", "ToastClient", "ToastUI", "HouseholdRealtimeClient", tca,
                 ],
                 path: "Tests/TodayFeatureTests"
+            ),
+            .testTarget(
+                name: "ProfileFeatureTests",
+                dependencies: [
+                    "ProfileFeature", "EvenCore", "AuthClient", "HouseholdClient",
+                    "GoogleClient", "ToastClient", "ToastUI", "ConnectionsFeature", tca,
+                ],
+                path: "Tests/ProfileFeatureTests"
             ),
         ]
     }()

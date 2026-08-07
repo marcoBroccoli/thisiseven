@@ -47,7 +47,7 @@
                 HStack(spacing: 8) {
                     ComposerOwnerChip(
                         label: me?.displayName ?? "Me",
-                        accent: EvenTokens.terracotta,
+                        accent: Color(hex: (me?.color ?? .clay).rgb),
                         selected: store.ownerIsMe
                     ) {
                         send(.selectOwner(true))
@@ -55,7 +55,7 @@
                     if partner != nil {
                         ComposerOwnerChip(
                             label: partner?.displayName ?? "Partner",
-                            accent: EvenTokens.pine,
+                            accent: Color(hex: (partner?.color ?? .teal).rgb),
                             selected: !store.ownerIsMe
                         ) {
                             send(.selectOwner(false))

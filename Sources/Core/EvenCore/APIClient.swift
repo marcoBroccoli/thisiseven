@@ -113,35 +113,51 @@ public final class EvenAPIClient: @unchecked Sendable {
         let _: Empty? = try? await request("DELETE", path, body: Int?.none)
     }
 
-    private func request<T: Decodable, B: Encodable>(_ method: String,
-                                                     _ path: String,
-                                                     body: B?) async throws -> T
-    {
-        // Not appendingPathComponent: paths may carry query strings, and
-        // appendingPathComponent percent-escapes the "?" (breaking routes).
-        guard let url = URL(string: path, relativeTo: environment.baseURL) else {
-            throw APIError.http(status: 0, code: "bad_path", message: "Bad request path.")
-        }
-        var req = URLRequest(url: url)
-        req.httpMethod = method
-        req.timeoutInterval = 15
-        if let body {
-            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            req.httpBody = try Self.encoder.encode(body)
-        }
-        if let token = try await tokenProvider() {
-            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
+    public func deleteReturning<T: Decodable>(_ path: String) async throws -> T {
+        try await request("DELETE", path, body: Int?.none)
+    }
 
-        let data: Data
-        let response: URLResponse
-        do {
-            (data, response) = try await session.data(for: req)
-        } catch {
-            throw APIError.transport(error)
+    /// Authenticated raw GET (e.g. avatar JPEG).
+    public func getData(_ path: String) async throws -> Data {
+        let (data, status) = try await perform("GET", path, contentType: nil, body: nil)
+        guard (200 ..< 300).contains(status) else {
+            if let apiError = try? Self.decoder.decode(APIErrorBody.self, from: data) {
+                throw APIError.http(status: status,
+                                    code: apiError.error.code,
+                                    message: apiError.error.message)
+            }
+            throw APIError.http(status: status, code: "http_\(status)",
+                                message: "Server error (\(status)).")
         }
+        return data
+    }
 
-        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+    /// Multipart PUT with a single file field.
+    public func putMultipart<T: Decodable>(
+        _ path: String,
+        fieldName: String,
+        filename: String,
+        mimeType: String,
+        fileData: Data
+    ) async throws -> T {
+        let boundary = "even-\(UUID().uuidString)"
+        var body = Data()
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append(
+            "Content-Disposition: form-data; name=\"\(fieldName)\"; filename=\"\(filename)\"\r\n"
+                .data(using: .utf8)!
+        )
+        body.append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)
+        body.append(fileData)
+        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+
+        let (data, status) = try await perform(
+            "PUT",
+            path,
+            contentType: "multipart/form-data; boundary=\(boundary)",
+            body: body,
+            timeout: 30
+        )
         guard (200 ..< 300).contains(status) else {
             if let apiError = try? Self.decoder.decode(APIErrorBody.self, from: data) {
                 throw APIError.http(status: status,
@@ -157,6 +173,66 @@ public final class EvenAPIClient: @unchecked Sendable {
             throw APIError.decoding(error)
         }
     }
+
+    private func request<T: Decodable, B: Encodable>(_ method: String,
+                                                     _ path: String,
+                                                     body: B?) async throws -> T
+    {
+        let encoded: Data?
+        if let body {
+            encoded = try Self.encoder.encode(body)
+        } else {
+            encoded = nil
+        }
+        let contentType = encoded == nil ? nil : "application/json"
+        let (data, status) = try await perform(method, path, contentType: contentType, body: encoded)
+        guard (200 ..< 300).contains(status) else {
+            if let apiError = try? Self.decoder.decode(APIErrorBody.self, from: data) {
+                throw APIError.http(status: status,
+                                    code: apiError.error.code,
+                                    message: apiError.error.message)
+            }
+            throw APIError.http(status: status, code: "http_\(status)",
+                                message: "Server error (\(status)).")
+        }
+        do {
+            return try Self.decoder.decode(T.self, from: data)
+        } catch {
+            throw APIError.decoding(error)
+        }
+    }
+
+    private func perform(
+        _ method: String,
+        _ path: String,
+        contentType: String?,
+        body: Data?,
+        timeout: TimeInterval = 15
+    ) async throws -> (Data, Int) {
+        // Not appendingPathComponent: paths may carry query strings, and
+        // appendingPathComponent percent-escapes the "?" (breaking routes).
+        guard let url = URL(string: path, relativeTo: environment.baseURL) else {
+            throw APIError.http(status: 0, code: "bad_path", message: "Bad request path.")
+        }
+        var req = URLRequest(url: url)
+        req.httpMethod = method
+        req.timeoutInterval = timeout
+        if let contentType {
+            req.setValue(contentType, forHTTPHeaderField: "Content-Type")
+        }
+        req.httpBody = body
+        if let token = try await tokenProvider() {
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        do {
+            let (data, response) = try await session.data(for: req)
+            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            return (data, status)
+        } catch {
+            throw APIError.transport(error)
+        }
+    }
 }
 
 // MARK: - Typed endpoints
@@ -164,6 +240,32 @@ public final class EvenAPIClient: @unchecked Sendable {
 public extension EvenAPIClient {
     func me() async throws -> MeResponse {
         try await get("v1/me")
+    }
+
+    func patchMe(displayName: String? = nil, color: MemberColor? = nil) async throws -> Member {
+        struct B: Encodable {
+            var displayName: String?
+            var color: MemberColor?
+        }
+        return try await patch("v1/me", B(displayName: displayName, color: color))
+    }
+
+    func putMyAvatar(jpeg: Data) async throws -> Member {
+        try await putMultipart(
+            "v1/me/avatar",
+            fieldName: "avatar",
+            filename: "avatar.jpg",
+            mimeType: "image/jpeg",
+            fileData: jpeg
+        )
+    }
+
+    func deleteMyAvatar() async throws -> Member {
+        try await deleteReturning("v1/me/avatar")
+    }
+
+    func memberAvatarData(memberId: UUID) async throws -> Data {
+        try await getData("v1/members/\(memberId.uuidString.lowercased())/avatar")
     }
 
     func createHousehold(name: String, displayName: String) async throws -> Household {

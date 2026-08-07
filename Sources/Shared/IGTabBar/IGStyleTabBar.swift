@@ -4,8 +4,14 @@
 
     /// Segment content for ``IGStyleTabBar``.
     public enum IGTabBarItem: Equatable, Sendable {
-        case symbol(String)
-        case title(String)
+        case symbol(String, badge: Int = 0)
+        case title(String, badge: Int = 0)
+
+        public var badge: Int {
+            switch self {
+            case let .symbol(_, badge), let .title(_, badge): badge
+            }
+        }
     }
 
     /// Sizing / tint for ``IGStyleTabBar``.
@@ -22,6 +28,9 @@
         public var selectedSegmentTint: Color
         /// Label / symbol color.
         public var foreground: Color
+        /// Unread / count pip on a segment image.
+        public var badgeFill: Color
+        public var badgeForeground: Color
         public var symbolPointSize: CGFloat
         public var titleFont: UIFont
 
@@ -30,6 +39,8 @@
             width: Width = .flexible,
             selectedSegmentTint: Color = Color.gray.opacity(0.25),
             foreground: Color = Color.primary,
+            badgeFill: Color = Color.red,
+            badgeForeground: Color = Color.white,
             symbolPointSize: CGFloat = 20,
             titleFont: UIFont = .systemFont(ofSize: 12, weight: .semibold)
         ) {
@@ -37,6 +48,8 @@
             self.width = width
             self.selectedSegmentTint = selectedSegmentTint
             self.foreground = foreground
+            self.badgeFill = badgeFill
+            self.badgeForeground = badgeForeground
             self.symbolPointSize = symbolPointSize
             self.titleFont = titleFont
         }
@@ -78,29 +91,43 @@
             let images = values.map { segmentImage(for: $0) }
             let control = IGSegmentedControl(items: images)
             control.selectedSegmentIndex = values.firstIndex(of: selection) ?? 0
-            applyChrome(to: control)
+            control.selectedSegmentTintColor = UIColor(configuration.selectedSegmentTint)
+            control.tintColor = UIColor(configuration.foreground)
             control.addTarget(
                 context.coordinator,
                 action: #selector(Coordinator.valueChanged(_:)),
                 for: .valueChanged
             )
             control.onTouchBegan = onInteraction
-            control.clearTrackChrome()
+            // Kavsoft: fade track chrome UIImageViews once after layout. Do NOT
+            // setBackgroundImage(clear) or re-run this on every update — on iOS
+            // 26 segment symbols also sit in top-level UIImageViews and go blank.
+            DispatchQueue.main.async { [weak control] in
+                guard let control else { return }
+                for subview in control.subviews {
+                    if subview is UIImageView, subview != control.subviews.last {
+                        subview.alpha = 0
+                    }
+                }
+            }
             return control
         }
 
-        public func updateUIView(_ uiView: IGSegmentedControl, context _: Context) {
+        public func updateUIView(_ uiView: IGSegmentedControl, context: Context) {
+            context.coordinator.parent = self
+            uiView.onTouchBegan = onInteraction
             let values = Array(Value.allCases)
             let selectedIndex = values.firstIndex(of: selection) ?? 0
             if uiView.selectedSegmentIndex != selectedIndex {
                 uiView.selectedSegmentIndex = selectedIndex
             }
-            applyChrome(to: uiView)
+            uiView.selectedSegmentTintColor = UIColor(configuration.selectedSegmentTint)
+            uiView.tintColor = UIColor(configuration.foreground)
+            // Refresh segment images when badges / symbols change. Do not re-run
+            // the chrome alpha fade — that blanks icons on iOS 26.
             for (index, value) in values.enumerated() where index < uiView.numberOfSegments {
                 uiView.setImage(segmentImage(for: value), forSegmentAt: index)
-                uiView.setTitle(nil, forSegmentAt: index)
             }
-            uiView.clearTrackChrome()
         }
 
         public func sizeThatFits(
@@ -141,24 +168,25 @@
 
         private func segmentImage(for value: Value) -> UIImage {
             switch item(value) {
-            case let .symbol(name):
-                symbolImage(name)
-            case let .title(title):
-                titleImage(title)
+            case let .symbol(name, badge):
+                let base = symbolImage(name)
+                return badge > 0 ? badged(base, count: badge) : base
+            case let .title(title, badge):
+                let base = titleImage(title)
+                return badge > 0 ? badged(base, count: badge) : base
             }
         }
 
         private func symbolImage(_ name: String) -> UIImage {
+            // Match Kavsoft: template SF Symbol + SymbolConfiguration(font:).
+            // Badged composites rasterize tint into alwaysOriginal below.
             let config = UIImage.SymbolConfiguration(
-                font: .systemFont(ofSize: configuration.symbolPointSize, weight: .medium)
+                font: .systemFont(ofSize: configuration.symbolPointSize)
             )
-            let base = (UIImage(systemName: name) ?? UIImage()).withConfiguration(config)
-            return base
-                .withTintColor(UIColor(configuration.foreground), renderingMode: .alwaysOriginal)
+            return (UIImage(systemName: name) ?? UIImage()).withConfiguration(config)
         }
 
-        /// Rasterize copy so titles take the same image path as SF Symbols.
-        /// Plain `setTitle` disappears on iOS 26 once track chrome is cleared.
+        /// Rasterize titles onto the same image-segment path as SF Symbols.
         private func titleImage(_ title: String) -> UIImage {
             let foreground = UIColor(configuration.foreground)
             let attributes: [NSAttributedString.Key: Any] = [
@@ -184,21 +212,46 @@
             }.withRenderingMode(.alwaysOriginal)
         }
 
-        private func applyChrome(to control: IGSegmentedControl) {
-            control.selectedSegmentTintColor = UIColor(configuration.selectedSegmentTint)
-            control.tintColor = UIColor(configuration.foreground)
-            control.backgroundColor = .clear
-            // Official clear-track API — avoids grey fills without nuking content layers.
-            let clear = UIImage()
-            control.setBackgroundImage(clear, for: .normal, barMetrics: .default)
-            control.setBackgroundImage(clear, for: .selected, barMetrics: .default)
-            control.setBackgroundImage(clear, for: .highlighted, barMetrics: .default)
-            control.setDividerImage(
-                clear,
-                forLeftSegmentState: .normal,
-                rightSegmentState: .normal,
-                barMetrics: .default
+        /// Corner count pip composited onto the segment image (UISegmentedControl
+        /// has no native badge API).
+        private func badged(_ image: UIImage, count: Int) -> UIImage {
+            let tinted = image.withTintColor(
+                UIColor(configuration.foreground),
+                renderingMode: .alwaysOriginal
             )
+            let badgeText = count > 9 ? "9+" : "\(count)"
+            let badgeFont = UIFont.systemFont(ofSize: 9, weight: .bold)
+            let textAttributes: [NSAttributedString.Key: Any] = [
+                .font: badgeFont,
+                .foregroundColor: UIColor(configuration.badgeForeground),
+            ]
+            let textSize = (badgeText as NSString).size(withAttributes: textAttributes)
+            let badgeSide = max(14, ceil(max(textSize.width, textSize.height) + 4))
+            let pad: CGFloat = 3
+            let symbolSize = tinted.size
+            let canvas = CGSize(
+                width: ceil(symbolSize.width + badgeSide * 0.45),
+                height: ceil(symbolSize.height + badgeSide * 0.35)
+            )
+            let format = UIGraphicsImageRendererFormat.default()
+            format.opaque = false
+            let renderer = UIGraphicsImageRenderer(size: canvas, format: format)
+            return renderer.image { _ in
+                let symbolOrigin = CGPoint(x: 0, y: canvas.height - symbolSize.height)
+                tinted.draw(at: symbolOrigin)
+                let badgeOrigin = CGPoint(
+                    x: canvas.width - badgeSide,
+                    y: 0
+                )
+                let badgeRect = CGRect(origin: badgeOrigin, size: CGSize(width: badgeSide, height: badgeSide))
+                UIColor(configuration.badgeFill).setFill()
+                UIBezierPath(ovalIn: badgeRect).fill()
+                let textOrigin = CGPoint(
+                    x: badgeRect.midX - textSize.width / 2,
+                    y: badgeRect.midY - textSize.height / 2 - pad * 0.1
+                )
+                (badgeText as NSString).draw(at: textOrigin, withAttributes: textAttributes)
+            }.withRenderingMode(.alwaysOriginal)
         }
     }
 
@@ -208,19 +261,6 @@
         override public func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
             super.touchesBegan(touches, with: event)
             onTouchBegan?()
-        }
-
-        /// Kavsoft: fade top-level chrome `UIImageView`s, keep the last (thumb).
-        /// Content segment images live deeper and stay visible.
-        func clearTrackChrome() {
-            DispatchQueue.main.async { [weak self] in
-                guard let self else { return }
-                for subview in self.subviews {
-                    if subview is UIImageView, subview !== self.subviews.last {
-                        subview.alpha = 0
-                    }
-                }
-            }
         }
     }
 

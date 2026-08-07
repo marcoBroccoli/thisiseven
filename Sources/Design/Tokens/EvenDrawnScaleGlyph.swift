@@ -37,6 +37,7 @@ public struct EvenSplashMark: View {
     public var glyphSize: CGFloat
     public var wordmarkSize: CGFloat
     public var autoplay: Bool
+    public var onFinished: (() -> Void)?
 
     @State private var drawProgress: CGFloat = 0
     @State private var showWordmark = false
@@ -44,14 +45,17 @@ public struct EvenSplashMark: View {
     public init(
         glyphSize: CGFloat = 80,
         wordmarkSize: CGFloat = 40,
-        autoplay: Bool = true
+        autoplay: Bool = true,
+        onFinished: (() -> Void)? = nil
     ) {
         self.glyphSize = glyphSize
         self.wordmarkSize = wordmarkSize
         self.autoplay = autoplay
+        self.onFinished = onFinished
     }
 
-    /// Total autoplay time until wordmark is fully visible (glyph + fade).
+    /// Total autoplay time until glyph is drawn and wordmark is on screen.
+    /// Glyph ease-in-out 0.65s; wordmark spring delay 0.45s + ~0.5s settle.
     public static let autoplayDuration: Duration = .milliseconds(1200)
 
     public var body: some View {
@@ -74,6 +78,7 @@ public struct EvenSplashMark: View {
         guard autoplay else {
             drawProgress = 1
             showWordmark = true
+            onFinished?()
             return
         }
         drawProgress = 0
@@ -84,6 +89,10 @@ public struct EvenSplashMark: View {
         }
         withAnimation(.spring(response: 0.5, dampingFraction: 0.8).delay(0.45)) {
             showWordmark = true
+        }
+        Task {
+            try? await Task.sleep(for: Self.autoplayDuration)
+            onFinished?()
         }
     }
 }

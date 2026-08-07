@@ -1,6 +1,7 @@
 #if os(watchOS)
     import ComposableArchitecture
     import InboxFeature
+    import ProfileFeature
     import SwiftUI
     import TodayFeature
 
@@ -16,6 +17,7 @@
             TabView {
                 TodayView(store: store.scope(state: \.today, action: \.today))
                 InboxView(store: store.scope(state: \.inbox, action: \.inbox))
+                ProfileView(store: store.scope(state: \.profile, action: \.profile))
             }
             .task { await send(.appear).finish() }
         }

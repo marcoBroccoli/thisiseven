@@ -12,12 +12,25 @@ import TodayFeature
 public struct AppReducer {
     @ObservableState
     public enum State: Equatable {
-        case booting
+        case booting(BootingState = BootingState())
         case login(LoginReducer.State)
         case onboarding(OnboardingReducer.State)
         case householdSetup(HouseholdSetupReducer.State)
         case connections(ConnectionsReducer.State)
         case ready(MainTabReducer.State)
+    }
+
+    public struct BootingState: Equatable, Sendable {
+        public var bootstrapResult: AuthBootstrapResult?
+        public var splashFinished: Bool
+
+        public init(
+            bootstrapResult: AuthBootstrapResult? = nil,
+            splashFinished: Bool = false
+        ) {
+            self.bootstrapResult = bootstrapResult
+            self.splashFinished = splashFinished
+        }
     }
 
     public enum Action: ViewAction {
@@ -32,6 +45,7 @@ public struct AppReducer {
         @CasePathable
         public enum View: Equatable, Sendable {
             case appStarted
+            case splashFinished
         }
     }
 
@@ -47,17 +61,15 @@ public struct AppReducer {
                     await send(.bootstrapResponse(await authClient.bootstrap()))
                 }
 
+            case .view(.splashFinished):
+                guard case var .booting(boot) = state else { return .none }
+                boot.splashFinished = true
+                return applyBootIfReady(&state, boot: boot)
+
             case let .bootstrapResponse(result):
-                switch result {
-                case .signedOut:
-                    state = .login(LoginReducer.State())
-                case .needsHousehold:
-                    // Already signed in, past login — skip how-it-works.
-                    state = .householdSetup(HouseholdSetupReducer.State())
-                case .ready:
-                    state = .ready(MainTabReducer.State())
-                }
-                return .none
+                guard case var .booting(boot) = state else { return .none }
+                boot.bootstrapResult = result
+                return applyBootIfReady(&state, boot: boot)
 
             case .login(.delegate(.needsHousehold)):
                 state = .onboarding(.weigh)
@@ -88,5 +100,26 @@ public struct AppReducer {
         .ifCaseLet(\.householdSetup, action: \.householdSetup) { HouseholdSetupReducer() }
         .ifCaseLet(\.connections, action: \.connections) { ConnectionsReducer() }
         .ifCaseLet(\.ready, action: \.ready) { MainTabReducer() }
+    }
+
+    /// Leave splash only after bootstrap *and* the glyph/wordmark beat finish.
+    private func applyBootIfReady(
+        _ state: inout State,
+        boot: BootingState
+    ) -> Effect<Action> {
+        guard boot.splashFinished, let result = boot.bootstrapResult else {
+            state = .booting(boot)
+            return .none
+        }
+        switch result {
+        case .signedOut:
+            state = .login(LoginReducer.State())
+        case .needsHousehold:
+            // Already signed in, past login — skip how-it-works.
+            state = .householdSetup(HouseholdSetupReducer.State())
+        case .ready:
+            state = .ready(MainTabReducer.State())
+        }
+        return .none
     }
 }

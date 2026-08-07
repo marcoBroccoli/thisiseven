@@ -3,8 +3,49 @@ import Foundation
 // API DTOs mirroring docs/product/API.md. JSON is snake_case; the client
 // applies key-conversion strategies, so properties stay camelCase.
 
-public enum MemberColor: String, Codable, Sendable {
-    case clay, teal
+/// Member accent — `#RRGGBB`. Legacy API values `clay` / `teal` decode to the
+/// terracotta / pine defaults.
+public struct MemberColor: Hashable, Sendable, Codable, Equatable {
+    public let hex: String
+
+    public static let clay = MemberColor(hex: "#A6552F")
+    public static let teal = MemberColor(hex: "#37756D")
+
+    public init(hex: String) {
+        self.hex = Self.normalize(hex)
+    }
+
+    public init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        self.init(hex: raw)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(hex)
+    }
+
+    /// 0xRRGGBB for `Color(hex:)` / widget helpers.
+    public var rgb: UInt32 {
+        let digits = hex.dropFirst()
+        return UInt32(digits, radix: 16) ?? 0xA6552F
+    }
+
+    private static func normalize(_ raw: String) -> String {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        switch trimmed.lowercased() {
+        case "clay": return "#A6552F"
+        case "teal": return "#37756D"
+        default:
+            let upper = trimmed.uppercased()
+            if upper.hasPrefix("#"), upper.count == 7,
+               upper.dropFirst().allSatisfy(\.isHexDigit)
+            {
+                return upper
+            }
+            return "#A6552F"
+        }
+    }
 }
 
 public struct Member: Codable, Identifiable, Hashable, Sendable {
@@ -12,12 +53,20 @@ public struct Member: Codable, Identifiable, Hashable, Sendable {
     public var displayName: String
     public var color: MemberColor
     public var isMe: Bool
+    public var hasAvatar: Bool
 
-    public init(id: UUID, displayName: String, color: MemberColor, isMe: Bool) {
+    public init(
+        id: UUID,
+        displayName: String,
+        color: MemberColor,
+        isMe: Bool,
+        hasAvatar: Bool = false
+    ) {
         self.id = id
         self.displayName = displayName
         self.color = color
         self.isMe = isMe
+        self.hasAvatar = hasAvatar
     }
 }
 

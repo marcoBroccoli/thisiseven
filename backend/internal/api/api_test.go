@@ -140,8 +140,8 @@ func TestFullFlow(t *testing.T) {
 	mustStatus(t, code, 201, "create household", house)
 	invite := house["invite_code"].(string)
 	members := house["members"].([]any)
-	if len(members) != 1 || members[0].(map[string]any)["color"] != "clay" {
-		t.Fatalf("creator should be clay: %v", members)
+	if len(members) != 1 || members[0].(map[string]any)["color"] != "#A6552F" {
+		t.Fatalf("creator should be terracotta hex: %v", members)
 	}
 
 	code, body = umut.do("POST", "/v1/households/join", map[string]any{
@@ -154,8 +154,8 @@ func TestFullFlow(t *testing.T) {
 			adaID = m["id"].(string)
 		} else {
 			umutID = m["id"].(string)
-			if m["color"] != "teal" {
-				t.Fatalf("joiner should be teal: %v", m)
+			if m["color"] != "#37756D" {
+				t.Fatalf("joiner should be pine hex: %v", m)
 			}
 		}
 	}
@@ -163,6 +163,32 @@ func TestFullFlow(t *testing.T) {
 	code, body = third.do("POST", "/v1/households/join", map[string]any{
 		"invite_code": invite, "display_name": "Nope"})
 	mustStatus(t, code, 409, "third join", body)
+
+	// Profile: rename + free color (partner unchanged).
+	code, body = ada.do("PATCH", "/v1/me", map[string]any{"display_name": "Ada Lovelace"})
+	mustStatus(t, code, 200, "patch me name", body)
+	if body["display_name"] != "Ada Lovelace" || body["is_me"] != true {
+		t.Fatalf("unexpected patched member: %v", body)
+	}
+	code, body = ada.do("PATCH", "/v1/me", map[string]any{"color": "#4A6FA5"})
+	mustStatus(t, code, 200, "patch me custom color", body)
+	if body["color"] != "#4A6FA5" {
+		t.Fatalf("ada should keep custom hex: %v", body)
+	}
+	code, meBody := umut.do("GET", "/v1/me", nil)
+	mustStatus(t, code, 200, "umut me after ada color", meBody)
+	umutMember := meBody["member"].(map[string]any)
+	if umutMember["color"] != "#37756D" {
+		t.Fatalf("umut color should be unchanged: %v", umutMember)
+	}
+	code, body = ada.do("PATCH", "/v1/me", map[string]any{"display_name": "   "})
+	mustStatus(t, code, 400, "empty display name", body)
+	code, body = ada.do("PATCH", "/v1/me", map[string]any{"color": "not-a-color"})
+	mustStatus(t, code, 400, "bad color", body)
+	// Restore defaults for the rest of the suite.
+	code, body = ada.do("PATCH", "/v1/me", map[string]any{
+		"display_name": "Ada", "color": "#A6552F"})
+	mustStatus(t, code, 200, "restore ada terracotta", body)
 
 	// Tasks + summary math.
 	code, task := ada.do("POST", "/v1/tasks", map[string]any{

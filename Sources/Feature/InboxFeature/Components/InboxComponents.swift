@@ -371,23 +371,28 @@
         let partner: Member?
 
         var body: some View {
-            Text(initial)
-                .font(.system(size: 8.5, weight: .bold))
-                .foregroundStyle(EvenTokens.paperCard)
-                .frame(width: 20, height: 20)
-                .background(Circle().fill(color))
+            if let member {
+                EvenMemberAvatar(
+                    memberId: member.id,
+                    displayName: member.displayName,
+                    accent: Color(hex: member.color.rgb),
+                    hasAvatar: member.hasAvatar,
+                    size: 20,
+                    ringWidth: 1.25
+                )
+            } else {
+                Text("?")
+                    .font(.system(size: 8.5, weight: .bold))
+                    .foregroundStyle(EvenTokens.paperCard)
+                    .frame(width: 20, height: 20)
+                    .background(Circle().fill(EvenTokens.stone))
+            }
         }
 
-        private var color: Color {
-            if ownerMemberId == me?.id { return EvenTokens.terracotta }
-            if ownerMemberId == partner?.id { return EvenTokens.pine }
-            return EvenTokens.stone
-        }
-
-        private var initial: String {
-            if ownerMemberId == me?.id { return String(me?.displayName.prefix(1) ?? "A") }
-            if ownerMemberId == partner?.id { return String(partner?.displayName.prefix(1) ?? "U") }
-            return "?"
+        private var member: Member? {
+            if let me, ownerMemberId == me.id { return me }
+            if let partner, ownerMemberId == partner.id { return partner }
+            return nil
         }
     }
 

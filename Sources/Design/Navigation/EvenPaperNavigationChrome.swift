@@ -24,8 +24,10 @@ public extension View {
         modifier(EvenPaperNavigationChrome())
     }
 
-    /// ScrollViews over paper — hide the system scroll fill so grain shows through.
+    /// ScrollViews / Lists over paper — hide system fill and scroll indicators
+    /// so grain shows through without chrome.
     func evenScrollOnPaper() -> some View {
         scrollContentBackground(.hidden)
+            .scrollIndicators(.hidden)
     }
 }

@@ -14,6 +14,9 @@ public struct InboxReducer {
         public var drafts: IdentifiedArrayOf<Draft> = []
         /// Starts true so the first frame paints a loading skeleton, not empty.
         public var isLoading = true
+        /// True after the first successful drafts fetch — tab badge prefers this
+        /// list over Summary’s `pendingDraftCount` once live.
+        public var hasLoadedDrafts = false
         public var isCalendarLoading = false
         public var surface: Surface = .inbox
         public var calendarItems: [CalendarItem] = []
@@ -22,6 +25,11 @@ public struct InboxReducer {
         public var partner: Member?
         @Presents public var review: ReviewReducer.State?
         public init() {}
+
+        /// Unattended inbox items for the main-tab badge.
+        public var pendingBadgeCount: Int {
+            drafts.count
+        }
 
         public enum Surface: Equatable, Sendable {
             case inbox, calendar
@@ -80,6 +88,7 @@ public struct InboxReducer {
 
             case let .draftsLoaded(drafts):
                 state.isLoading = false
+                state.hasLoadedDrafts = true
                 state.drafts = IdentifiedArray(uniqueElements: drafts)
                 return .none
 

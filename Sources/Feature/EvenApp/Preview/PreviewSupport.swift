@@ -7,7 +7,7 @@ import OnboardingFeature
 public enum EvenAppPreviewSupport {
     /// Boot → login → onboarding → household → connections → ready.
     public static func flow() -> StoreOf<AppReducer> {
-        Store(initialState: .booting) {
+        Store(initialState: .booting()) {
             AppReducer()
         }
     }
@@ -15,7 +15,7 @@ public enum EvenAppPreviewSupport {
     public static func booting(
         bootstrapLag: Duration = .seconds(2)
     ) -> StoreOf<AppReducer> {
-        Store(initialState: .booting) {
+        Store(initialState: .booting()) {
             AppReducer()
         } withDependencies: {
             $0.authClient.bootstrap = {

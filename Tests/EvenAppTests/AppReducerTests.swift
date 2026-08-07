@@ -6,8 +6,8 @@ import XCTest
 
 @MainActor
 final class AppReducerTests: XCTestCase {
-    func testBootRoutesSignedOutToLogin() async {
-        let store = TestStore(initialState: AppReducer.State.booting) {
+    func testBootWaitsForSplashBeforeLogin() async {
+        let store = TestStore(initialState: AppReducer.State.booting()) {
             AppReducer()
         } withDependencies: {
             $0.authClient.bootstrap = { .signedOut }
@@ -15,25 +15,15 @@ final class AppReducerTests: XCTestCase {
 
         await store.send(.view(.appStarted))
         await store.receive(\.bootstrapResponse) {
+            $0 = .booting(.init(bootstrapResult: .signedOut))
+        }
+        await store.send(.view(.splashFinished)) {
             $0 = .login(.init())
         }
     }
 
-    func testBootRoutesNeedsHouseholdToHouseholdSetup() async {
-        let store = TestStore(initialState: AppReducer.State.booting) {
-            AppReducer()
-        } withDependencies: {
-            $0.authClient.bootstrap = { .needsHousehold(userId: PreviewData.adaId) }
-        }
-
-        await store.send(.view(.appStarted))
-        await store.receive(\.bootstrapResponse) {
-            $0 = .householdSetup(.init())
-        }
-    }
-
-    func testBootRoutesReadyToMain() async {
-        let store = TestStore(initialState: AppReducer.State.booting) {
+    func testBootWaitsForSplashBeforeReady() async {
+        let store = TestStore(initialState: AppReducer.State.booting()) {
             AppReducer()
         } withDependencies: {
             $0.authClient.bootstrap = { .ready }
@@ -41,7 +31,26 @@ final class AppReducerTests: XCTestCase {
 
         await store.send(.view(.appStarted))
         await store.receive(\.bootstrapResponse) {
+            $0 = .booting(.init(bootstrapResult: .ready))
+        }
+        await store.send(.view(.splashFinished)) {
             $0 = .ready(.init())
+        }
+    }
+
+    func testBootSplashCanFinishBeforeBootstrap() async {
+        let store = TestStore(initialState: AppReducer.State.booting()) {
+            AppReducer()
+        } withDependencies: {
+            $0.authClient.bootstrap = { .needsHousehold(userId: PreviewData.adaId) }
+        }
+
+        await store.send(.view(.splashFinished)) {
+            $0 = .booting(.init(splashFinished: true))
+        }
+        await store.send(.view(.appStarted))
+        await store.receive(\.bootstrapResponse) {
+            $0 = .householdSetup(.init())
         }
     }
 

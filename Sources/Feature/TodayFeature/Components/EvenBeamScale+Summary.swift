@@ -3,6 +3,10 @@ import EvenCore
 
 public extension EvenBeamScale {
     /// Maps a household week summary onto the Design beam primitive.
+    ///
+    /// Pan tones stay role-based (me = clay / partner = pine) so custom profile
+    /// colors don’t fight the beam’s left/right identity; chips and avatars use
+    /// each member’s hex elsewhere.
     init(summary: Summary, me: Member?, partner: Member?) {
         self.init(
             configuration: EvenBeamScaleConfiguration(
@@ -10,7 +14,7 @@ public extension EvenBeamScale {
                 leading: EvenBeamPan(
                     name: me?.displayName ?? "You",
                     percent: summary.percentMe,
-                    tone: Self.tone(me?.color) ?? .clay,
+                    tone: .clay,
                     pebbleWeights: summary.pebbles
                         .filter { $0.memberId == me?.id }
                         .map(\.weight)
@@ -18,7 +22,7 @@ public extension EvenBeamScale {
                 trailing: EvenBeamPan(
                     name: partner?.displayName ?? "\u{2014} ?",
                     percent: summary.percentPartner,
-                    tone: Self.tone(partner?.color) ?? .pine,
+                    tone: .pine,
                     pebbleWeights: summary.pebbles
                         .filter { $0.memberId == partner?.id }
                         .map(\.weight),
@@ -26,13 +30,5 @@ public extension EvenBeamScale {
                 )
             )
         )
-    }
-
-    private static func tone(_ memberColor: MemberColor?) -> EvenBeamPanTone? {
-        switch memberColor {
-        case .clay: .clay
-        case .teal: .pine
-        case .none: nil
-        }
     }
 }

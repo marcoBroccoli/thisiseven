@@ -22,6 +22,7 @@ final class InboxFeatureTests: XCTestCase {
         await store.send(.view(.appear))
         await store.receive(\.draftsLoaded) {
             $0.isLoading = false
+            $0.hasLoadedDrafts = true
             $0.drafts = IdentifiedArray(uniqueElements: PreviewData.pendingDrafts)
         }
         // Members load is merged with drafts — either action may land first.
@@ -46,6 +47,7 @@ final class InboxFeatureTests: XCTestCase {
 
         await store.send(.view(.appear))
         await store.receive(\.draftsLoaded) {
+            $0.hasLoadedDrafts = true
             $0.drafts = IdentifiedArray(uniqueElements: PreviewData.pendingDrafts)
         }
         XCTAssertFalse(store.state.isLoading)
@@ -126,6 +128,7 @@ final class InboxFeatureTests: XCTestCase {
         }
         await store.receive(\.draftsLoaded) {
             $0.isLoading = false
+            $0.hasLoadedDrafts = true
             $0.drafts = IdentifiedArray(uniqueElements: PreviewData.pendingDrafts)
         }
     }

@@ -52,12 +52,18 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err := os.MkdirAll(cfg.AvatarDir, 0o755); err != nil {
+		slog.Error("avatar dir", "err", err, "dir", cfg.AvatarDir)
+		os.Exit(1)
+	}
+
 	app := &api.API{
 		DB: db,
 		Google: google.New(cfg.GoogleClientID, cfg.GoogleClientSecret,
 			cfg.GoogleIOSClientID, cfg.GoogleOAuthBase, cfg.GoogleAPIBase),
-		Claude: claude.New(cfg.AnthropicKey, cfg.ClaudeAPIBase, cfg.ClaudeModel),
-		Hub:    api.NewHub(),
+		Claude:    claude.New(cfg.AnthropicKey, cfg.ClaudeAPIBase, cfg.ClaudeModel),
+		Hub:       api.NewHub(),
+		AvatarDir: cfg.AvatarDir,
 	}
 	if app.Claude.Configured() {
 		slog.Info("claude classifier on")

@@ -1,23 +1,25 @@
-import SwiftUI
 import EvenCore
+import SwiftUI
 
-// Design tokens for the original Even widget language.
-// ADA (terracotta) = the clay member / left pan. UMUT (teal) = the partner /
-// right pan. INK/SUB/CREAM are the paper palette; the "Today" card and the lock
-// accessories use the dark card (INK bg, CREAM text, sub-on-dark).
+/// Design tokens for the original Even widget language.
+/// ADA (terracotta) = the clay member / left pan. UMUT (teal) = the partner /
+/// right pan. INK/SUB/CREAM are the paper palette; the "Today" card and the lock
+/// accessories use the dark card (INK bg, CREAM text, sub-on-dark).
 enum WT {
-    static let ada       = Color.hex(0xA6552F)   // terracotta — clay / left pan
-    static let umut      = Color.hex(0x37756D)   // teal — right pan
-    static let ink       = Color.hex(0x26201A)
-    static let sub       = Color.hex(0x8A7D69)
-    static let cream     = Color.hex(0xFBF7EE)
-    static let darkBg    = Color.hex(0x26201A)
+    static let ada = Color.hex(0xA6552F) // terracotta — clay / left pan
+    static let umut = Color.hex(0x37756D) // teal — right pan
+    static let ink = Color.hex(0x26201A)
+    static let sub = Color.hex(0x8A7D69)
+    static let cream = Color.hex(0xFBF7EE)
+    static let darkBg = Color.hex(0x26201A)
     static let subOnDark = Color.hex(0xB7A98F)
-    static let onDark    = Color.hex(0xE9E1D2)    // brighter body text on dark
+    static let onDark = Color.hex(0xE9E1D2) // brighter body text on dark
     static let lineOnCream = Color.hex(0x26201A).opacity(0.10)
-    static let ringTrack   = Color.hex(0xFBF7EE).opacity(0.14)
+    static let ringTrack = Color.hex(0xFBF7EE).opacity(0.14)
 
-    static func member(_ c: MemberColor) -> Color { c == .clay ? ada : umut }
+    static func member(_ c: MemberColor) -> Color {
+        Color.hex(c.rgb)
+    }
 }
 
 /// A per-card palette. Cream is the signature paper look; dark is the Today card
@@ -30,15 +32,19 @@ struct WidgetPalette: Equatable {
     /// Ink colour used to stroke the beam furniture (cream on a dark card).
     var beamInk: Color
 
-    func member(_ c: MemberColor) -> Color { WT.member(c) }
+    func member(_ c: MemberColor) -> Color {
+        WT.member(c)
+    }
 
     static let cream = WidgetPalette(
         bg: WT.cream, ink: WT.ink, sub: WT.sub,
-        line: WT.lineOnCream, beamInk: WT.ink)
+        line: WT.lineOnCream, beamInk: WT.ink
+    )
 
     static let dark = WidgetPalette(
         bg: WT.darkBg, ink: WT.cream, sub: WT.subOnDark,
-        line: Color.hex(0xFBF7EE).opacity(0.14), beamInk: WT.cream)
+        line: Color.hex(0xFBF7EE).opacity(0.14), beamInk: WT.cream
+    )
 }
 
 extension Color {
@@ -49,14 +55,15 @@ extension Color {
     }
 }
 
-// Newsreader (serif — numbers, titles, leader copy) + Source Sans 3 (labels).
-// Both bundled via the extension's UIAppFonts; Font.custom falls back to the
-// system face if a name fails to resolve so the widget never renders blank.
+/// Newsreader (serif — numbers, titles, leader copy) + Source Sans 3 (labels).
+/// Both bundled via the extension's UIAppFonts; Font.custom falls back to the
+/// system face if a name fails to resolve so the widget never renders blank.
 enum WidgetFont {
     static func serif(_ size: CGFloat, _ weight: Font.Weight = .regular, italic: Bool = false) -> Font {
         let f = Font.custom("Newsreader", size: size).weight(weight)
         return italic ? f.italic() : f
     }
+
     static func sans(_ size: CGFloat, _ weight: Font.Weight = .semibold) -> Font {
         Font.custom("Source Sans 3", size: size).weight(weight)
     }
@@ -73,11 +80,12 @@ enum WidgetFormat {
 extension Text {
     /// Uppercase label styling: Source Sans 3, ~0.14em letter-spacing.
     func caps(_ size: CGFloat, em: CGFloat = 0.14, weight: Font.Weight = .semibold) -> Text {
-        self.font(WidgetFont.sans(size, weight)).tracking(size * em)
+        font(WidgetFont.sans(size, weight)).tracking(size * em)
     }
+
     /// Explicit-tracking variant (kept for Provider.swift's helpers).
     func caps(_ size: CGFloat, tracking: CGFloat, weight: Font.Weight = .semibold) -> Text {
-        self.font(WidgetFont.sans(size, weight)).tracking(tracking)
+        font(WidgetFont.sans(size, weight)).tracking(tracking)
     }
 }
 

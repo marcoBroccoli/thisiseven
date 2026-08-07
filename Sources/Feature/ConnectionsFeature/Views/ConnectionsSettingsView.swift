@@ -3,12 +3,16 @@
     import Design
     import SwiftUI
 
-    /// Design 04 · manage connections (Settings entry — not part of setup path).
+    /// Design 04 · manage connections (Profile / Settings — not part of setup path).
     @ViewAction(for: ConnectionsReducer.self)
-    struct ConnectionsSettingsView: View {
-        @Bindable var store: StoreOf<ConnectionsReducer>
+    public struct ConnectionsSettingsView: View {
+        @Bindable public var store: StoreOf<ConnectionsReducer>
 
-        var body: some View {
+        public init(store: StoreOf<ConnectionsReducer>) {
+            self.store = store
+        }
+
+        public var body: some View {
             VStack(alignment: .leading, spacing: 0) {
                 Text("Connections")
                     .font(.system(size: 27, weight: .medium, design: .serif))

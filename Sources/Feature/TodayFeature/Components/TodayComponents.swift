@@ -349,11 +349,7 @@
                                     )
                             }
                         }
-                        Text(ownerInitial)
-                            .font(.system(size: TodayLayout.initialFont, weight: .bold))
-                            .foregroundStyle(EvenTokens.paperCard)
-                            .frame(width: TodayLayout.marker, height: TodayLayout.marker)
-                            .background(Circle().fill(ownerColor))
+                        ownerAvatar
                     }
                 }
                 .padding(.vertical, TodayLayout.rowVertical)
@@ -383,8 +379,24 @@
             TodayOwnerColor.color(for: task.ownerMemberId, me: me, partner: partner)
         }
 
-        private var ownerInitial: String {
-            TodayOwnerColor.initial(for: task.ownerMemberId, me: me, partner: partner)
+        @ViewBuilder
+        private var ownerAvatar: some View {
+            if let member = TodayOwnerColor.member(for: task.ownerMemberId, me: me, partner: partner) {
+                EvenMemberAvatar(
+                    memberId: member.id,
+                    displayName: member.displayName,
+                    accent: Color(hex: member.color.rgb),
+                    hasAvatar: member.hasAvatar,
+                    size: TodayLayout.marker,
+                    ringWidth: 1.5
+                )
+            } else {
+                Text("?")
+                    .font(.system(size: TodayLayout.initialFont, weight: .bold))
+                    .foregroundStyle(EvenTokens.paperCard)
+                    .frame(width: TodayLayout.marker, height: TodayLayout.marker)
+                    .background(Circle().fill(ownerColor))
+            }
         }
     }
 
@@ -508,18 +520,24 @@
     // MARK: - Owner colors
 
     enum TodayOwnerColor {
+        static func member(for ownerMemberId: UUID, me: Member?, partner: Member?) -> Member? {
+            if let me, ownerMemberId == me.id { return me }
+            if let partner, ownerMemberId == partner.id { return partner }
+            return nil
+        }
+
         static func color(for ownerMemberId: UUID, me: Member?, partner: Member?) -> Color {
-            if ownerMemberId == me?.id { return EvenTokens.terracotta }
-            if ownerMemberId == partner?.id { return EvenTokens.pine }
+            if let member = member(for: ownerMemberId, me: me, partner: partner) {
+                return Color(hex: member.color.rgb)
+            }
             return EvenTokens.stone
         }
 
         static func initial(for ownerMemberId: UUID, me: Member?, partner: Member?) -> String {
-            if ownerMemberId == me?.id {
-                return String(me?.displayName.prefix(1) ?? "A")
-            }
-            if ownerMemberId == partner?.id {
-                return String(partner?.displayName.prefix(1) ?? "U")
+            if let member = member(for: ownerMemberId, me: me, partner: partner),
+               let first = member.displayName.first
+            {
+                return String(first).uppercased()
             }
             return "?"
         }

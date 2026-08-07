@@ -20,6 +20,26 @@ extension HouseholdClient: DependencyKey {
                 throw HouseholdClientError.unimplemented
             }
             return household
+        },
+        loadProfile: {
+            let store = await MainActor.run { SharedSession.store }
+            return try await store.loadProfile()
+        },
+        updateMe: { displayName, color in
+            let store = await MainActor.run { SharedSession.store }
+            return try await store.updateMe(displayName: displayName, color: color)
+        },
+        uploadAvatar: { jpeg in
+            let store = await MainActor.run { SharedSession.store }
+            return try await store.uploadAvatar(jpeg: jpeg)
+        },
+        deleteAvatar: {
+            let store = await MainActor.run { SharedSession.store }
+            return try await store.deleteAvatar()
+        },
+        fetchAvatar: { memberId in
+            let store = await MainActor.run { SharedSession.store }
+            return try await store.fetchAvatar(memberId: memberId)
         }
     )
 }

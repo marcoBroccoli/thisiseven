@@ -1,6 +1,6 @@
-import WidgetKit
-import SwiftUI
 import EvenCore
+import SwiftUI
+import WidgetKit
 
 // MARK: - Shared bits
 
@@ -13,10 +13,16 @@ private struct Wordmark: View {
 }
 
 private extension EvenWidgetSnapshot {
-    var adaSide: Side { clay }
-    var umutSide: Side { teal }
+    var adaSide: Side {
+        clay
+    }
+
+    var umutSide: Side {
+        teal
+    }
+
     func ownerName(_ item: UpNext) -> String {
-        item.ownerColor == .clay ? clay.name : teal.name
+        item.ownerColor == clay.color ? clay.name : teal.name
     }
 }
 

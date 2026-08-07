@@ -18,12 +18,17 @@ services:
       GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
       GOOGLE_IOS_CLIENT_ID: ${GOOGLE_IOS_CLIENT_ID:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      EVEN_AVATAR_DIR: /var/even/avatars
     depends_on:
       db:
         condition: service_healthy
       gotrue:
         condition: service_started
     read_only: true
+    tmpfs:
+      - /tmp
+    volumes:
+      - avatar_data:/var/even/avatars
 
   gotrue:
     image: supabase/auth:v2.193.0
@@ -73,3 +78,4 @@ services:
 
 volumes:
   pgdata:
+  avatar_data:

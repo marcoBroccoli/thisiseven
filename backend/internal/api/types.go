@@ -30,6 +30,7 @@ type MemberJSON struct {
 	DisplayName string `json:"display_name"`
 	Color       string `json:"color"`
 	IsMe        bool   `json:"is_me"`
+	HasAvatar   bool   `json:"has_avatar"`
 }
 
 type HouseholdJSON struct {

@@ -18,10 +18,11 @@ import (
 
 // API carries the handlers' shared state.
 type API struct {
-	DB     *pgxpool.Pool
-	Google *google.Client
-	Claude *claude.Client
-	Hub    *Hub
+	DB        *pgxpool.Pool
+	Google    *google.Client
+	Claude    *claude.Client
+	Hub       *Hub
+	AvatarDir string // EVEN_AVATAR_DIR; empty disables avatar write/serve
 
 	syncMu   sync.Mutex
 	syncJobs map[string]*syncJob // household id → latest sync job state

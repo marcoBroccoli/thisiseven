@@ -16,7 +16,7 @@
     public struct EvenAppRootView: View {
         @State public var store: StoreOf<AppReducer>
 
-        public init(store: StoreOf<AppReducer> = Store(initialState: .booting) { AppReducer() }) {
+        public init(store: StoreOf<AppReducer> = Store(initialState: .booting()) { AppReducer() }) {
             _store = State(initialValue: store)
         }
 
@@ -27,7 +27,9 @@
                 Group {
                     switch store.state {
                     case .booting:
-                        BootSplashView()
+                        BootSplashView {
+                            send(.splashFinished)
+                        }
                     case .login:
                         if let store = store.scope(state: \.login, action: \.login) {
                             LoginView(store: store)

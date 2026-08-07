@@ -135,6 +135,45 @@ public final class SessionStore: @unchecked Sendable {
         await refreshIdentity()
     }
 
+    /// Fresh `/v1/me` for Profile (also refreshes in-memory identity).
+    public func loadProfile() async throws -> MeResponse {
+        let me = try await api.me()
+        self.me = me
+        if me.household != nil {
+            phase = .ready
+        }
+        return me
+    }
+
+    public func updateMe(displayName: String?, color: MemberColor?) async throws -> Member {
+        let member = try await api.patchMe(displayName: displayName, color: color)
+        await refreshIdentity()
+        return member
+    }
+
+    public func uploadAvatar(jpeg: Data) async throws -> Member {
+        let member = try await api.putMyAvatar(jpeg: jpeg)
+        await MemberAvatarCache.shared.store(member.id, data: jpeg)
+        await refreshIdentity()
+        return member
+    }
+
+    public func deleteAvatar() async throws -> Member {
+        let member = try await api.deleteMyAvatar()
+        await MemberAvatarCache.shared.remove(member.id)
+        await refreshIdentity()
+        return member
+    }
+
+    public func fetchAvatar(memberId: UUID) async throws -> Data {
+        if let cached = await MemberAvatarCache.shared.data(for: memberId) {
+            return cached
+        }
+        let data = try await api.memberAvatarData(memberId: memberId)
+        await MemberAvatarCache.shared.store(memberId, data: data)
+        return data
+    }
+
     // MARK: Tokens
 
     private func adopt(_ new: AuthSession) {

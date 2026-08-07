@@ -15,9 +15,9 @@ import (
 
 // Router wires the whole surface. Contract: docs/product/API.md.
 //
-//	GET  /healthz
-//	/auth/*  → GoTrue (Supabase Auth) with the /auth prefix stripped
-//	/v1/*    → evend, Bearer-gated
+//	GET   /healthz
+//	/auth/*   → GoTrue (Supabase Auth) with the /auth prefix stripped
+//	GET   /v1/me · PATCH /v1/me · … → evend, Bearer-gated
 func Router(a *API, verifier httpx.AccessVerifier, gotrueURL string) http.Handler {
 	r := chi.NewRouter()
 	r.Use(httpx.Recover, httpx.Log)
@@ -60,6 +60,9 @@ func Router(a *API, verifier httpx.AccessVerifier, gotrueURL string) http.Handle
 		r.Use(httpx.MaxBytes(256 << 10))
 		r.Use(httpx.PerUserLimit(rate.Every(100*time.Millisecond), 40))
 
+		r.Patch("/v1/me", a.UpdateMe)
+		r.Delete("/v1/me/avatar", a.DeleteAvatar)
+		r.Get("/v1/members/{id}/avatar", a.GetMemberAvatar)
 		r.Get("/v1/summary", a.Summary)
 		r.Get("/v1/ws/household", a.HouseholdWS)
 
@@ -94,6 +97,15 @@ func Router(a *API, verifier httpx.AccessVerifier, gotrueURL string) http.Handle
 		r.Post("/v1/trades/{id}/accept", a.AcceptTrade)
 		r.Delete("/v1/trades/{id}", a.DeleteTrade)
 		r.Post("/v1/week/close", a.CloseWeek)
+	})
+
+	// Avatar upload: larger body budget than JSON routes.
+	r.Group(func(r chi.Router) {
+		r.Use(httpx.RequireAuth(verifier))
+		r.Use(a.RequireMember)
+		r.Use(httpx.MaxBytes(maxAvatarUpload))
+		r.Use(httpx.PerUserLimit(rate.Every(500*time.Millisecond), 10))
+		r.Put("/v1/me/avatar", a.PutAvatar)
 	})
 
 	return r

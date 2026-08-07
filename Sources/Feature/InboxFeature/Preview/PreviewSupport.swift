@@ -13,6 +13,7 @@ public enum InboxPreviewSupport {
     ) -> StoreOf<InboxReducer> {
         var state = InboxReducer.State()
         state.drafts = IdentifiedArray(uniqueElements: PreviewData.pendingDrafts)
+        state.hasLoadedDrafts = true
         state.me = PreviewData.ada
         state.partner = PreviewData.umut
         state.isLoading = false
@@ -31,6 +32,7 @@ public enum InboxPreviewSupport {
     ) -> StoreOf<InboxReducer> {
         var state = InboxReducer.State()
         state.isLoading = false
+        state.hasLoadedDrafts = true
         return Store(initialState: state) {
             InboxReducer()
         } withDependencies: {
