@@ -65,10 +65,14 @@
                 .accessibilityElement(children: .contain)
                 .accessibilityLabel("Main tabs")
             }
-            .environment(\.evenAvatarLoader) { [householdClient] memberId in
+            .environment(\.evenAvatarLoader, avatarLoader)
+            .task { await send(.appear).finish() }
+        }
+
+        private var avatarLoader: EvenAvatarLoader? {
+            { [householdClient] memberId in
                 try? await householdClient.fetchAvatar(memberId)
             }
-            .task { await send(.appear).finish() }
         }
 
         private func expandTabBar() {
@@ -90,6 +94,6 @@
     }
 
     #Preview("Main tabs") {
-        MainTabView(store: Store(initialState: MainTabReducer.State()) { MainTabReducer() })
+        MainTabView(store: MainTabPreviewSupport.populated())
     }
 #endif
