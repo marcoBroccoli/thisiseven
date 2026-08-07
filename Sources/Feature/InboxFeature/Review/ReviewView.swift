@@ -170,7 +170,7 @@
                         .frame(maxWidth: .infinity)
                         .frame(height: 44)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.evenPlain)
             }
             .padding(.horizontal, 24)
         }
@@ -210,7 +210,7 @@
                     .clipShape(Capsule())
                     .contentShape(Capsule())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.evenPlain)
         }
 
         private var dueAmountLine: String {

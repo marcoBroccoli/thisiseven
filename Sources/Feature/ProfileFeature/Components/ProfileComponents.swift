@@ -82,7 +82,7 @@
                             Button("Remove photo", action: onRemoveAvatar)
                                 .font(.system(size: 13, weight: .medium, design: .serif))
                                 .foregroundStyle(EvenTokens.terracotta)
-                                .buttonStyle(.plain)
+                                .buttonStyle(.evenPlain)
                                 .allowsHitTesting(!isSaving)
                                 .accessibilityIdentifier("Remove profile photo")
                         }
@@ -116,7 +116,7 @@
                                     .aspectRatio(1, contentMode: .fit)
                                     .frame(maxWidth: ProfileLayout.swatch)
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(.evenPlain)
                             .allowsHitTesting(!isSaving)
                             .accessibilityIdentifier("Profile color \(option.hex)")
                             .accessibilityAddTraits(color == option ? .isSelected : [])
@@ -176,7 +176,7 @@
                         .offset(x: 2, y: 2)
                 }
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.evenPlain)
             .allowsHitTesting(!isSaving)
             .accessibilityIdentifier("Profile photo")
             .accessibilityLabel("Change profile photo")
@@ -259,7 +259,7 @@
                             EvenTokens.espresso.opacity(0.08),
                             in: Capsule()
                         )
-                        .buttonStyle(.plain)
+                        .buttonStyle(.evenPlain)
                         .disabled(inviteCode.isEmpty)
                         .accessibilityIdentifier("Copy invite code")
                 }
@@ -305,7 +305,7 @@
                         )
                         .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.evenPlain)
                 .allowsHitTesting(!working)
                 .accessibilityIdentifier("Connect Google")
             }
@@ -330,7 +330,7 @@
                     )
                     .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.evenPlain)
             .accessibilityIdentifier("Sign out")
         }
     }

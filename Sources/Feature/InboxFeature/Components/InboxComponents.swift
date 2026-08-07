@@ -128,7 +128,7 @@
                                     RoundedRectangle(cornerRadius: 13, style: .continuous)
                                 )
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.evenPlain)
                         .transition(Self.listTransition)
                     }
                 }

@@ -48,7 +48,7 @@
                 .clipShape(Capsule())
                 .contentShape(Capsule())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.evenPlain)
             .animation(EvenMotion.reveal, value: selected)
         }
     }
@@ -92,7 +92,7 @@
                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                 )
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.evenPlain)
             .animation(EvenMotion.reveal, value: selected)
         }
     }
@@ -120,7 +120,7 @@
                     .clipShape(Capsule())
                     .contentShape(Capsule())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.evenPlain)
             .animation(EvenMotion.reveal, value: selected)
         }
     }
@@ -248,7 +248,7 @@
                     .frame(width: 24, height: 24)
                     .contentShape(Circle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.evenPlain)
             .allowsHitTesting(enabled)
             .accessibilityLabel(systemName == "plus" ? "One more time" : "One fewer time")
         }

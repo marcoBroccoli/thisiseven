@@ -160,7 +160,7 @@
                 } label: {
                     EvenAppleSignInChrome()
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.evenPlain)
                 .accessibilityIdentifier("sign-in-with-apple")
             } else {
                 SignInWithAppleButton(.signIn) { request in

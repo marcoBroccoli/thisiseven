@@ -70,7 +70,7 @@
                         )
                         .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.evenPlain)
                 .allowsHitTesting(!store.working)
                 .padding(.top, 14)
                 .accessibilityIdentifier("Disconnect Google")

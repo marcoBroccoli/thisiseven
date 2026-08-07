@@ -43,6 +43,7 @@
                         }
                         ToolbarItem(placement: .topBarTrailing) {
                             Button("SKIP") { send(.skipTapped) }
+                                .buttonStyle(.evenPlain)
                                 .font(.system(size: 10, weight: .semibold))
                                 .tracking(1.4)
                                 .foregroundStyle(EvenTokens.stone)

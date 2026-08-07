@@ -41,7 +41,7 @@ public struct EvenPrimaryButton: View {
                 .background(enabled ? EvenTokens.espresso : EvenTokens.stone)
                 .clipShape(Self.shape)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.evenPlain)
         .allowsHitTesting(enabled)
         .animation(EvenMotion.reveal, value: enabled)
         .accessibilityIdentifier(accessibilityId ?? title)

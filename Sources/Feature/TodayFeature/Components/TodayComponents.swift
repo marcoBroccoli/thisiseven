@@ -2,6 +2,7 @@
     import Design
     import EvenCore
     import SwiftUI
+    import UIKit
     import VisualEffects
 
     // MARK: - Layout tokens
@@ -211,7 +212,7 @@
                     .clipShape(Capsule())
                     .contentShape(Capsule())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.evenPlain)
             .animation(EvenMotion.reveal, value: selected)
             .accessibilityAddTraits(selected ? .isSelected : [])
             .accessibilityIdentifier("organize-\(title.lowercased())")
@@ -356,7 +357,10 @@
             .padding(.horizontal, TodayLayout.rowHorizontal)
             .background(TodayRowCapsule(done: task.done))
             .contentShape(Capsule(style: .continuous))
-            .onTapGesture(perform: onToggle)
+            .onTapGesture {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                onToggle()
+            }
             .accessibilityAddTraits(.isButton)
             .padding(.vertical, TodayLayout.rowGap / 2)
             .accessibilityIdentifier("check-\(task.title)")

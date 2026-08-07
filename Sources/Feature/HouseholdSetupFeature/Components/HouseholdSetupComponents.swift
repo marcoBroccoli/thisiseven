@@ -37,7 +37,7 @@
                 // `.plain` only hits opaque content unless we declare the full card shape.
                 .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.evenPlain)
             .accessibilityIdentifier(accessibilityId)
         }
     }
@@ -98,7 +98,7 @@
                 .background(EvenTokens.espresso)
                 .clipShape(EvenPrimaryButton.shape)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.evenPlain)
         }
     }
 
@@ -115,7 +115,7 @@
                     .foregroundStyle(EvenTokens.stone)
                     .underline(pattern: .solid, color: EvenTokens.stone.opacity(0.55))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.evenPlain)
             .frame(maxWidth: .infinity)
             .accessibilityIdentifier(accessibilityId)
         }
@@ -177,7 +177,7 @@
                                 .background(EvenTokens.espresso)
                                 .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.evenPlain)
                     }
                 }
             }

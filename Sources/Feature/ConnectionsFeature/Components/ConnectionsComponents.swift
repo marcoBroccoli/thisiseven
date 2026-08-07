@@ -109,7 +109,7 @@
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.evenPlain)
             .allowsHitTesting(!busy)
             .accessibilityIdentifier("Connect Google")
         }
@@ -314,7 +314,7 @@
                 .clipShape(EvenPrimaryButton.shape)
                 .contentShape(EvenPrimaryButton.shape)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.evenPlain)
             .allowsHitTesting(enabled)
             .accessibilityIdentifier(button.accessibilityId)
             .accessibilityAddTraits(enabled ? [] : .isStaticText)
@@ -359,7 +359,7 @@
                     .contentTransition(.numericText())
                     .padding(6)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.evenPlain)
             .frame(maxWidth: .infinity)
             .allowsHitTesting(button.enabled)
             .accessibilityIdentifier(button.accessibilityId)
