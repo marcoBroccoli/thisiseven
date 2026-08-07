@@ -3,6 +3,7 @@
 @_exported import DraftsClientLive
 @_exported import GoogleClientLive
 @_exported import HouseholdClientLive
+@_exported import HouseholdRealtimeClientLive
 @_exported import NotificationsClientLive
 @_exported import SummaryClientLive
 @_exported import TasksClientLive

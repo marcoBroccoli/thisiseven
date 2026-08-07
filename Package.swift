@@ -13,9 +13,11 @@ let package = Package(
         .library(name: "ToastUI", targets: ["ToastUI"]),
         .library(name: "SheetUI", targets: ["SheetUI"]),
         .library(name: "VisualEffects", targets: ["VisualEffects"]),
+        .library(name: "IGTabBar", targets: ["IGTabBar"]),
         .library(name: "Design", targets: ["Design"]),
         .library(name: "AuthClient", targets: ["AuthClient"]),
         .library(name: "HouseholdClient", targets: ["HouseholdClient"]),
+        .library(name: "HouseholdRealtimeClient", targets: ["HouseholdRealtimeClient"]),
         .library(name: "GoogleClient", targets: ["GoogleClient"]),
         .library(name: "DraftsClient", targets: ["DraftsClient"]),
         .library(name: "TasksClient", targets: ["TasksClient"]),
@@ -72,6 +74,10 @@ let package = Package(
             name: "SheetUI",
             condition: .when(platforms: [.iOS])
         )
+        let igTabBar_iOS: Target.Dependency = .target(
+            name: "IGTabBar",
+            condition: .when(platforms: [.iOS])
+        )
 
         return [
             .target(name: "EvenCore", path: "Sources/Core/EvenCore"),
@@ -83,6 +89,8 @@ let package = Package(
             .target(name: "SheetUI", path: "Sources/Shared/SheetUI"),
             // Portable visual effects (shimmer, …) — brand-free; no Even tokens.
             .target(name: "VisualEffects", path: "Sources/Shared/VisualEffects"),
+            // Instagram-style floating segmented tab bar — brand-free; UIKit/iOS.
+            .target(name: "IGTabBar", path: "Sources/Shared/IGTabBar"),
             .target(
                 name: "Design",
                 dependencies: ["ToastUI", "VisualEffects"],
@@ -93,6 +101,8 @@ let package = Package(
             clientLive("AuthClient"),
             client("HouseholdClient"),
             clientLive("HouseholdClient"),
+            client("HouseholdRealtimeClient"),
+            clientLive("HouseholdRealtimeClient"),
             client("GoogleClient"),
             clientLive("GoogleClient"),
             client("DraftsClient"),
@@ -122,6 +132,7 @@ let package = Package(
                 dependencies: [
                     "AuthClientLive",
                     "HouseholdClientLive",
+                    "HouseholdRealtimeClientLive",
                     "GoogleClientLive",
                     "DraftsClientLive",
                     "TasksClientLive",
@@ -142,23 +153,28 @@ let package = Package(
                 "InboxFeature",
                 extra: [
                     "DraftsClient", "CalendarClient", "NotificationsClient", "AuthClient",
-                    sheetUI_iOS, "ToastClient", "ToastUI", "VisualEffects",
+                    sheetUI_iOS, igTabBar_iOS, "ToastClient", "ToastUI", "VisualEffects",
                 ]
             ),
             feature(
                 "TodayFeature",
-                extra: ["TasksClient", "SummaryClient", "WidgetClient", "AuthClient", "VisualEffects"]
+                extra: [
+                    "TasksClient", "SummaryClient", "WidgetClient", "AuthClient",
+                    sheetUI_iOS, igTabBar_iOS, "ToastClient", "ToastUI", "VisualEffects",
+                ]
             ),
             .target(
                 name: "EvenApp",
                 dependencies: [
                     "EvenCore", "Design", "AuthClient", "DI",
-                    "HouseholdClient", "GoogleClient", "NotificationsClient", "ToastClient",
+                    "HouseholdClient", "HouseholdRealtimeClient", "GoogleClient",
+                    "NotificationsClient", "ToastClient",
                     "DraftsClient", "TasksClient", "SummaryClient", "CalendarClient",
                     "WidgetClient",
                     "SplashFeature", "LoginFeature", "OnboardingFeature",
                     "HouseholdSetupFeature", "ConnectionsFeature",
                     "InboxFeature", "TodayFeature",
+                    igTabBar_iOS,
                     tca,
                 ],
                 path: "Sources/Feature/EvenApp"
@@ -166,7 +182,7 @@ let package = Package(
             .testTarget(name: "EvenCoreTests", dependencies: ["EvenCore"], path: "Tests/EvenCoreTests"),
             .testTarget(
                 name: "EvenAppTests",
-                dependencies: ["EvenApp", "AuthClient", tca],
+                dependencies: ["EvenApp", "AuthClient", "EvenCore", tca],
                 path: "Tests/EvenAppTests"
             ),
             .testTarget(
@@ -199,7 +215,10 @@ let package = Package(
             ),
             .testTarget(
                 name: "TodayFeatureTests",
-                dependencies: ["TodayFeature", "EvenCore", "TasksClient", "SummaryClient", "WidgetClient", "AuthClient", tca],
+                dependencies: [
+                    "TodayFeature", "EvenApp", "EvenCore", "TasksClient", "SummaryClient", "WidgetClient",
+                    "AuthClient", "ToastClient", "ToastUI", "HouseholdRealtimeClient", tca,
+                ],
                 path: "Tests/TodayFeatureTests"
             ),
         ]
