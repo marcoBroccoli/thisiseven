@@ -133,3 +133,31 @@ func TestBuildEventPayload(t *testing.T) {
 		t.Fatalf("weekly rule = %+v", weekly.Recurrence)
 	}
 }
+
+func TestRecurrenceRuleCarriesTheSeriesBound(t *testing.T) {
+	until := time.Date(2026, 9, 12, 0, 0, 0, 0, time.UTC)
+	count := 6
+	cases := []struct {
+		name       string
+		recurrence string
+		until      *time.Time
+		count      *int
+		want       string
+	}{
+		{"unbounded daily", "daily", nil, nil, "RRULE:FREQ=DAILY"},
+		{"unbounded every two days", "every_2_days", nil, nil, "RRULE:FREQ=DAILY;INTERVAL=2"},
+		{"weekly until a date", "weekly", &until, nil, "RRULE:FREQ=WEEKLY;UNTIL=20260912"},
+		{"weekly a number of times", "weekly", &until, &count, "RRULE:FREQ=WEEKLY;COUNT=6"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := RecurrenceRule(tc.recurrence, tc.until, tc.count)
+			if len(got) != 1 || got[0] != tc.want {
+				t.Fatalf("RecurrenceRule = %+v, want %q", got, tc.want)
+			}
+		})
+	}
+	if got := RecurrenceRule("none", &until, &count); got != nil {
+		t.Fatalf("one-off rule = %+v, want nil", got)
+	}
+}

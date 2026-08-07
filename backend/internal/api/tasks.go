@@ -33,58 +33,130 @@ func recurrenceAnchor(dueOn *time.Time, createdAt time.Time) time.Time {
 	return dateOnly(createdAt)
 }
 
+// recurrenceInterval is the gap in days between two occurrences of a repeat.
+// Zero means the value does not repeat.
+func recurrenceInterval(recurrence string) int {
+	switch recurrence {
+	case "daily":
+		return 1
+	case "every_2_days":
+		return 2
+	case "weekly":
+		return 7
+	default:
+		return 0
+	}
+}
+
+// resolveRecurrenceEnd derives the stored last-occurrence date. A count is the
+// household's intent ("six more times"); the date is what every occurrence
+// query reads, so a bounded series has one end however it was expressed.
+func resolveRecurrenceEnd(recurrence string, anchor time.Time, until *time.Time, count *int) *time.Time {
+	interval := recurrenceInterval(recurrence)
+	if interval == 0 {
+		return nil
+	}
+	if count != nil {
+		end := dateOnly(anchor).AddDate(0, 0, (*count-1)*interval)
+		return &end
+	}
+	if until != nil {
+		end := dateOnly(*until)
+		return &end
+	}
+	return nil
+}
+
+// nextOccurrence is the first scheduled day on or after from. It reports false
+// once the series has run out, which is what keeps a finished repeat from
+// describing itself as due.
+func nextOccurrence(recurrence string, anchor time.Time, end *time.Time, from time.Time) (time.Time, bool) {
+	interval := recurrenceInterval(recurrence)
+	if interval == 0 {
+		return time.Time{}, false
+	}
+	anchor, from = dateOnly(anchor), dateOnly(from)
+	occurrence := anchor
+	if from.After(anchor) {
+		steps := (civilDaysBetween(anchor, from) + interval - 1) / interval
+		occurrence = anchor.AddDate(0, 0, steps*interval)
+	}
+	if end != nil && occurrence.After(dateOnly(*end)) {
+		return time.Time{}, false
+	}
+	return occurrence, true
+}
+
 // recursOnDate describes the scheduled occurrence day for a task. The due
 // date anchors a repeat when one was selected; otherwise the capture date is
 // the anchor. This gives a manual "wash the dog" todo a predictable cadence
 // without requiring a cost or a separate schedule screen.
-func recursOnDate(recurrence string, dueOn *time.Time, createdAt, day time.Time) bool {
+func recursOnDate(recurrence string, dueOn, until *time.Time, createdAt, day time.Time) bool {
 	anchor := recurrenceAnchor(dueOn, createdAt)
 	day = dateOnly(day)
 	if day.Before(anchor) {
+		return false
+	}
+	if until != nil && day.After(dateOnly(*until)) {
 		return false
 	}
 	switch recurrence {
 	case "daily":
 		return true
 	case "every_2_days":
-		return int(day.Sub(anchor).Hours()/24)%2 == 0
+		return civilDaysBetween(anchor, day)%2 == 0
 	default:
 		return false
 	}
 }
 
-// scanTask expects: id, title, section, owner, weight, recurrence, due_on,
-// origin_label, Google mapping/sync fields, done_by. Daily and every-two-day
+// scanTask expects the columns of taskCols in order. Daily and every-two-day
 // tasks take done_by from their current occurrence; other tasks use the open
 // week completion.
 func scanTask(row pgx.Row) (TaskJSON, error) {
 	var t TaskJSON
-	var dueOn, calendarSyncedAt *time.Time
+	var dueOn, until, calendarSyncedAt *time.Time
 	var origin, doneBy *string
 	err := row.Scan(&t.ID, &t.Title, &t.Section, &t.OwnerMemberID, &t.Weight,
-		&t.Recurrence, &dueOn, &origin, &t.GoogleEventURL, &t.CalendarSyncState,
-		&calendarSyncedAt, &t.CalendarLastError, &doneBy)
+		&t.Recurrence, &dueOn, &until, &t.RecurrenceCount, &origin,
+		&t.GoogleEventURL, &t.CalendarSyncState,
+		&calendarSyncedAt, &t.CalendarLastError, &t.createdAt, &doneBy)
 	if err != nil {
 		return t, err
 	}
+	t.dueOnDate, t.recurrenceEnd = dueOn, until
 	if dueOn != nil {
 		t.DueOn = strPtr(dateStr(*dueOn))
+	}
+	if until != nil {
+		t.RecurrenceUntil = strPtr(dateStr(*until))
 	}
 	if calendarSyncedAt != nil {
 		t.CalendarLastSyncedAt = strPtr(calendarSyncedAt.UTC().Format(time.RFC3339))
 	}
 	t.Done = doneBy != nil
 	t.DoneByMemberID = doneBy
-	t.MetaLine = metaLine(origin, dueOn, t.Recurrence)
+	t.MetaLine = metaLine(metaLineInput{
+		OriginLabel:     origin,
+		Recurrence:      t.Recurrence,
+		DueOn:           dueOn,
+		RecurrenceUntil: until,
+		RecurrenceCount: t.RecurrenceCount,
+		CreatedAt:       t.createdAt,
+	})
 	return t, nil
 }
 
 const taskCols = `t.id, t.title, t.section, t.owner_member_id, t.weight,
-	t.recurrence, t.due_on, t.origin_label, t.google_event_url, t.calendar_sync_state,
-	t.calendar_last_synced_at, t.calendar_last_error,
+	t.recurrence, t.due_on, t.recurrence_until, t.recurrence_count, t.origin_label,
+	t.google_event_url, t.calendar_sync_state,
+	t.calendar_last_synced_at, t.calendar_last_error, t.created_at,
 	case when t.recurrence in ('daily', 'every_2_days') then rc.member_id else c.member_id end`
 
+// visibleTodayRecurrence keeps Today to the repeats that are actually live: the
+// series has not run out, and a per-occurrence cadence lands on this day.
 const visibleTodayRecurrence = `
+	and (t.recurrence_until is null or $2::date <= t.recurrence_until)
 	and (
 		t.recurrence not in ('daily', 'every_2_days')
 		or (t.recurrence = 'daily' and $2::date >= coalesce(t.due_on, t.created_at::date))
@@ -103,13 +175,25 @@ func (a *API) fetchTask(ctx context.Context, m *Membership, taskID string) (Task
 }
 
 type taskInput struct {
-	Title         *string `json:"title"`
-	Section       *string `json:"section"`
-	OwnerMemberID *string `json:"owner_member_id"`
-	Weight        *int    `json:"weight"`
-	Recurrence    *string `json:"recurrence"`
-	DueOn         *string `json:"due_on"`
-	ClearDueOn    bool    `json:"clear_due_on"`
+	Title              *string `json:"title"`
+	Section            *string `json:"section"`
+	OwnerMemberID      *string `json:"owner_member_id"`
+	Weight             *int    `json:"weight"`
+	Recurrence         *string `json:"recurrence"`
+	DueOn              *string `json:"due_on"`
+	ClearDueOn         bool    `json:"clear_due_on"`
+	RecurrenceUntil    *string `json:"recurrence_until"`
+	RecurrenceCount    *int    `json:"recurrence_count"`
+	ClearRecurrenceEnd bool    `json:"clear_recurrence_end"`
+}
+
+// taskWrite holds the parsed date values a task write needs. recurrenceUntil is
+// what the client sent; the stored value is derived by resolveRecurrenceEnd once
+// the final recurrence and anchor are known.
+type taskWrite struct {
+	dueOn           *time.Time
+	recurrenceUntil *time.Time
+	recurrenceCount *int
 }
 
 type calendarResolutionInput struct {
@@ -130,48 +214,77 @@ type calendarResolutionTask struct {
 	SyncState string
 }
 
-func (in *taskInput) validate(w http.ResponseWriter, m *Membership, forCreate bool) (dueOn *time.Time, ok bool) {
+func (in *taskInput) validate(w http.ResponseWriter, m *Membership, forCreate bool) (out taskWrite, ok bool) {
 	if forCreate {
 		if in.Title == nil || strings.TrimSpace(*in.Title) == "" ||
 			in.Section == nil || in.OwnerMemberID == nil || in.Weight == nil {
 			httpx.Error(w, http.StatusBadRequest, "missing_fields",
 				"title, section, owner_member_id and weight are required")
-			return nil, false
+			return out, false
 		}
 	}
 	if in.Title != nil && strings.TrimSpace(*in.Title) == "" {
 		httpx.Error(w, http.StatusBadRequest, "bad_title", "title cannot be empty")
-		return nil, false
+		return out, false
 	}
 	if in.Section != nil && !validSections[*in.Section] {
 		httpx.Error(w, http.StatusBadRequest, "bad_section", "section must be chore or admin")
-		return nil, false
+		return out, false
 	}
 	if in.Weight != nil && (*in.Weight < 1 || *in.Weight > 3) {
 		httpx.Error(w, http.StatusBadRequest, "bad_weight", "weight must be 1, 2 or 3")
-		return nil, false
+		return out, false
 	}
 	if in.Recurrence != nil && !validRecurrence[*in.Recurrence] {
 		httpx.Error(w, http.StatusBadRequest, "bad_recurrence", "unknown recurrence")
-		return nil, false
+		return out, false
 	}
 	if in.OwnerMemberID != nil && !strings.EqualFold(*in.OwnerMemberID, m.MemberID) && !strings.EqualFold(*in.OwnerMemberID, m.PartnerID) {
 		httpx.Error(w, http.StatusNotFound, "not_found", "owner is not in this household")
-		return nil, false
+		return out, false
 	}
 	if in.DueOn != nil && *in.DueOn != "" {
-		d, err := time.Parse("2006-01-02", *in.DueOn)
+		d, err := time.ParseInLocation("2006-01-02", *in.DueOn, Amsterdam)
 		if err != nil {
 			httpx.Error(w, http.StatusBadRequest, "bad_date", "due_on must be YYYY-MM-DD")
-			return nil, false
+			return out, false
 		}
-		dueOn = &d
+		out.dueOn = &d
 	}
 	if in.ClearDueOn && in.DueOn != nil && *in.DueOn != "" {
 		httpx.Error(w, http.StatusBadRequest, "bad_date", "set due_on or clear_due_on, not both")
-		return nil, false
+		return out, false
 	}
-	return dueOn, true
+	// A repeat ends never, on a date, or after a number of occurrences — the
+	// last two are two spellings of one bound, so only one may be sent.
+	if in.RecurrenceUntil != nil && *in.RecurrenceUntil != "" && in.RecurrenceCount != nil {
+		httpx.Error(w, http.StatusBadRequest, "bad_recurrence_end",
+			"set recurrence_until or recurrence_count, not both")
+		return out, false
+	}
+	if in.ClearRecurrenceEnd &&
+		((in.RecurrenceUntil != nil && *in.RecurrenceUntil != "") || in.RecurrenceCount != nil) {
+		httpx.Error(w, http.StatusBadRequest, "bad_recurrence_end",
+			"set a recurrence end or clear_recurrence_end, not both")
+		return out, false
+	}
+	if in.RecurrenceUntil != nil && *in.RecurrenceUntil != "" {
+		d, err := time.ParseInLocation("2006-01-02", *in.RecurrenceUntil, Amsterdam)
+		if err != nil {
+			httpx.Error(w, http.StatusBadRequest, "bad_date", "recurrence_until must be YYYY-MM-DD")
+			return out, false
+		}
+		out.recurrenceUntil = &d
+	}
+	if in.RecurrenceCount != nil {
+		if *in.RecurrenceCount < 1 {
+			httpx.Error(w, http.StatusBadRequest, "bad_recurrence_end",
+				"recurrence_count must be at least 1")
+			return out, false
+		}
+		out.recurrenceCount = in.RecurrenceCount
+	}
+	return out, true
 }
 
 func (a *API) calendarTaskForResolution(ctx context.Context, m *Membership, taskID string) (calendarResolutionTask, error) {
@@ -191,7 +304,7 @@ func (a *API) CreateTask(w http.ResponseWriter, r *http.Request) {
 	if !httpx.Decode(w, r, &in) {
 		return
 	}
-	dueOn, ok := in.validate(w, m, true)
+	write, ok := in.validate(w, m, true)
 	if !ok {
 		return
 	}
@@ -199,13 +312,20 @@ func (a *API) CreateTask(w http.ResponseWriter, r *http.Request) {
 	if in.Recurrence != nil {
 		recurrence = *in.Recurrence
 	}
+	if recurrence == "none" && (write.recurrenceUntil != nil || write.recurrenceCount != nil) {
+		httpx.Error(w, http.StatusBadRequest, "bad_recurrence_end",
+			"a one-off todo cannot have a recurrence end")
+		return
+	}
+	anchor := recurrenceAnchor(write.dueOn, time.Now())
+	until := resolveRecurrenceEnd(recurrence, anchor, write.recurrenceUntil, write.recurrenceCount)
 	var id string
 	err := a.DB.QueryRow(r.Context(), `
 		insert into tasks (household_id, title, section, owner_member_id, weight,
-			recurrence, due_on, created_by)
-		values ($1, $2, $3, $4, $5, $6, $7, $8) returning id`,
+			recurrence, due_on, recurrence_until, recurrence_count, created_by)
+		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) returning id`,
 		m.HouseholdID, strings.TrimSpace(*in.Title), *in.Section, *in.OwnerMemberID,
-		*in.Weight, recurrence, dueOn, m.MemberID).Scan(&id)
+		*in.Weight, recurrence, write.dueOn, until, write.recurrenceCount, m.MemberID).Scan(&id)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "internal", "could not create task")
 		return
@@ -214,7 +334,7 @@ func (a *API) CreateTask(w http.ResponseWriter, r *http.Request) {
 	// Gmail suggestion. A Calendar failure must not prevent the household
 	// from capturing the todo locally.
 	if calendarErr := a.publishTaskToCalendar(r.Context(), m, id,
-		strings.TrimSpace(*in.Title), "", nil, dueOn, "1_day"); calendarErr != "" {
+		strings.TrimSpace(*in.Title), "", nil, write.dueOn, "1_day"); calendarErr != "" {
 		slog.Warn("manual todo calendar publish failed", "task", id, "err", calendarErr)
 	}
 	t, err := a.fetchTask(r.Context(), m, id)
@@ -222,6 +342,7 @@ func (a *API) CreateTask(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusInternalServerError, "internal", "lookup failed")
 		return
 	}
+	a.invalidateSummary(m.HouseholdID, "task_created", m.MemberID)
 	httpx.JSON(w, http.StatusCreated, t)
 }
 
@@ -233,35 +354,75 @@ func (a *API) UpdateTask(w http.ResponseWriter, r *http.Request) {
 	if !httpx.Decode(w, r, &in) {
 		return
 	}
-	dueOn, ok := in.validate(w, m, false)
+	write, ok := in.validate(w, m, false)
 	if !ok {
 		return
 	}
 	var previousEventID *string
+	var current struct {
+		recurrence string
+		dueOn      *time.Time
+		until      *time.Time
+		count      *int
+		createdAt  time.Time
+	}
 	if err := a.DB.QueryRow(r.Context(), `
-		select google_event_id from tasks where id = $1 and household_id = $2 and archived_at is null`,
-		id, m.HouseholdID).Scan(&previousEventID); errors.Is(err, pgx.ErrNoRows) {
+		select google_event_id, recurrence, due_on, recurrence_until, recurrence_count, created_at
+		from tasks where id = $1 and household_id = $2 and archived_at is null`,
+		id, m.HouseholdID).Scan(&previousEventID, &current.recurrence, &current.dueOn,
+		&current.until, &current.count, &current.createdAt); errors.Is(err, pgx.ErrNoRows) {
 		httpx.Error(w, http.StatusNotFound, "not_found", "no such task")
 		return
 	} else if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "internal", "could not load task")
 		return
 	}
+
+	// The stored end date is derived from the cadence and the anchor, so any
+	// patch that could move either has to re-resolve it — a "6 times" weekly
+	// chore switched to daily must not keep its six-week end date.
+	recurrence := current.recurrence
+	if in.Recurrence != nil {
+		recurrence = *in.Recurrence
+	}
+	if recurrence == "none" && (write.recurrenceUntil != nil || write.recurrenceCount != nil) {
+		httpx.Error(w, http.StatusBadRequest, "bad_recurrence_end",
+			"a one-off todo cannot have a recurrence end")
+		return
+	}
+	finalDueOn := current.dueOn
+	switch {
+	case in.ClearDueOn:
+		finalDueOn = nil
+	case write.dueOn != nil:
+		finalDueOn = write.dueOn
+	}
+	untilInput, countInput := write.recurrenceUntil, write.recurrenceCount
+	switch {
+	case in.ClearRecurrenceEnd:
+		untilInput, countInput = nil, nil
+	case untilInput == nil && countInput == nil:
+		untilInput, countInput = current.until, current.count
+	}
+	anchor := recurrenceAnchor(finalDueOn, current.createdAt)
+	until := resolveRecurrenceEnd(recurrence, anchor, untilInput, countInput)
+	if recurrence == "none" {
+		countInput = nil
+	}
+
 	tag, err := a.DB.Exec(r.Context(), `
 		update tasks set
 			title = coalesce($1, title),
 			section = coalesce($2, section),
 			owner_member_id = coalesce($3, owner_member_id),
 			weight = coalesce($4, weight),
-			recurrence = coalesce($5, recurrence),
-			due_on = case
-				when $6 then null
-				when $7::date is not null then $7
-				else due_on
-			end
-		where id = $8 and household_id = $9 and archived_at is null`,
-		in.Title, in.Section, in.OwnerMemberID, in.Weight, in.Recurrence, in.ClearDueOn, dueOn,
-		id, m.HouseholdID)
+			recurrence = $5,
+			due_on = $6,
+			recurrence_until = $7,
+			recurrence_count = $8
+		where id = $9 and household_id = $10 and archived_at is null`,
+		in.Title, in.Section, in.OwnerMemberID, in.Weight, recurrence, finalDueOn,
+		until, countInput, id, m.HouseholdID)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "internal", "could not update task")
 		return
@@ -291,6 +452,7 @@ func (a *API) UpdateTask(w http.ResponseWriter, r *http.Request) {
 			t = refreshed
 		}
 	}
+	a.invalidateSummary(m.HouseholdID, "task_updated", m.MemberID)
 	httpx.JSON(w, http.StatusOK, t)
 }
 
@@ -418,6 +580,9 @@ func (a *API) DeleteTask(w http.ResponseWriter, r *http.Request) {
 			slog.Warn("calendar delete failed", "task", id, "err", err)
 		}
 	}
+	if tag.RowsAffected() > 0 {
+		a.invalidateSummary(m.HouseholdID, "task_deleted", m.MemberID)
+	}
 	httpx.JSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
@@ -434,18 +599,18 @@ func (a *API) ToggleTask(w http.ResponseWriter, r *http.Request) {
 		}
 		var weight int
 		var owner, recurrence string
-		var dueOn *time.Time
+		var dueOn, until *time.Time
 		var createdAt time.Time
 		err := tx.QueryRow(r.Context(), `
-			select weight, owner_member_id, recurrence, due_on, created_at from tasks
-			where id = $1 and household_id = $2 and archived_at is null`,
-			id, m.HouseholdID).Scan(&weight, &owner, &recurrence, &dueOn, &createdAt)
+			select weight, owner_member_id, recurrence, due_on, recurrence_until, created_at
+			from tasks where id = $1 and household_id = $2 and archived_at is null`,
+			id, m.HouseholdID).Scan(&weight, &owner, &recurrence, &dueOn, &until, &createdAt)
 		if err != nil {
 			return err
 		}
 		if usesOccurrenceCompletions(recurrence) {
 			occurrence := today()
-			if !recursOnDate(recurrence, dueOn, createdAt, occurrence) {
+			if !recursOnDate(recurrence, dueOn, until, createdAt, occurrence) {
 				return errTaskNotDue
 			}
 			tag, err := tx.Exec(r.Context(), `
@@ -493,6 +658,7 @@ func (a *API) ToggleTask(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusInternalServerError, "internal", "lookup failed")
 		return
 	}
+	a.invalidateSummary(m.HouseholdID, "task_toggled", m.MemberID)
 	httpx.JSON(w, http.StatusOK, t)
 }
 

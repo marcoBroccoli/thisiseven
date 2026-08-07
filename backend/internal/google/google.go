@@ -425,17 +425,28 @@ func ReminderMinutes(reminder string) int {
 	}
 }
 
-func calendarRecurrenceRule(recurrence string) []string {
+// RecurrenceRule renders Even's repeat values as a Google Calendar RRULE. A
+// bounded series carries its bound so Calendar stops when Even does: COUNT when
+// the household picked a number of times, UNTIL when they picked a date.
+func RecurrenceRule(recurrence string, until *time.Time, count *int) []string {
+	var rule string
 	switch recurrence {
 	case "daily":
-		return []string{"RRULE:FREQ=DAILY"}
+		rule = "RRULE:FREQ=DAILY"
 	case "every_2_days":
-		return []string{"RRULE:FREQ=DAILY;INTERVAL=2"}
+		rule = "RRULE:FREQ=DAILY;INTERVAL=2"
 	case "weekly":
-		return []string{"RRULE:FREQ=WEEKLY"}
+		rule = "RRULE:FREQ=WEEKLY"
 	default:
 		return nil
 	}
+	switch {
+	case count != nil && *count >= 1:
+		rule += fmt.Sprintf(";COUNT=%d", *count)
+	case until != nil:
+		rule += ";UNTIL=" + until.Format("20060102")
+	}
+	return []string{rule}
 }
 
 // BuildEvent renders the payload for a shared household todo. recurrence is
@@ -460,7 +471,7 @@ func BuildEvent(title, fromLabel string, amountCents *int64, dueOn time.Time, re
 		},
 	}
 	if len(recurrence) > 0 {
-		payload.Recurrence = calendarRecurrenceRule(recurrence[0])
+		payload.Recurrence = RecurrenceRule(recurrence[0], nil, nil)
 	}
 	return payload
 }

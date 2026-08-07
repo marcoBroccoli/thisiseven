@@ -21,6 +21,7 @@ type API struct {
 	DB     *pgxpool.Pool
 	Google *google.Client
 	Claude *claude.Client
+	Hub    *Hub
 
 	syncMu   sync.Mutex
 	syncJobs map[string]*syncJob // household id → latest sync job state

@@ -21,7 +21,9 @@ type CalendarItemJSON struct {
 	GoogleEventURL *string `json:"google_event_url,omitempty"`
 }
 
-func calendarOccurrences(recurrence string, dueOn *time.Time, createdAt, from, to time.Time) []time.Time {
+// calendarOccurrences expands a task's schedule across a window. until bounds a
+// finite repeat; nil means the series runs indefinitely.
+func calendarOccurrences(recurrence string, dueOn, until *time.Time, createdAt, from, to time.Time) []time.Time {
 	// Calendar ranges are civil days. Normalizing prevents a noon timestamp
 	// from skipping an otherwise-in-range all-day occurrence.
 	from, to = dateOnly(from), dateOnly(to)
@@ -32,28 +34,16 @@ func calendarOccurrences(recurrence string, dueOn *time.Time, createdAt, from, t
 		return []time.Time{dateOnly(*dueOn)}
 	}
 
-	interval := 7
-	switch recurrence {
-	case "daily":
-		interval = 1
-	case "every_2_days":
-		interval = 2
-	case "weekly":
-		interval = 7
-	default:
+	interval := recurrenceInterval(recurrence)
+	if interval == 0 {
 		return nil
 	}
-	anchor := recurrenceAnchor(dueOn, createdAt)
-	if anchor.After(to) {
-		return nil
+	if until != nil && dateOnly(*until).Before(to) {
+		to = dateOnly(*until)
 	}
-	occurrence := anchor
-	if occurrence.Before(from) {
-		days := int(from.Sub(anchor).Hours() / 24)
-		occurrence = anchor.AddDate(0, 0, (days/interval)*interval)
-		if occurrence.Before(from) {
-			occurrence = occurrence.AddDate(0, 0, interval)
-		}
+	occurrence, ok := nextOccurrence(recurrence, recurrenceAnchor(dueOn, createdAt), until, from)
+	if !ok {
+		return nil
 	}
 	var dates []time.Time
 	for !occurrence.After(to) {
@@ -108,7 +98,8 @@ func (a *API) Calendar(w http.ResponseWriter, r *http.Request) {
 		where t.household_id = $3 and t.archived_at is null
 		  and (
 			(t.recurrence = 'none' and t.due_on between $4 and $5)
-			or (t.recurrence <> 'none' and coalesce(t.due_on, t.created_at::date) <= $5)
+			or (t.recurrence <> 'none' and coalesce(t.due_on, t.created_at::date) <= $5
+				and (t.recurrence_until is null or t.recurrence_until >= $4))
 		  )
 		order by t.created_at`,
 		m.WeekID, today(), m.HouseholdID, from, to)
@@ -123,13 +114,8 @@ func (a *API) Calendar(w http.ResponseWriter, r *http.Request) {
 			httpx.Error(w, http.StatusInternalServerError, "internal", "calendar failed")
 			return
 		}
-		var anchor *time.Time
-		if t.DueOn != nil {
-			if d, err := time.Parse("2006-01-02", *t.DueOn); err == nil {
-				anchor = &d
-			}
-		}
-		for _, occurrence := range calendarOccurrences(t.Recurrence, anchor, today(), from, to) {
+		for _, occurrence := range calendarOccurrences(
+			t.Recurrence, t.dueOnDate, t.recurrenceEnd, t.createdAt, from, to) {
 			itemID := t.ID
 			if t.Recurrence != "none" {
 				itemID += ":" + dateStr(occurrence)

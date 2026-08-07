@@ -1,9 +1,14 @@
 # evend API contract (v1)
 
 Base URL: `http://localhost:8091` (sim) / `http://even-api.home` (LAN).
-All `/v1/*` require `Authorization: Bearer <gotrue access token>`.
+All `/v1/*` require auth (see below). WebSocket: `ws://` / `wss://` on the same host.
 JSON snake_case. Money in euro cents (int). Dates `YYYY-MM-DD`, timestamps RFC3339.
 Errors: `{"error": {"code": "string", "message": "human text"}}` with 4xx/5xx.
+
+### Auth on `/v1/*`
+- REST: `Authorization: Bearer <gotrue access token>`.
+- WebSocket upgrade (`GET /v1/ws/household`): same Bearer header **or**
+  `?access_token=<gotrue access token>` (for clients that cannot set upgrade headers).
 
 ## Auth (proxied to GoTrue, standard Supabase auth API)
 - `POST /auth/token?grant_type=id_token` `{provider:"apple", id_token, nonce}`
@@ -20,6 +25,7 @@ household   {id, name, invite_code, members: [member]}
 week        {id, index, started_on, closed_at?}          // index: 1,2,3…
 task        {id, title, section: "chore"|"admin", owner_member_id, weight: 1|2|3,
              recurrence: "none"|"daily"|"every_2_days"|"weekly", due_on?,
+             recurrence_until?, recurrence_count?,
              done, done_by_member_id?, meta_line, google_event_url?,
              calendar_sync_state: "not_scheduled"|"synced"|"external_changed"|
              "external_deleted"|"retry_required", calendar_last_synced_at?,
@@ -46,13 +52,68 @@ trade       {id, task_id, task_title, from_member_id, to_member_id, accepted}
 - `GET  /v1/summary` → `{week, pebbles: [{member_id, weight}...ordered oldest→newest],
   percent_me, percent_partner, caption, sections: [{key:"chore"|"admin", label, tasks:[task]}],
   pending_draft_count}`  // caption per design logic
-- `POST /v1/tasks` `{title, section, owner_member_id, weight, recurrence, due_on?}`
+- `GET  /v1/ws/household` → WebSocket upgrade (auth + household membership).
+  Long-lived household channel. Server → client JSON text frames:
+
+  ```json
+  { "type": "household.invalidate", "scopes": ["summary"],
+    "reason": "task_toggled", "actor_member_id": "<uuid>" }
+  ```
+
+  - `scopes` — which REST resources to refetch (`summary` today; more later).
+  - `reason` — `task_created` | `task_updated` | `task_deleted` | `task_toggled`.
+  - Clients ignore unknown `type`s. Optional client `{"type":"ping"}` →
+    server `{"type":"pong"}` (keepalive); protocol-level WS pings also fine.
+  - Emitted after successful task create / patch / delete / toggle. Single-node
+    in-process hub (home `evend`); not multi-replica.
+
+- `POST /v1/tasks` `{title, section, owner_member_id, weight, recurrence, due_on?,
+  recurrence_until?, recurrence_count?}`
 - `PATCH /v1/tasks/{id}` (same fields, plus `clear_due_on?: true` to remove a
-  date and its mapped Calendar event) · `DELETE /v1/tasks/{id}` (archives)
+  date and its mapped Calendar event, and `clear_recurrence_end?: true` to make a
+  repeat unbounded again) · `DELETE /v1/tasks/{id}` (archives)
 - `POST /v1/tasks/{id}/toggle` → task — creates/removes open-week completion
 - `POST /v1/tasks/{id}/calendar/resolve` `{action:"acknowledge"|"restore"|"retry"}`
   → task — acknowledges an imported Calendar edit, recreates an event removed
   directly in Google Calendar, or retries a failed Calendar write
+
+### Recurrence — one task row, an unbounded or bounded series
+
+A recurring task is a **rule**, never a set of pre-created rows. `due_on` (or the
+capture date when there is none) is the **anchor** the cadence counts from, and
+`/v1/summary` returns exactly one entry per rule carrying the state of the
+current occurrence. Per-date expansion happens only in `/v1/calendar`, which
+suffixes repeat items as `{task_id}:{YYYY-MM-DD}`.
+
+A repeat ends in one of three ways:
+
+| Client picks | Sends | Series ends |
+| --- | --- | --- |
+| Never | neither field | never — runs until the task is deleted |
+| On a date | `recurrence_until` | after that date |
+| After N times | `recurrence_count` (≥ 1) | after the Nth scheduled occurrence |
+
+`recurrence_count` records the intent; the server derives `recurrence_until` from
+it (`anchor + (count − 1) × interval`) and returns **both**. All occurrence maths
+— summary visibility, toggle eligibility, calendar expansion, the Calendar
+`RRULE` — reads only `recurrence_until`, so a bounded repeat has a single end
+date regardless of how it was expressed. Sending both fields is `400
+bad_recurrence_end`; sending either on `recurrence: "none"` is the same error.
+
+Once the last occurrence has passed, the task stops appearing in `/v1/summary`
+and `/v1/calendar`. It is not archived automatically — history stays intact and
+`GET /v1/tasks/{id}` still resolves it.
+
+`meta_line` describes the **next** occurrence, not the anchor, so a healthy
+weekly chore never reads as overdue. Daily and every-2-day repeats omit the date
+(it is always today by construction) and a bounded repeat appends its end:
+
+```
+TOMORROW · WEEKLY            unbounded weekly, next hit tomorrow
+AUG 15 · WEEKLY · UNTIL SEP 12
+DAILY · 6 TIMES
+VATTENFALL · TODAY           one-off from a Gmail draft
+```
 - `GET  /v1/calendar?from=YYYY-MM-DD&to=YYYY-MM-DD` → `{from, to, items}` —
   dated todos in the requested window (maximum 120 days)
 - `POST /v1/calendar/sync` → `{calendar_id, imported, updated, deleted,
@@ -90,9 +151,9 @@ trade       {id, task_id, task_title, from_member_id, to_member_id, accepted}
 
 ## Semantics
 - Percentages: `round(100 * my_weight / total)`; 50/50 when no completions.
-- Caption: empty → "Empty pans. A new week, level by definition."; |Δ|≤1 →
-  "Level. Enjoy it while it lasts."; ≤4 → "Close to even. Not a competition —
-  but noted."; else "Leaning <name> — mostly the admin and the remembering."
+- Caption: empty → "Empty pans. A new week, level by definition"; |Δ|≤1 →
+  "Level. Enjoy it while it lasts"; ≤4 → "Close to even. Not a competition —
+  but noted"; else "Leaning <name> — mostly the admin and the remembering"
 - All queries household-scoped by the authenticated member; cross-household
   access is 404, never 403.
 - Solo household (partner not joined): percent_partner = 0, money endpoints

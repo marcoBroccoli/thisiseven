@@ -563,11 +563,16 @@ func (a *API) publishTaskToCalendar(ctx context.Context, m *Membership,
 	}
 	var existingEventID *string
 	var recurrence string
-	if err := a.DB.QueryRow(ctx, `select google_event_id, recurrence from tasks where id = $1`, taskID).
-		Scan(&existingEventID, &recurrence); err != nil {
+	var recurrenceUntil *time.Time
+	var recurrenceCount *int
+	if err := a.DB.QueryRow(ctx, `
+		select google_event_id, recurrence, recurrence_until, recurrence_count
+		from tasks where id = $1`, taskID).
+		Scan(&existingEventID, &recurrence, &recurrenceUntil, &recurrenceCount); err != nil {
 		return a.recordCalendarFailure(ctx, taskID, "the todo could not be prepared for Calendar")
 	}
-	payload := google.BuildEvent(title, fromLabel, amountCents, *dueOn, reminder, recurrence)
+	payload := google.BuildEvent(title, fromLabel, amountCents, *dueOn, reminder)
+	payload.Recurrence = google.RecurrenceRule(recurrence, recurrenceUntil, recurrenceCount)
 	payload.ExtendedProperties = &google.EventExtendedProperties{
 		Private: map[string]string{"evenTaskId": taskID},
 	}

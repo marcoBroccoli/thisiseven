@@ -47,13 +47,17 @@ type WeekJSON struct {
 }
 
 type TaskJSON struct {
-	ID                   string  `json:"id"`
-	Title                string  `json:"title"`
-	Section              string  `json:"section"`
-	OwnerMemberID        string  `json:"owner_member_id"`
-	Weight               int     `json:"weight"`
-	Recurrence           string  `json:"recurrence"`
-	DueOn                *string `json:"due_on,omitempty"`
+	ID            string  `json:"id"`
+	Title         string  `json:"title"`
+	Section       string  `json:"section"`
+	OwnerMemberID string  `json:"owner_member_id"`
+	Weight        int     `json:"weight"`
+	Recurrence    string  `json:"recurrence"`
+	DueOn         *string `json:"due_on,omitempty"`
+	// RecurrenceUntil is the last scheduled day of a bounded repeat, derived
+	// from RecurrenceCount when the household picked a number of times.
+	RecurrenceUntil      *string `json:"recurrence_until,omitempty"`
+	RecurrenceCount      *int    `json:"recurrence_count,omitempty"`
 	Done                 bool    `json:"done"`
 	DoneByMemberID       *string `json:"done_by_member_id,omitempty"`
 	MetaLine             string  `json:"meta_line"`
@@ -61,6 +65,11 @@ type TaskJSON struct {
 	CalendarSyncState    string  `json:"calendar_sync_state"`
 	CalendarLastSyncedAt *string `json:"calendar_last_synced_at,omitempty"`
 	CalendarLastError    *string `json:"calendar_last_error,omitempty"`
+
+	// Parsed values kept for server-side occurrence maths, never serialized.
+	dueOnDate     *time.Time
+	recurrenceEnd *time.Time
+	createdAt     time.Time
 }
 
 type DraftJSON struct {
@@ -121,34 +130,45 @@ type TradeJSON struct {
 
 // ---- shared formatting ----
 
-func dateStr(t time.Time) string { return t.Format("2006-01-02") }
+// dateStr formats a civil YYYY-MM-DD in Europe/Amsterdam (not the time's
+// own location / UTC), so DATE/timestamptz scans stay on the household day.
+func dateStr(t time.Time) string {
+	return t.In(Amsterdam).Format("2006-01-02")
+}
 
 func strPtr(s string) *string { return &s }
 
+// civilDaysBetween is the signed whole-day distance from `from` to `to` in
+// Amsterdam civil dates. Prefer this over Sub().Hours()/24 — DST and
+// timezone-aware midnights make hour math off-by-one (tomorrow → TODAY).
+func civilDaysBetween(from, to time.Time) int {
+	fy, fm, fd := from.In(Amsterdam).Date()
+	ty, tm, td := to.In(Amsterdam).Date()
+	a := time.Date(fy, fm, fd, 0, 0, 0, 0, time.UTC)
+	b := time.Date(ty, tm, td, 0, 0, 0, 0, time.UTC)
+	return int(b.Sub(a).Hours() / 24)
+}
+
 // metaLine renders the small-caps meta under a task title, e.g.
 // "VATTENFALL · 2 DAYS OVER · WEEKLY".
-func metaLine(originLabel *string, dueOn *time.Time, recurrence string) string {
+type metaLineInput struct {
+	OriginLabel     *string
+	Recurrence      string
+	DueOn           *time.Time
+	RecurrenceUntil *time.Time
+	RecurrenceCount *int
+	CreatedAt       time.Time
+}
+
+func metaLine(in metaLineInput) string {
 	var parts []string
-	if originLabel != nil && *originLabel != "" {
-		parts = append(parts, strings.ToUpper(*originLabel))
+	if in.OriginLabel != nil && *in.OriginLabel != "" {
+		parts = append(parts, strings.ToUpper(*in.OriginLabel))
 	}
-	if dueOn != nil && recurrence != "daily" && recurrence != "every_2_days" {
-		t := today()
-		d := int(dueOn.Sub(t).Hours() / 24)
-		switch {
-		case d == 0:
-			parts = append(parts, "TODAY")
-		case d == 1:
-			parts = append(parts, "TOMORROW")
-		case d == -1:
-			parts = append(parts, "1 DAY OVER")
-		case d < -1:
-			parts = append(parts, fmt.Sprintf("%d DAYS OVER", -d))
-		default:
-			parts = append(parts, strings.ToUpper(dueOn.Format("Jan 2")))
-		}
+	if day, ok := metaDueDay(in); ok {
+		parts = append(parts, duePhrase(day))
 	}
-	switch recurrence {
+	switch in.Recurrence {
 	case "daily":
 		parts = append(parts, "DAILY")
 	case "every_2_days":
@@ -156,13 +176,65 @@ func metaLine(originLabel *string, dueOn *time.Time, recurrence string) string {
 	case "weekly":
 		parts = append(parts, "WEEKLY")
 	}
+	if end := metaEndPhrase(in); end != "" {
+		parts = append(parts, end)
+	}
 	return strings.Join(parts, " · ")
+}
+
+// metaDueDay is the day the row should describe. A repeat describes its next
+// occurrence rather than its anchor, so a weekly chore never reads as overdue
+// while it is still on schedule. Daily and every-two-day repeats have no useful
+// date — by construction they are only listed on a day they are due.
+func metaDueDay(in metaLineInput) (time.Time, bool) {
+	switch in.Recurrence {
+	case "none":
+		if in.DueOn == nil {
+			return time.Time{}, false
+		}
+		return dateOnly(*in.DueOn), true
+	case "daily", "every_2_days":
+		return time.Time{}, false
+	default:
+		anchor := recurrenceAnchor(in.DueOn, in.CreatedAt)
+		return nextOccurrence(in.Recurrence, anchor, in.RecurrenceUntil, today())
+	}
+}
+
+func duePhrase(day time.Time) string {
+	switch d := civilDaysBetween(today(), day); {
+	case d == 0:
+		return "TODAY"
+	case d == 1:
+		return "TOMORROW"
+	case d == -1:
+		return "1 DAY OVER"
+	case d < -1:
+		return fmt.Sprintf("%d DAYS OVER", -d)
+	default:
+		return strings.ToUpper(day.In(Amsterdam).Format("Jan 2"))
+	}
+}
+
+// metaEndPhrase answers "until when?" for a bounded repeat, echoing whichever
+// way the household expressed it.
+func metaEndPhrase(in metaLineInput) string {
+	if recurrenceInterval(in.Recurrence) == 0 {
+		return ""
+	}
+	if in.RecurrenceCount != nil {
+		return fmt.Sprintf("%d TIMES", *in.RecurrenceCount)
+	}
+	if in.RecurrenceUntil != nil {
+		return "UNTIL " + strings.ToUpper(dateOnly(*in.RecurrenceUntil).In(Amsterdam).Format("Jan 2"))
+	}
+	return ""
 }
 
 // beamCaption mirrors the design's copy exactly (docs/design even-play).
 func beamCaption(total, pctMe int, myName, partnerName string) string {
 	if total == 0 {
-		return "Empty pans. A new week, level by definition."
+		return "Empty pans. A new week, level by definition"
 	}
 	diff := pctMe - 50
 	if diff < 0 {
@@ -170,15 +242,15 @@ func beamCaption(total, pctMe int, myName, partnerName string) string {
 	}
 	switch {
 	case diff <= 1:
-		return "Level. Enjoy it while it lasts."
+		return "Level. Enjoy it while it lasts"
 	case diff <= 4:
-		return "Close to even. Not a competition — but noted."
+		return "Close to even. Not a competition — but noted"
 	default:
 		leaning := myName
 		if pctMe < 50 {
 			leaning = partnerName
 		}
-		return "Leaning " + leaning + " — mostly the admin and the remembering."
+		return "Leaning " + leaning + " — mostly the admin and the remembering"
 	}
 }
 
