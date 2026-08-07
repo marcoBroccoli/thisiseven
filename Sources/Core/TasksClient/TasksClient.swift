@@ -16,6 +16,11 @@ public struct TasksClient: Sendable {
     public var delete: @Sendable (_ id: UUID) async throws -> Void = { _ in
         throw TasksClientError.unimplemented
     }
+
+    public var update: @Sendable (_ id: UUID, _ body: EvenAPIClient.TaskDraftBody) async throws
+        -> HouseholdTask = { _, _ in
+            throw TasksClientError.unimplemented
+        }
 }
 
 public enum TasksClientError: Error, Sendable {
@@ -29,7 +34,8 @@ extension TasksClient: TestDependencyKey {
     public static let previewValue = TasksClient(
         create: { _ in PreviewData.laundry },
         toggle: { _ in PreviewData.laundry },
-        delete: { _ in }
+        delete: { _ in },
+        update: { _, _ in PreviewData.laundry }
     )
 }
 

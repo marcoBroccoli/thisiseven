@@ -188,9 +188,15 @@ public extension EvenAPIClient {
         public var recurrence: Recurrence
         public var dueOn: String?
         public var clearDueOn: Bool
+        /// A bounded repeat sends one of these, never both — see
+        /// `docs/product/API.md` → Recurrence.
+        public var recurrenceUntil: String?
+        public var recurrenceCount: Int?
+        public var clearRecurrenceEnd: Bool
         public init(title: String, section: TaskSection, ownerMemberId: UUID,
                     weight: Int, recurrence: Recurrence, dueOn: String? = nil,
-                    clearDueOn: Bool = false)
+                    clearDueOn: Bool = false, recurrenceUntil: String? = nil,
+                    recurrenceCount: Int? = nil, clearRecurrenceEnd: Bool = false)
         {
             self.title = title
             self.section = section
@@ -199,6 +205,9 @@ public extension EvenAPIClient {
             self.recurrence = recurrence
             self.dueOn = dueOn
             self.clearDueOn = clearDueOn
+            self.recurrenceUntil = recurrenceUntil
+            self.recurrenceCount = recurrenceCount
+            self.clearRecurrenceEnd = clearRecurrenceEnd
         }
     }
 

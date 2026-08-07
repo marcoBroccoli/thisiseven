@@ -72,6 +72,65 @@ public enum Recurrence: String, Codable, CaseIterable, Sendable {
         case .weekly: return "Weekly"
         }
     }
+
+    /// Days between two occurrences, or `nil` when the value does not repeat.
+    public var intervalDays: Int? {
+        switch self {
+        case .none: return nil
+        case .daily: return 1
+        case .every2Days: return 2
+        case .weekly: return 7
+        }
+    }
+
+    /// Whether the checkbox belongs to a single day rather than the open week.
+    /// Daily and every-two-day chores record one completion per occurrence.
+    public var completesPerOccurrence: Bool {
+        self == .daily || self == .every2Days
+    }
+
+    /// First scheduled day on or after `from`, or `nil` once the series has run
+    /// out. Mirrors `nextOccurrence` in `backend/internal/api/tasks.go` — a
+    /// repeat is a rule anchored on its due date, never a set of stored rows.
+    public func nextOccurrence(
+        anchor: Date,
+        until: Date? = nil,
+        from: Date,
+        calendar: Calendar = .evenHousehold
+    ) -> Date? {
+        guard let interval = intervalDays else { return nil }
+        let anchorDay = calendar.startOfDay(for: anchor)
+        let fromDay = calendar.startOfDay(for: from)
+        var occurrence = anchorDay
+        if fromDay > anchorDay {
+            let elapsed = calendar.dateComponents([.day], from: anchorDay, to: fromDay).day ?? 0
+            let steps = (elapsed + interval - 1) / interval
+            occurrence = calendar.date(byAdding: .day, value: steps * interval, to: anchorDay) ?? anchorDay
+        }
+        if let until, occurrence > calendar.startOfDay(for: until) { return nil }
+        return occurrence
+    }
+
+    /// Last scheduled day of a bounded repeat. A count is what the household
+    /// picked; the date is what every occurrence check reads, so the two
+    /// spellings of "until when?" cannot disagree. Mirrors
+    /// `resolveRecurrenceEnd` in `backend/internal/api/tasks.go`.
+    public func recurrenceEnd(
+        anchor: Date,
+        until: Date? = nil,
+        count: Int? = nil,
+        calendar: Calendar = .evenHousehold
+    ) -> Date? {
+        guard let interval = intervalDays else { return nil }
+        if let count {
+            return calendar.date(
+                byAdding: .day,
+                value: (count - 1) * interval,
+                to: calendar.startOfDay(for: anchor)
+            )
+        }
+        return until.map { calendar.startOfDay(for: $0) }
+    }
 }
 
 public struct HouseholdTask: Codable, Identifiable, Hashable, Sendable {
@@ -82,6 +141,12 @@ public struct HouseholdTask: Codable, Identifiable, Hashable, Sendable {
     public var weight: Int
     public var recurrence: Recurrence
     public var dueOn: String?
+    /// Last scheduled day of a bounded repeat (`nil` = runs until deleted).
+    /// Derived server-side from `recurrenceCount` when a count was picked.
+    public var recurrenceUntil: String?
+    /// How many occurrences the household asked for, when they expressed the
+    /// bound as a number of times rather than a date.
+    public var recurrenceCount: Int?
     public var done: Bool
     public var doneByMemberId: UUID?
     public var metaLine: String
@@ -98,6 +163,8 @@ public struct HouseholdTask: Codable, Identifiable, Hashable, Sendable {
         weight: Int,
         recurrence: Recurrence,
         dueOn: String? = nil,
+        recurrenceUntil: String? = nil,
+        recurrenceCount: Int? = nil,
         done: Bool = false,
         doneByMemberId: UUID? = nil,
         metaLine: String,
@@ -113,6 +180,8 @@ public struct HouseholdTask: Codable, Identifiable, Hashable, Sendable {
         self.weight = weight
         self.recurrence = recurrence
         self.dueOn = dueOn
+        self.recurrenceUntil = recurrenceUntil
+        self.recurrenceCount = recurrenceCount
         self.done = done
         self.doneByMemberId = doneByMemberId
         self.metaLine = metaLine
@@ -120,6 +189,134 @@ public struct HouseholdTask: Codable, Identifiable, Hashable, Sendable {
         self.calendarSyncState = calendarSyncState
         self.calendarLastSyncedAt = calendarLastSyncedAt
         self.calendarLastError = calendarLastError
+    }
+
+    /// Recomputes the row meta from structured fields so a stale stored
+    /// `metaLine` (e.g. `"WEEKLY"` after create when `dueOn` is present) cannot
+    /// stick in the UI. Preserves an origin prefix from `metaLine` when present.
+    public var resolvedMetaLine: String {
+        Self.makeMetaLine(
+            originLabel: Self.originLabel(fromMetaLine: metaLine),
+            dueOn: dueOn,
+            recurrence: recurrence,
+            recurrenceUntil: recurrenceUntil,
+            recurrenceCount: recurrenceCount
+        )
+    }
+
+    /// Mirrors `metaLine` in `backend/internal/api/types.go` — small-caps row
+    /// under the title, e.g. `"VATTENFALL · TOMORROW · WEEKLY · 6 TIMES"`.
+    public static func makeMetaLine(
+        originLabel: String? = nil,
+        dueOn: String?,
+        recurrence: Recurrence,
+        recurrenceUntil: String? = nil,
+        recurrenceCount: Int? = nil,
+        now: Date = Date(),
+        calendar: Calendar = .evenHousehold
+    ) -> String {
+        var parts: [String] = []
+        if let originLabel, !originLabel.isEmpty {
+            parts.append(originLabel.uppercased())
+        }
+
+        let until = recurrenceUntil.flatMap(calendar.evenParseCivilDate)
+        if let day = metaDueDay(
+            dueOn: dueOn, recurrence: recurrence, until: until, now: now, calendar: calendar
+        ) {
+            parts.append(duePhrase(for: day, now: now, calendar: calendar))
+        }
+
+        switch recurrence {
+        case .none: break
+        case .daily: parts.append("DAILY")
+        case .every2Days: parts.append("EVERY 2 DAYS")
+        case .weekly: parts.append("WEEKLY")
+        }
+
+        if recurrence.intervalDays != nil {
+            if let recurrenceCount {
+                parts.append("\(recurrenceCount) TIMES")
+            } else if let until {
+                parts.append("UNTIL " + monthTip(for: until, calendar: calendar))
+            }
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    /// The day the row describes. A repeat points at its **next** occurrence, so
+    /// a weekly chore that is still on schedule never reads as overdue. Daily and
+    /// every-two-day repeats have no useful date — they are only listed on a day
+    /// they are due.
+    private static func metaDueDay(
+        dueOn: String?,
+        recurrence: Recurrence,
+        until: Date?,
+        now: Date,
+        calendar: Calendar
+    ) -> Date? {
+        let due = dueOn.flatMap(calendar.evenParseCivilDate)
+        switch recurrence {
+        case .none: return due
+        case .daily, .every2Days: return nil
+        case .weekly:
+            // Without a due date the anchor is the capture date, which the API
+            // does not return — omit the tip rather than guess at "today".
+            guard let due else { return nil }
+            return recurrence.nextOccurrence(
+                anchor: due, until: until, from: now, calendar: calendar
+            )
+        }
+    }
+
+    private static func duePhrase(for day: Date, now: Date, calendar: Calendar) -> String {
+        let today = calendar.startOfDay(for: now)
+        let days = calendar.dateComponents([.day], from: today, to: day).day ?? 0
+        switch days {
+        case 0: return "TODAY"
+        case 1: return "TOMORROW"
+        case -1: return "1 DAY OVER"
+        case ..<(-1): return "\(-days) DAYS OVER"
+        default: return monthTip(for: day, calendar: calendar)
+        }
+    }
+
+    private static func monthTip(for day: Date, calendar: Calendar) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = calendar.timeZone
+        formatter.dateFormat = "MMM d"
+        return formatter.string(from: day).uppercased()
+    }
+
+    /// First ` · ` segment of a server `metaLine` when it looks like an origin
+    /// label (e.g. `VATTENFALL`), not a due/recurrence phrase.
+    public static func originLabel(fromMetaLine metaLine: String) -> String? {
+        let first = metaLine
+            .split(separator: "·", maxSplits: 1, omittingEmptySubsequences: true)
+            .first?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !first.isEmpty, !looksLikeDueOrRecurrencePhrase(first) else { return nil }
+        return first
+    }
+
+    private static func looksLikeDueOrRecurrencePhrase(_ segment: String) -> Bool {
+        let u = segment.uppercased()
+        if u == "TODAY" || u == "TOMORROW" || u == "WEEKLY" || u == "DAILY"
+            || u == "EVERY 2 DAYS" || u.hasPrefix("EVERY ")
+        {
+            return true
+        }
+        if u.contains(" OVER") { return true }
+        // Month tip: "AUG 12", "JAN 3"
+        let months = [
+            "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+            "JUL", "AUG", "SEP", "OCT", "NOV", "DEC",
+        ]
+        for month in months where u.hasPrefix(month + " ") || u == month {
+            return true
+        }
+        return false
     }
 }
 

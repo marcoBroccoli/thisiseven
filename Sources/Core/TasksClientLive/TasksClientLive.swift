@@ -16,6 +16,10 @@ extension TasksClient: DependencyKey {
         delete: { id in
             let api = await MainActor.run { SharedSession.store.api }
             try await api.deleteTask(id: id)
+        },
+        update: { id, body in
+            let api = await MainActor.run { SharedSession.store.api }
+            return try await api.updateTask(id: id, body)
         }
     )
 }

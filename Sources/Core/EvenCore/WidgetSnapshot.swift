@@ -106,7 +106,7 @@ public struct EvenWidgetSnapshot: Codable, Sendable, Equatable {
         clay: .init(name: "Ada", initial: "A", color: .clay, share: 58, done: 9),
         teal: .init(name: "Umut", initial: "U", color: .teal, share: 42, done: 6),
         hasPartner: true,
-        leader: "Leaning Ada — mostly the admin and the remembering.",
+        leader: "Leaning Ada — mostly the admin and the remembering",
         leftToday: 3,
         upcoming: [
             .init(id: "1", title: "Water the plants", typeMeta: "CHORE",

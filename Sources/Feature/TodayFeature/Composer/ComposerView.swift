@@ -2,6 +2,7 @@
     import ComposableArchitecture
     import Design
     import EvenCore
+    import SheetUI
     import SwiftUI
 
     @ViewAction(for: ComposerReducer.self)
@@ -17,116 +18,205 @@
         }
 
         public var body: some View {
+            AutoSizingSheetView(surface: EvenTokens.paperRaised) {
+                sheetContent
+            } footer: {
+                footer
+            }
+        }
+
+        /// Form body — plain `VStack`, not a `ScrollView`.
+        ///
+        /// The `if` insert is animated on `send` so the stack pushes. The sheet
+        /// detent uses the same curve (`AutoSizingSheet.contentAnimation`) with
+        /// quantized `presentationDetents` writes so the two stay in step without
+        /// the old per-frame UIKit thrash. Reintroduce scrolling only if a device
+        /// actually needs it for this form.
+        private var sheetContent: some View {
             VStack(alignment: .leading, spacing: 0) {
-                Capsule()
-                    .fill(EvenTokens.espresso.opacity(0.14))
-                    .frame(width: 36, height: 4)
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, 14)
-
-                HStack {
-                    Text("NEW TODO")
-                        .font(.system(size: 9.5, weight: .semibold))
-                        .tracking(1.6)
-                        .foregroundStyle(EvenTokens.stone)
-                    Spacer()
-                    Button("✕") { send(.cancelTapped) }
-                        .foregroundStyle(EvenTokens.stone)
-                }
-                .padding(.top, 12)
-
                 TextField("What needs doing?", text: $store.title)
                     .font(.system(size: 18, design: .serif))
-                    .padding(.top, 10)
-                    .padding(.bottom, 8)
+                    .foregroundStyle(EvenTokens.espresso)
+                    .padding(.bottom, 10)
                     .overlay(alignment: .bottom) {
                         EvenTokens.espresso.opacity(0.16).frame(height: 1.5)
                     }
                     .accessibilityIdentifier("task-title")
 
-                Text("OWNER")
-                    .font(.system(size: 9, weight: .semibold))
-                    .tracking(1.6)
-                    .foregroundStyle(EvenTokens.stone)
-                    .padding(.top, 16)
+                ComposerSectionLabel(text: "Owner")
                 HStack(spacing: 8) {
-                    ownerChip(me?.displayName ?? "Me", selected: store.ownerIsMe) {
+                    ComposerOwnerChip(
+                        label: me?.displayName ?? "Me",
+                        accent: EvenTokens.terracotta,
+                        selected: store.ownerIsMe
+                    ) {
                         send(.selectOwner(true))
                     }
                     if partner != nil {
-                        ownerChip(partner?.displayName ?? "Partner", selected: !store.ownerIsMe) {
+                        ComposerOwnerChip(
+                            label: partner?.displayName ?? "Partner",
+                            accent: EvenTokens.pine,
+                            selected: !store.ownerIsMe
+                        ) {
                             send(.selectOwner(false))
                         }
                     }
                 }
-                .padding(.top, 6)
+                .padding(.top, 4)
 
-                Text("HEFT — HOW MUCH THIS WEIGHS")
-                    .font(.system(size: 9, weight: .semibold))
-                    .tracking(1.6)
-                    .foregroundStyle(EvenTokens.stone)
-                    .padding(.top, 16)
+                ComposerSectionLabel(text: "Heft — how much this weighs")
                 HStack(spacing: 8) {
                     ForEach(1 ... 3, id: \.self) { w in
-                        Button {
+                        ComposerHeftChip(
+                            weight: w,
+                            selected: store.weight == w
+                        ) {
                             send(.selectWeight(w))
-                        } label: {
-                            VStack(spacing: 6) {
-                                HStack(spacing: 2.5) {
-                                    ForEach(0 ..< w, id: \.self) { _ in
-                                        Circle().fill(EvenTokens.espresso).frame(width: 6, height: 6)
-                                    }
-                                }
-                                .frame(height: 14)
-                                Text(w == 1 ? "Light" : w == 2 ? "Medium" : "Heavy")
-                                    .font(.system(size: 9.5, weight: .semibold))
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 10)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(
-                                        store.weight == w ? EvenTokens.espresso : EvenTokens.espresso.opacity(0.16),
-                                        lineWidth: 1.5
-                                    )
-                            )
                         }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(EvenTokens.espresso)
                     }
                 }
-                .padding(.top, 6)
+                .padding(.top, 4)
 
-                EvenPrimaryButton(
-                    "Add to Today",
-                    enabled: !store.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                    accessibilityId: "task-save"
-                ) {
-                    send(.saveTapped)
+                ComposerSectionLabel(text: "Due")
+                FlowWrap(spacing: 8) {
+                    ForEach(ComposerReducer.DueOption.allCases, id: \.self) { option in
+                        ComposerChoiceChip(
+                            title: option.label,
+                            // An imported civil day that isn't a chip keeps
+                            // `dueOnOverride` — no preset should look selected.
+                            selected: store.dueOnOverride == nil && store.dueOption == option
+                        ) {
+                            send(.selectDue(option))
+                        }
+                    }
                 }
-                .padding(.top, 20)
-                .padding(.bottom, 34)
+                .padding(.top, 4)
+
+                ComposerSectionLabel(text: "Section")
+                HStack(spacing: 8) {
+                    ComposerChoiceChip(
+                        title: "Chore",
+                        selected: store.section == .chore
+                    ) {
+                        send(.selectSection(.chore))
+                    }
+                    ComposerChoiceChip(
+                        title: "Admin",
+                        selected: store.section == .admin
+                    ) {
+                        send(.selectSection(.admin))
+                    }
+                }
+                .padding(.top, 4)
+
+                ComposerSectionLabel(text: "Repeat")
+                FlowWrap(spacing: 8) {
+                    ForEach(Recurrence.allCases, id: \.self) { recurrence in
+                        ComposerChoiceChip(
+                            title: recurrence.label,
+                            selected: store.recurrence == recurrence
+                        ) {
+                            // Animation on the send — not `.animation(value:)` —
+                            // so the TCA write and the `if` insert share one
+                            // transaction and the VStack actually pushes.
+                            send(
+                                .selectRecurrence(recurrence),
+                                animation: AutoSizingSheet.contentAnimation
+                            )
+                        }
+                    }
+                }
+                .padding(.top, 4)
+
+                if store.showsRepeatEnd {
+                    ComposerRepeatEndSection(
+                        option: store.endOption,
+                        date: $store.endDate,
+                        count: $store.endCount,
+                        dateRange: store.endDateRange
+                    ) {
+                        send(.selectEnd($0), animation: AutoSizingSheet.contentAnimation)
+                    }
+                }
+
+                // TODO: Calendar reminder toggle — tasks API has no reminder field
+                // (drafts only; see DraftReminder / PATCH drafts). Hide until wired.
             }
-            .padding(.horizontal, 20)
-            .evenPaperBackground(EvenTokens.paperCard)
-            .presentationDetents([.medium, .large])
+            .frame(maxWidth: .infinity, alignment: .leading)
+            // Horizontal only — AutoSizingSheetView supplies the vertical inset.
+            .padding(.horizontal, 24)
+            // Sheet content is already geometry-grouped by AutoSizingSheetView —
+            // a second group here forces an extra layout pass per frame of the
+            // insert spring and reads as lag.
+            .toolbar { toolbarContent }
+            .tint(EvenTokens.espresso)
         }
 
-        private func ownerChip(_ label: String, selected: Bool, action: @escaping () -> Void) -> some View {
-            Button(action: action) {
-                Text(label.uppercased())
-                    .font(.system(size: 11, weight: .semibold))
-                    .tracking(0.8)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 8)
-                    .background(selected ? EvenTokens.espresso : EvenTokens.paperCard)
-                    .foregroundStyle(selected ? EvenTokens.paperCard : EvenTokens.espresso)
-                    .overlay(
-                        Capsule().stroke(EvenTokens.espresso.opacity(selected ? 0 : 0.16), lineWidth: 1.5)
-                    )
-                    .clipShape(Capsule())
+        @ToolbarContentBuilder
+        private var toolbarContent: some ToolbarContent {
+            ToolbarItem(placement: .principal) {
+                Text(store.isEditing ? "Edit todo" : "New todo")
+                    .font(.system(size: 17, weight: .medium, design: .serif))
+                    .foregroundStyle(EvenTokens.espresso)
             }
-            .buttonStyle(.plain)
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    send(.cancelTapped)
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(EvenTokens.stone)
+                }
+                .accessibilityLabel("Close")
+            }
+        }
+
+        // MARK: - Footer (rigid — no vertical padding; sheet supplies it)
+
+        private var footer: some View {
+            EvenPrimaryButton(
+                store.isEditing ? "Save changes" : "Add to Today",
+                enabled: !store.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                accessibilityId: "task-save"
+            ) {
+                send(.saveTapped)
+            }
+            .padding(.horizontal, 24)
         }
     }
+
+    #if DEBUG
+        #Preview("Composer") {
+            Color.clear
+                .sheet(isPresented: .constant(true)) {
+                    ComposerView(
+                        store: TodayPreviewSupport.composer(),
+                        me: PreviewData.ada,
+                        partner: PreviewData.umut
+                    )
+                }
+        }
+
+        #Preview("Composer · bounded repeat") {
+            Color.clear
+                .sheet(isPresented: .constant(true)) {
+                    ComposerView(
+                        store: TodayPreviewSupport.composerBoundedRepeat(),
+                        me: PreviewData.ada,
+                        partner: PreviewData.umut
+                    )
+                }
+        }
+
+        #Preview("Composer · edit") {
+            Color.clear
+                .sheet(isPresented: .constant(true)) {
+                    ComposerView(
+                        store: TodayPreviewSupport.composerEditing(),
+                        me: PreviewData.ada,
+                        partner: PreviewData.umut
+                    )
+                }
+        }
+    #endif
 #endif

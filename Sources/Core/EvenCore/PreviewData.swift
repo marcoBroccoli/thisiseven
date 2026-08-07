@@ -64,6 +64,7 @@ public enum PreviewData {
         title: "Laundry — towels & bedding",
         weight: 2,
         recurrence: .weekly,
+        dueOn: "2026-08-07",
         meta: "TODAY · WEEKLY"
     )
 
@@ -73,7 +74,8 @@ public enum PreviewData {
         owner: umutId,
         weight: 1,
         recurrence: .daily,
-        meta: "TODAY · DAILY"
+        dueOn: "2026-08-08",
+        meta: "TOMORROW · DAILY"
     )
 
     public static let waterBill = task(
@@ -82,7 +84,52 @@ public enum PreviewData {
         section: .admin,
         owner: umutId,
         weight: 2,
+        dueOn: "2026-08-05",
         meta: "GMAIL · €84.30 · 2 DAYS OVER"
+    )
+
+    /// Done this week — Ada weight 2 (pebble).
+    public static let trash = task(
+        id: UUID(uuidString: "44444444-4444-4444-4444-444444444444")!,
+        title: "Take out the trash",
+        weight: 2,
+        recurrence: .weekly,
+        dueOn: "2026-08-07",
+        done: true,
+        meta: "DONE · WEEKLY"
+    )
+
+    /// Done this week — Ada weight 3 (pebble).
+    public static let groceries = task(
+        id: UUID(uuidString: "55555555-5555-5555-5555-555555555555")!,
+        title: "Weekly groceries run",
+        weight: 3,
+        dueOn: nil,
+        done: true,
+        meta: "DONE"
+    )
+
+    /// Done this week — Umut weight 1 (pebble).
+    public static let vacuum = task(
+        id: UUID(uuidString: "66666666-6666-6666-6666-666666666666")!,
+        title: "Vacuum the hallway",
+        owner: umutId,
+        weight: 1,
+        dueOn: "2026-08-12",
+        done: true,
+        meta: "DONE"
+    )
+
+    /// Done this week — Umut weight 3 (pebble).
+    public static let insurance = task(
+        id: UUID(uuidString: "77777777-7777-7777-7777-777777777777")!,
+        title: "File insurance claim — bike",
+        section: .admin,
+        owner: umutId,
+        weight: 3,
+        dueOn: "2026-08-04",
+        done: true,
+        meta: "DONE · GMAIL"
     )
 
     public static let summaryEmpty = Summary(
@@ -98,18 +145,29 @@ public enum PreviewData {
         pendingDraftCount: 0
     )
 
+    /// Open work + completed chores that seed the beam pebbles (Ada 2+3, Umut 1+3 → 57/43).
     public static let summary = Summary(
         week: week,
         pebbles: [
-            Pebble(memberId: adaId, weight: 5),
-            Pebble(memberId: umutId, weight: 4),
+            Pebble(memberId: adaId, weight: trash.weight),
+            Pebble(memberId: adaId, weight: groceries.weight),
+            Pebble(memberId: umutId, weight: vacuum.weight),
+            Pebble(memberId: umutId, weight: insurance.weight),
         ],
         percentMe: 57,
         percentPartner: 43,
-        caption: "Leaning Ada — mostly the admin and the remembering.",
+        caption: "Leaning Ada — mostly the admin and the remembering",
         sections: [
-            SummarySection(key: .chore, label: "CHORES", tasks: [laundry, dishes]),
-            SummarySection(key: .admin, label: "ADMIN", tasks: [waterBill]),
+            SummarySection(
+                key: .chore,
+                label: "CHORES",
+                tasks: [laundry, dishes, trash, groceries, vacuum]
+            ),
+            SummarySection(
+                key: .admin,
+                label: "ADMIN",
+                tasks: [waterBill, insurance]
+            ),
         ],
         pendingDraftCount: 2
     )
