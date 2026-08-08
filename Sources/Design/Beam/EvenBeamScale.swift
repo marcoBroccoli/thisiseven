@@ -737,12 +737,16 @@
         case clay
         case pine
         case stone
+        /// A member's chosen profile colour (0xRRGGBB) — the beam follows the
+        /// people on it, not the default pair.
+        case custom(UInt32)
 
         public var color: Color {
             switch self {
             case .clay: EvenTokens.terracotta
             case .pine: EvenTokens.pine
             case .stone: EvenTokens.stone
+            case let .custom(rgb): Color(hex: rgb)
             }
         }
     }
@@ -935,11 +939,13 @@
     /// watchOS / non-iOS stub — beam physics is iPhone-only.
     public enum EvenBeamPanTone: Equatable, Sendable {
         case clay, pine, stone
+        case custom(UInt32)
         public var color: Color {
             switch self {
             case .clay: EvenTokens.terracotta
             case .pine: EvenTokens.pine
             case .stone: EvenTokens.stone
+            case let .custom(rgb): Color(hex: rgb)
             }
         }
     }

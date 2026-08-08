@@ -124,6 +124,11 @@ public struct MainTabReducer {
                 // keep showing a cached copy of mail it can no longer refresh.
                 return .send(.inbox(.googleConnectionChanged(false)))
 
+            case let .profile(.saveSucceeded(member)):
+                // A new name or colour must reach the beam immediately —
+                // Today's members otherwise stay stale until their next load.
+                return .send(.today(.membersLoaded(member, state.today.partner)))
+
             case .profile(.delegate(.signedOut)):
                 return .send(.delegate(.signedOut))
 

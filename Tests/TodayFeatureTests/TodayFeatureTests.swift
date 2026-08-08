@@ -1,5 +1,6 @@
 import AuthClient
 import ComposableArchitecture
+import Design
 import EvenCore
 import SummaryClient
 import TasksClient
@@ -1044,5 +1045,25 @@ final class TodayFeatureTests: XCTestCase {
         XCTAssertTrue(TodayTaskPermission.canWrite(PreviewData.dishes, me: nil))
         XCTAssertTrue(TodayTaskPermission.canWrite(PreviewData.laundry, me: PreviewData.ada))
         XCTAssertFalse(TodayTaskPermission.canWrite(PreviewData.dishes, me: PreviewData.ada))
+    }
+}
+
+// The beam wears each member's chosen colour — change it in Profile and the
+// pebbles/labels/percents must follow, not stay on the default pair.
+extension TodayFeatureTests {
+    func testBeamWearsMemberProfileColors() {
+        var me = PreviewData.ada
+        me.color = MemberColor(hex: "#123456")
+        var partner = PreviewData.umut
+        partner.color = MemberColor(hex: "#ABCDEF")
+        let beam = EvenBeamScale(summary: PreviewData.summary, me: me, partner: partner)
+        XCTAssertEqual(beam.configuration.leading.tone, .custom(0x123456))
+        XCTAssertEqual(beam.configuration.trailing.tone, .custom(0xABCDEF))
+    }
+
+    func testBeamFallsBackToRoleTonesWhileMembersLoad() {
+        let beam = EvenBeamScale(summary: PreviewData.summary, me: nil, partner: nil)
+        XCTAssertEqual(beam.configuration.leading.tone, .clay)
+        XCTAssertEqual(beam.configuration.trailing.tone, .pine)
     }
 }
