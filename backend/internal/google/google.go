@@ -426,9 +426,12 @@ type EventExtendedProperties struct {
 	Private map[string]string `json:"private,omitempty"`
 }
 
+// omitempty is load-bearing: Google rejects an event whose start/end carries
+// both keys ({"date": "...", "dateTime": ""} → 400 badRequest), so exactly one
+// may survive marshalling.
 type EventDate struct {
-	Date     string `json:"date"`     // YYYY-MM-DD, all-day
-	DateTime string `json:"dateTime"` // RFC3339 for a direct timed event
+	Date     string `json:"date,omitempty"`     // YYYY-MM-DD, all-day
+	DateTime string `json:"dateTime,omitempty"` // RFC3339 for a direct timed event
 }
 
 type EventReminder struct {

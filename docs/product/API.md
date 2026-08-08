@@ -157,7 +157,12 @@ VATTENFALL · TODAY           one-off from a Gmail draft
 - `POST /v1/calendar/sync` → `{calendar_id, imported, updated, deleted,
   unchanged, last_synced_at}` — reconciles only the dedicated shared Google
   Calendar; imports direct events, applies external title/date edits, and marks
-  remote deletions for review without archiving local todos
+  remote deletions for review without archiving local todos.
+  **Self-healing:** each sync first re-publishes any open dated todo that never
+  reached the calendar (no event id, or `retry_required`) — todos dated before
+  the calendar existed, or whose publish failed, appear on the next sync
+  without user action. Creating the calendar (first dated publish) also
+  backfills every existing open dated todo, so it never starts empty.
 - `POST /v1/google/connect` `{code, redirect_uri, code_verifier?}` → google
   status — connects **the calling member's own** Gmail. A second member
   connecting does not replace the first; each has their own mailbox.

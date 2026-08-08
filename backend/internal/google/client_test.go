@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -240,5 +241,23 @@ func TestCalendarListUpdateAndDelete(t *testing.T) {
 	}
 	if err := c.DeleteEvent(context.Background(), "tok", "even-cal", "all-day"); err != nil {
 		t.Fatalf("delete: %v", err)
+	}
+}
+
+// Google rejects an event start/end that carries both keys — an all-day
+// payload must marshal its date and nothing else. Regression: the empty
+// dateTime:"" used to survive marshalling and 400 every insert (2026-08-08).
+func TestBuildEventMarshalsExactlyOneDateKind(t *testing.T) {
+	payload := BuildEvent("Go to Delft", "", nil,
+		time.Date(2026, 8, 9, 0, 0, 0, 0, time.UTC), "1_day")
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), `"date":"2026-08-09"`) {
+		t.Fatalf("all-day start date missing: %s", raw)
+	}
+	if strings.Contains(string(raw), "dateTime") {
+		t.Fatalf("empty dateTime must not survive marshalling: %s", raw)
 	}
 }

@@ -87,6 +87,11 @@ func (a *API) syncCalendar(ctx context.Context, m *Membership) (CalendarSyncJSON
 		return CalendarSyncJSON{}, err
 	}
 
+	// Self-healing: dated todos that never reached the calendar (created
+	// before it existed, or whose publish failed) are re-published on every
+	// sync, so a one-off Google failure never strands a todo permanently.
+	a.republishDatedTodos(ctx, m.HouseholdID, token, calID, true)
+
 	now := time.Now().UTC()
 	events, err := a.Google.ListEvents(ctx, token, calID,
 		now.AddDate(0, -6, 0), now.AddDate(1, 6, 0))

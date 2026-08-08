@@ -131,6 +131,13 @@ func (a *API) ensureCalendarForWriter(ctx context.Context, m *Membership,
 		if err := a.setCalendarOwner(ctx, m.HouseholdID, id, writer.MemberID); err != nil {
 			return "", err
 		}
+		if err := a.markCalendarListed(ctx, writer.MemberID, true); err != nil {
+			return "", err
+		}
+		// The household may already hold dated todos from before the calendar
+		// existed (or from publishes that failed against it) — the calendar
+		// starts complete, not empty.
+		a.republishDatedTodos(ctx, m.HouseholdID, token, id, false)
 		return id, nil
 	}
 	if state.OwnerMemberID == writer.MemberID {
@@ -175,22 +182,31 @@ func (a *API) recreateCalendarUnder(ctx context.Context, householdID, householdN
 	if err := a.markCalendarListed(ctx, to.MemberID, true); err != nil {
 		return "", err
 	}
-	a.republishDatedTodos(ctx, householdID, toToken, newID)
+	a.republishDatedTodos(ctx, householdID, toToken, newID, false)
 	slog.Info("shared calendar recreated", "household", householdID,
 		"from", state.CalendarID, "to", newID, "owner", to.MemberID)
 	return newID, nil
 }
 
-// republishDatedTodos re-inserts the household's open dated todos into a new
+// republishDatedTodos re-inserts the household's open dated todos into a
 // calendar. Best-effort per todo: a failure marks that todo retry_required
 // instead of aborting the handover — losing the calendar mirror is recoverable,
 // losing the disconnect is not.
-func (a *API) republishDatedTodos(ctx context.Context, householdID, token, calendarID string) {
+//
+// onlyUnmapped narrows it to todos that never reached the calendar (no event
+// id, or a recorded failure) — the recovery sweep every sync runs. A calendar
+// move (recreate/handover) passes false: on a fresh calendar even a mapped
+// event id points at the abandoned one.
+func (a *API) republishDatedTodos(ctx context.Context, householdID, token, calendarID string, onlyUnmapped bool) {
+	filter := ""
+	if onlyUnmapped {
+		filter = ` and (google_event_id is null or calendar_sync_state = 'retry_required')`
+	}
 	rows, err := a.DB.Query(ctx, `
 		select id, title, coalesce(origin_label, ''), due_on, recurrence,
 			recurrence_until, recurrence_count
 		from tasks
-		where household_id = $1 and archived_at is null and due_on is not null`, householdID)
+		where household_id = $1 and archived_at is null and due_on is not null`+filter, householdID)
 	if err != nil {
 		slog.Error("calendar handover: list todos", "err", err)
 		return
@@ -221,7 +237,7 @@ func (a *API) republishDatedTodos(ctx context.Context, householdID, token, calen
 		if err != nil {
 			slog.Error("calendar handover: republish", "task", t.id, "err", err)
 			_ = a.recordCalendarFailure(ctx, t.id,
-				"the shared calendar moved to your partner's Google — this todo needs a retry")
+				"this todo hasn't reached the shared calendar yet — it retries on the next sync")
 			continue
 		}
 		if _, err := a.DB.Exec(ctx, `
