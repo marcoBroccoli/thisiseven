@@ -167,15 +167,43 @@ VATTENFALL · TODAY           one-off from a Gmail draft
   and every counter describe the **caller's** connection.
   `partner_connected` is a bare boolean: the partner's address is never
   disclosed. `calendar_last_sync_at` is the household's shared calendar.
-- `POST /v1/google/disconnect` → `{connected: false, partner_connected}` —
-  drops only the caller's mailbox. Drafts it already produced stay in their
-  inbox; they simply stop refreshing. The shared calendar survives.
+- `POST /v1/google/disconnect` → `{connected: false, partner_connected,
+  calendar_owner_transferred, calendar_error?}` — drops only the caller's
+  mailbox. Drafts it already produced stay in their inbox; they simply stop
+  refreshing. The shared calendar survives.
+  **Calendar side effect:** when the caller owns the shared calendar and the
+  partner is connected, ownership is transferred **before** the caller's token
+  is deleted (the handover needs it) — `calendar_owner_transferred: true`.
+  With no other connected member the calendar id is kept and publishing pauses
+  until someone reconnects, which adopts it. A non-owner disconnect leaves the
+  calendar untouched and best-effort revokes their reader grant. A failed
+  handover never blocks the disconnect: it returns `calendar_error` copy for
+  the remaining partner.
 - `POST /v1/google/sync` → `202 {started: true}` — scans the caller's mailbox.
   409 `not_connected` when the caller has not connected, 409 `sync_running`
   while their own scan is in flight (the partner's scan never blocks it).
-- `GET  /v1/google/calendar-info` → `{calendar_id, shared, share_url?}` — the
-  household's shared calendar, readable by either member as soon as **one** of
-  them is connected.
+- `GET  /v1/google/calendar-info` → `{calendar_id, shared, share_url?, owner,
+  listed, can_add}` — the household's shared calendar, readable by either
+  member as soon as **one** of them is connected.
+  `owner` — the caller's Google account owns the calendar (Google gives a
+  secondary calendar exactly one owner; Even stores it as
+  `households.calendar_owner_member_id`).
+  `listed` — it is already on the caller's Google Calendar list (owners always
+  are). `can_add` — the caller has their own Google connected, a shared
+  calendar exists, and they are neither owner nor listed: show the one-tap
+  confirm.
+- `POST /v1/google/calendar/add` → `{calendar_id, listed: true, owner,
+  adopted?}` — the partner's one-tap confirm. With the **owner's** token it
+  grants the caller `reader` ACL (mirror-only: never writer — edits belong in
+  Even), then with the **caller's** token inserts the calendar into their
+  Google CalendarList, so `Even — {household}` appears without an email invite.
+  409 `not_connected` (caller has no Google), 409 `not_ready` (no shared
+  calendar yet), 409 `already_owner`, 409 `reconnect_required` /
+  `owner_reconnect_required` when a stored grant predates the Calendar scope
+  bump, 502 `calendar_failed` when Google refuses. When the recorded owner has
+  no connection left, the caller adopts the calendar instead (a fresh calendar
+  under their account, open dated todos re-published) → `owner: true,
+  adopted: true`.
 - `GET  /v1/drafts?status=pending` → `[draft]` — **only the caller's own**
   drafts: those from their Gmail, plus the ones they created by hand.
 - `POST /v1/drafts` `{from_label, subject, summary?, urgency, title?, owner_member_id?,

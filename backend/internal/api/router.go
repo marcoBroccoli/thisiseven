@@ -87,6 +87,7 @@ func Router(a *API, verifier httpx.AccessVerifier, gotrueURL string) http.Handle
 		r.Post("/v1/google/disconnect", a.GoogleDisconnect)
 		r.Post("/v1/google/sync", a.GoogleSync)
 		r.Get("/v1/google/calendar-info", a.GoogleCalendarInfo)
+		r.Post("/v1/google/calendar/add", a.GoogleCalendarAdd)
 
 		r.Get("/v1/calendar", a.Calendar)
 		r.Post("/v1/calendar/sync", a.SyncCalendar)

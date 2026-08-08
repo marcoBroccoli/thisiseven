@@ -12,7 +12,7 @@ REDIRECT="http://127.0.0.1:8123/oauth/callback"
 CLIENT_ID=$(grep '^GOOGLE_OAUTH_CLIENT_ID=' "$(dirname "$0")/../.env" | cut -d= -f2-)
 [ -n "$CLIENT_ID" ] || { echo "GOOGLE_OAUTH_CLIENT_ID missing from backend/.env"; exit 1; }
 
-SCOPE="https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/calendar.events openid email profile"
+SCOPE="https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/calendar openid email profile"
 AUTH_URL="https://accounts.google.com/o/oauth2/v2/auth?client_id=$(python3 -c "import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1],''))" "$CLIENT_ID")&redirect_uri=$(python3 -c "import urllib.parse;print(urllib.parse.quote('$REDIRECT',''))")&response_type=code&scope=$(python3 -c "import urllib.parse;print(urllib.parse.quote('$SCOPE',''))")&access_type=offline&prompt=consent"
 
 echo ""

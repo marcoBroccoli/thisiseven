@@ -201,8 +201,14 @@ func (a *API) GoogleStatus(w http.ResponseWriter, r *http.Request) {
 
 // POST /v1/google/disconnect — only the caller's own mailbox. Drafts already
 // discovered stay; they simply stop being refreshed.
+//
+// Calendar side effect: when the caller owns the shared calendar, ownership
+// moves to the other connected partner FIRST — the handover needs the
+// caller's refresh token, which the delete below destroys. A failed handover
+// never blocks the disconnect (mailbox privacy wins); it is reported instead.
 func (a *API) GoogleDisconnect(w http.ResponseWriter, r *http.Request) {
 	m := membership(r)
+	transferred, calendarError := a.handoverCalendarOnDisconnect(r.Context(), m)
 	_, err := a.DB.Exec(r.Context(),
 		`delete from google_accounts where member_id = $1`, m.MemberID)
 	if err != nil {
@@ -210,10 +216,15 @@ func (a *API) GoogleDisconnect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.Google.Forget(m.MemberID)
-	httpx.JSON(w, http.StatusOK, map[string]any{
-		"connected":         false,
-		"partner_connected": a.partnerConnected(r.Context(), m),
-	})
+	out := map[string]any{
+		"connected":                  false,
+		"partner_connected":          a.partnerConnected(r.Context(), m),
+		"calendar_owner_transferred": transferred,
+	}
+	if calendarError != "" {
+		out["calendar_error"] = calendarError
+	}
+	httpx.JSON(w, http.StatusOK, out)
 }
 
 // POST /v1/google/sync — start (or join) an async scan-and-classify job.
@@ -616,17 +627,17 @@ func (a *API) publishTaskToCalendar(ctx context.Context, m *Membership,
 	if dueOn == nil || !a.Google.Configured() {
 		return ""
 	}
-	// The calendar is the household's, so any connected member's token can
-	// write it — a partner who has not connected still gets their dated todos
-	// on the shared calendar.
-	g, err := a.householdCalendarAccount(ctx, m)
+	// The calendar is the household's, but Google accepts writes only from the
+	// account that owns it — the owner's token publishes for both partners, so
+	// a member who never connected still gets their dated todos on it.
+	g, err := a.calendarWriteAccount(ctx, m)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ""
 	}
 	if err != nil {
 		return a.recordCalendarFailure(ctx, taskID, "calendar lookup failed")
 	}
-	current, _, err := a.householdCalendar(ctx, m.HouseholdID)
+	state, err := a.calendarState(ctx, m.HouseholdID)
 	if err != nil {
 		return a.recordCalendarFailure(ctx, taskID, "calendar lookup failed")
 	}
@@ -635,9 +646,13 @@ func (a *API) publishTaskToCalendar(ctx context.Context, m *Membership,
 		slog.Error("calendar token", "err", err)
 		return a.recordCalendarFailure(ctx, taskID, "Google access expired — reconnect to write calendar events")
 	}
-	calID, err := a.ensureHouseholdCalendar(ctx, m, token, current)
+	calID, err := a.ensureCalendarForWriter(ctx, m, g, token, state)
 	if err != nil {
 		slog.Error("calendar create", "err", err)
+		if errors.Is(err, google.ErrInsufficientScope) {
+			return a.recordCalendarFailure(ctx, taskID,
+				"reconnect Google — Even now needs calendar sharing permission")
+		}
 		return a.recordCalendarFailure(ctx, taskID, "the shared calendar could not be created")
 	}
 	var existingEventID *string
@@ -663,6 +678,10 @@ func (a *API) publishTaskToCalendar(ctx context.Context, m *Membership,
 	}
 	if err != nil {
 		slog.Error("calendar publish", "err", err)
+		if errors.Is(err, google.ErrInsufficientScope) {
+			return a.recordCalendarFailure(ctx, taskID,
+				"reconnect Google — Even now needs calendar sharing permission")
+		}
 		return a.recordCalendarFailure(ctx, taskID, "the calendar event could not be updated")
 	}
 	if _, err := a.DB.Exec(ctx, `
@@ -719,7 +738,7 @@ func (a *API) deleteTaskCalendarEvent(ctx context.Context, m *Membership, eventI
 	if err != nil || calID == "" || calID == "primary" {
 		return nil
 	}
-	g, err := a.householdCalendarAccount(ctx, m)
+	g, err := a.calendarWriteAccount(ctx, m)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil
 	}
@@ -733,27 +752,9 @@ func (a *API) deleteTaskCalendarEvent(ctx context.Context, m *Membership, eventI
 	return a.Google.DeleteEvent(ctx, token, calID, eventID)
 }
 
-// ensureHouseholdCalendar lazily creates the shared "Even — <household>"
-// calendar the first time an event is written, so approvals never land on
-// anyone's personal primary calendar.
-func (a *API) ensureHouseholdCalendar(ctx context.Context, m *Membership, token, current string) (string, error) {
-	if current != "" && current != "primary" {
-		return current, nil
-	}
-	id, err := a.Google.CreateCalendar(ctx, token, "Even — "+m.Household)
-	if err != nil {
-		return "", err
-	}
-	if _, err := a.DB.Exec(ctx, `
-		update households set calendar_id = $1 where id = $2`,
-		id, m.HouseholdID); err != nil {
-		return "", err
-	}
-	return id, nil
-}
-
-// GoogleCalendarInfo exposes the shared calendar so the partner can add it
-// in their own Google Calendar ("add by calendar id" link).
+// GoogleCalendarInfo exposes the shared calendar plus the caller's standing on
+// it: whether they own it, whether it is already on their Google list, and
+// whether the one-tap "add to my Google" confirm applies to them.
 func (a *API) GoogleCalendarInfo(w http.ResponseWriter, r *http.Request) {
 	m := membership(r)
 	if _, err := a.householdCalendarAccount(r.Context(), m); errors.Is(err, pgx.ErrNoRows) {
@@ -763,17 +764,25 @@ func (a *API) GoogleCalendarInfo(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusInternalServerError, "internal", "calendar lookup failed")
 		return
 	}
-	calID, _, err := a.householdCalendar(r.Context(), m.HouseholdID)
+	state, err := a.calendarState(r.Context(), m.HouseholdID)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "internal", "calendar lookup failed")
 		return
 	}
+	_, selfErr := a.googleAccountForMember(r.Context(), m.MemberID)
+	callerConnected := selfErr == nil
+	owner := state.OwnerMemberID != "" && state.OwnerMemberID == m.MemberID
+	listed := owner || (callerConnected && a.calendarListedFor(r.Context(), m.MemberID))
+
 	out := map[string]any{
-		"calendar_id": calID,
-		"shared":      calID != "primary",
+		"calendar_id": state.CalendarID,
+		"shared":      state.ready(),
+		"owner":       owner,
+		"listed":      listed,
+		"can_add":     callerConnected && state.ready() && !owner && !listed,
 	}
-	if calID != "primary" {
-		cid := base64.RawURLEncoding.EncodeToString([]byte(calID))
+	if state.ready() {
+		cid := base64.RawURLEncoding.EncodeToString([]byte(state.CalendarID))
 		out["share_url"] = "https://calendar.google.com/calendar/r?cid=" + cid
 	}
 	httpx.JSON(w, http.StatusOK, out)

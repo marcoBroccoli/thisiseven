@@ -64,9 +64,10 @@ func (a *API) SyncCalendar(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) syncCalendar(ctx context.Context, m *Membership) (CalendarSyncJSON, error) {
-	// The shared calendar belongs to the household; whichever member is
-	// connected supplies the token, so a solo connection still reconciles.
-	g, err := a.householdCalendarAccount(ctx, m)
+	// The shared calendar belongs to the household, but Google only accepts
+	// writes (event updates, deletions) from the account that owns it — the
+	// reconcile therefore runs on the owner's token, not the caller's.
+	g, err := a.calendarWriteAccount(ctx, m)
 	if err != nil {
 		return CalendarSyncJSON{}, err
 	}

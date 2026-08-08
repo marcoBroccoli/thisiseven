@@ -45,6 +45,27 @@ not killed by the HTTP write deadline.
 - Toggling a task credits the pebble to the task's **owner**, whoever taps.
 - Trades: the non-proposer accepts (409 `own_trade` otherwise).
 - "today" and due phrases are computed in Europe/Amsterdam (tzdata embedded).
+- The shared Google calendar is a **mirror**: Even publishes, the partner gets
+  a `reader` grant (never writer). Google gives a secondary calendar one owner,
+  stored as `households.calendar_owner_member_id` (migration 013) — that
+  member's token performs every calendar write. `POST /v1/google/calendar/add`
+  is the partner's one-tap confirm (ACL reader + CalendarList insert), and
+  `POST /v1/google/disconnect` hands ownership over **before** deleting the
+  leaving owner's token: ACL `owner` → ACL `writer` → recreate-and-migrate,
+  whichever Google accepts first.
+
+### Google OAuth scope — re-consent required (2026-08)
+
+The Calendar scope moved from `calendar.events` to the full
+`https://www.googleapis.com/auth/calendar` (`gmail.readonly` unchanged) in
+`internal/google/google.go` `AuthURL`, `scripts/google-authorize.sh` and the
+iOS client (`Sources/Core/EvenCore/GoogleConnect.swift`). Creating a secondary
+calendar, granting ACL and inserting into a CalendarList are not covered by
+`calendar.events`. **Connections made before the bump keep working for Gmail
+but fail the sharing calls**: Google answers 403 `insufficientPermissions`,
+which surfaces as `reconnect_required` / `owner_reconnect_required` (add) or a
+`retry_required` todo carrying "reconnect Google" (publish). Never a silent
+success — the user has to run the connect flow again.
 
 ## Tests
 

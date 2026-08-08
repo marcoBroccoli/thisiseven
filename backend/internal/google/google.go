@@ -25,6 +25,64 @@ var ErrInvalidGrant = errors.New("google: invalid_grant")
 // ErrNotConfigured means GOOGLE_OAUTH_CLIENT_ID/SECRET are absent.
 var ErrNotConfigured = errors.New("google: oauth client not configured")
 
+// ErrInsufficientScope means the stored grant predates the full Calendar
+// scope (or the user revoked it): the token is alive, Google simply refuses
+// the calendar/ACL/list call. It must surface as "reconnect Google", never as
+// a silent success.
+var ErrInsufficientScope = errors.New("google: calendar scope missing — reconnect Google")
+
+// ErrNotFound is a 404 from a Google API call (missing calendar, missing ACL
+// rule, calendar not on the caller's list).
+var ErrNotFound = errors.New("google: not found")
+
+// APIError is one non-2xx Google API response, kept structured so callers can
+// tell "you need to re-consent" from "that calendar is gone" from "try later".
+type APIError struct {
+	Op      string
+	Status  int
+	Reason  string
+	Message string
+}
+
+func (e *APIError) Error() string {
+	s := fmt.Sprintf("%s: http %d", e.Op, e.Status)
+	if e.Reason != "" {
+		s += " " + e.Reason
+	}
+	if e.Message != "" {
+		s += ": " + e.Message
+	}
+	return s
+}
+
+// Unwrap maps the wire shape onto the two conditions the product reacts to.
+func (e *APIError) Unwrap() error {
+	switch {
+	case e.IsInsufficientScope():
+		return ErrInsufficientScope
+	case e.Status == http.StatusNotFound:
+		return ErrNotFound
+	}
+	return nil
+}
+
+// IsInsufficientScope reports a grant that cannot perform the call. Google
+// answers 401 for a dead/blank token and 403 with an insufficient-permission
+// reason when the scope string is too narrow; both mean "re-consent".
+func (e *APIError) IsInsufficientScope() bool {
+	if e.Status == http.StatusUnauthorized {
+		return true
+	}
+	if e.Status != http.StatusForbidden {
+		return false
+	}
+	switch e.Reason {
+	case "insufficientPermissions", "insufficientScope", "forbidden", "accessNotConfigured", "":
+		return true
+	}
+	return strings.Contains(strings.ToLower(e.Message), "insufficient")
+}
+
 // DiscoveryQuery mirrors GoogleGmailAPIClient.householdDiscoveryQuery, with the
 // window tightened to 30d for the mobile poller.
 const DiscoveryQuery = "newer_than:30d (bill OR invoice OR due OR renewal OR payment OR subscription OR appointment OR reminder OR rent OR insurance OR tax OR school OR dentist OR doctor OR maintenance OR repair)"
@@ -207,10 +265,13 @@ func (c *Client) AuthURL(redirectURI, state string) string {
 		"client_id":     {c.ClientID},
 		"redirect_uri":  {redirectURI},
 		"response_type": {"code"},
-		"scope":         {"https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/calendar.events openid email profile"},
-		"access_type":   {"offline"},
-		"prompt":        {"consent"},
-		"state":         {state},
+		// Full calendar scope, not calendar.events: Even creates the shared
+		// secondary calendar, grants the partner reader ACL, and adds it to
+		// their CalendarList. Existing grants must re-consent (see README).
+		"scope":       {"https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/calendar openid email profile"},
+		"access_type": {"offline"},
+		"prompt":      {"consent"},
+		"state":       {state},
 	}
 	return "https://accounts.google.com/o/oauth2/v2/auth?" + q.Encode()
 }
@@ -479,29 +540,12 @@ func BuildEvent(title, fromLabel string, amountCents *int64, dueOn time.Time, re
 // CreateCalendar makes a secondary Google calendar (the shared household
 // calendar) and returns its id.
 func (c *Client) CreateCalendar(ctx context.Context, accessToken, summary string) (string, error) {
-	body, err := json.Marshal(map[string]string{"summary": summary, "timeZone": "Europe/Amsterdam"})
-	if err != nil {
-		return "", err
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.APIBase+"/calendar/v3/calendars", bytes.NewReader(body))
-	if err != nil {
-		return "", err
-	}
-	req.Header.Set("Authorization", "Bearer "+accessToken)
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := c.HTTP.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return "", fmt.Errorf("calendar create: http %d", resp.StatusCode)
-	}
 	var out struct {
 		ID string `json:"id"`
 	}
-	if err := json.Unmarshal(raw, &out); err != nil {
+	in := map[string]string{"summary": summary, "timeZone": "Europe/Amsterdam"}
+	if err := c.call(ctx, http.MethodPost, accessToken, "/calendar/v3/calendars",
+		"calendar create", in, &out); err != nil {
 		return "", err
 	}
 	if out.ID == "" {
@@ -512,31 +556,12 @@ func (c *Client) CreateCalendar(ctx context.Context, accessToken, summary string
 
 // InsertEvent creates the event; returns (eventID, htmlLink).
 func (c *Client) InsertEvent(ctx context.Context, accessToken, calendarID string, payload EventPayload) (string, string, error) {
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return "", "", err
-	}
 	path := "/calendar/v3/calendars/" + url.PathEscape(calendarID) + "/events?sendUpdates=none"
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.APIBase+path, bytes.NewReader(body))
-	if err != nil {
-		return "", "", err
-	}
-	req.Header.Set("Authorization", "Bearer "+accessToken)
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := c.HTTP.Do(req)
-	if err != nil {
-		return "", "", err
-	}
-	defer resp.Body.Close()
-	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return "", "", fmt.Errorf("calendar insert: http %d", resp.StatusCode)
-	}
 	var out struct {
 		ID       string `json:"id"`
 		HTMLLink string `json:"htmlLink"`
 	}
-	if err := json.Unmarshal(raw, &out); err != nil {
+	if err := c.call(ctx, http.MethodPost, accessToken, path, "calendar insert", payload, &out); err != nil {
 		return "", "", err
 	}
 	return out.ID, out.HTMLLink, nil
@@ -545,31 +570,13 @@ func (c *Client) InsertEvent(ctx context.Context, accessToken, calendarID string
 // UpdateEvent replaces the mutable parts of an Even-managed event after a
 // household member edits its todo. Google preserves the event id and link.
 func (c *Client) UpdateEvent(ctx context.Context, accessToken, calendarID, eventID string, payload EventPayload) (string, string, error) {
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return "", "", err
-	}
-	path := "/calendar/v3/calendars/" + url.PathEscape(calendarID) + "/events/" + url.PathEscape(eventID) + "?sendUpdates=none"
-	req, err := http.NewRequestWithContext(ctx, http.MethodPut, c.APIBase+path, bytes.NewReader(body))
-	if err != nil {
-		return "", "", err
-	}
-	req.Header.Set("Authorization", "Bearer "+accessToken)
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := c.HTTP.Do(req)
-	if err != nil {
-		return "", "", err
-	}
-	defer resp.Body.Close()
-	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return "", "", fmt.Errorf("calendar update: http %d", resp.StatusCode)
-	}
+	path := "/calendar/v3/calendars/" + url.PathEscape(calendarID) + "/events/" +
+		url.PathEscape(eventID) + "?sendUpdates=none"
 	var out struct {
 		ID       string `json:"id"`
 		HTMLLink string `json:"htmlLink"`
 	}
-	if err := json.Unmarshal(raw, &out); err != nil {
+	if err := c.call(ctx, http.MethodPut, accessToken, path, "calendar update", payload, &out); err != nil {
 		return "", "", err
 	}
 	return out.ID, out.HTMLLink, nil
@@ -579,21 +586,9 @@ func (c *Client) UpdateEvent(ctx context.Context, accessToken, calendarID, event
 // best-effort at the API layer; local archival must never be blocked by a
 // temporary Google outage.
 func (c *Client) DeleteEvent(ctx context.Context, accessToken, calendarID, eventID string) error {
-	path := "/calendar/v3/calendars/" + url.PathEscape(calendarID) + "/events/" + url.PathEscape(eventID) + "?sendUpdates=none"
-	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, c.APIBase+path, nil)
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Authorization", "Bearer "+accessToken)
-	resp, err := c.HTTP.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return fmt.Errorf("calendar delete: http %d", resp.StatusCode)
-	}
-	return nil
+	path := "/calendar/v3/calendars/" + url.PathEscape(calendarID) + "/events/" +
+		url.PathEscape(eventID) + "?sendUpdates=none"
+	return c.call(ctx, http.MethodDelete, accessToken, path, "calendar event delete", nil, nil)
 }
 
 // ListEvents reads a bounded window from the dedicated shared Calendar.
@@ -628,19 +623,143 @@ func (c *Client) ListEvents(ctx context.Context, accessToken, calendarID string,
 }
 
 func (c *Client) getJSON(ctx context.Context, accessToken, path string, v any) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.APIBase+path, nil)
+	return c.call(ctx, http.MethodGet, accessToken, path, "google api "+path, nil, v)
+}
+
+// call is the one place a Google REST call is made: it attaches the bearer
+// token, decodes an optional body, and turns every non-2xx into an *APIError
+// so callers can ask "is this a re-consent?" instead of matching strings.
+func (c *Client) call(ctx context.Context, method, accessToken, path, op string, in, out any) error {
+	var body io.Reader
+	if in != nil {
+		raw, err := json.Marshal(in)
+		if err != nil {
+			return err
+		}
+		body = bytes.NewReader(raw)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, c.APIBase+path, body)
 	if err != nil {
 		return err
 	}
 	req.Header.Set("Authorization", "Bearer "+accessToken)
+	if in != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
-	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("google api %s: http %d", path, resp.StatusCode)
+	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return parseAPIError(op, resp.StatusCode, raw)
 	}
-	return json.Unmarshal(body, v)
+	if out == nil || len(bytes.TrimSpace(raw)) == 0 {
+		return nil
+	}
+	return json.Unmarshal(raw, out)
+}
+
+func parseAPIError(op string, status int, raw []byte) error {
+	e := &APIError{Op: op, Status: status}
+	var wire struct {
+		Error struct {
+			Message string `json:"message"`
+			Status  string `json:"status"`
+			Errors  []struct {
+				Reason  string `json:"reason"`
+				Message string `json:"message"`
+			} `json:"errors"`
+		} `json:"error"`
+	}
+	if json.Unmarshal(raw, &wire) == nil {
+		e.Message = wire.Error.Message
+		if len(wire.Error.Errors) > 0 {
+			e.Reason = wire.Error.Errors[0].Reason
+			if e.Message == "" {
+				e.Message = wire.Error.Errors[0].Message
+			}
+		}
+		if e.Reason == "" {
+			e.Reason = wire.Error.Status
+		}
+	}
+	return e
+}
+
+// ---- Calendar sharing (ACL + CalendarList) ----
+
+// ACLRole values Even uses. The partner is a reader on purpose: the mirror is
+// read-only in Google, editing belongs in Even. Owner is only ever used to
+// hand the calendar over when its owning account disconnects.
+const (
+	ACLRoleReader = "reader"
+	ACLRoleWriter = "writer"
+	ACLRoleOwner  = "owner"
+)
+
+// ACLRuleID is the deterministic rule id Google assigns a user-scoped grant,
+// so a grant can be patched or deleted without listing the ACL first.
+func ACLRuleID(email string) string {
+	return "user:" + email
+}
+
+// InsertACL grants one Google account a role on the shared calendar. Runs
+// with the *owner's* token. sendNotifications is off: the partner confirms
+// inside Even, an emailed invite would be a second, confusing path.
+func (c *Client) InsertACL(ctx context.Context, accessToken, calendarID, email, role string) error {
+	path := "/calendar/v3/calendars/" + url.PathEscape(calendarID) + "/acl?sendNotifications=false"
+	in := map[string]any{
+		"role":  role,
+		"scope": map[string]string{"type": "user", "value": email},
+	}
+	return c.call(ctx, http.MethodPost, accessToken, path, "calendar acl insert", in, nil)
+}
+
+// PatchACL changes an existing grant's role (reader → owner during a
+// handover). Google may refuse an owner-role change for an OAuth client; the
+// caller falls back to recreating the calendar.
+func (c *Client) PatchACL(ctx context.Context, accessToken, calendarID, email, role string) error {
+	path := "/calendar/v3/calendars/" + url.PathEscape(calendarID) +
+		"/acl/" + url.PathEscape(ACLRuleID(email)) + "?sendNotifications=false"
+	return c.call(ctx, http.MethodPatch, accessToken, path,
+		"calendar acl patch", map[string]any{"role": role}, nil)
+}
+
+// DeleteACL revokes a grant. Best-effort everywhere it is used.
+func (c *Client) DeleteACL(ctx context.Context, accessToken, calendarID, email string) error {
+	path := "/calendar/v3/calendars/" + url.PathEscape(calendarID) +
+		"/acl/" + url.PathEscape(ACLRuleID(email))
+	return c.call(ctx, http.MethodDelete, accessToken, path, "calendar acl delete", nil, nil)
+}
+
+// InsertCalendarList puts an already-shared calendar on this account's list,
+// which is what makes it appear in the Google Calendar UI without hunting for
+// a sharing email. Runs with the *partner's* token.
+func (c *Client) InsertCalendarList(ctx context.Context, accessToken, calendarID string) error {
+	return c.call(ctx, http.MethodPost, accessToken, "/calendar/v3/users/me/calendarList",
+		"calendarList insert", map[string]any{"id": calendarID}, nil)
+}
+
+// CalendarListed reports whether the calendar is already on this account's
+// CalendarList. ErrNotFound is the normal "not yet added" answer.
+func (c *Client) CalendarListed(ctx context.Context, accessToken, calendarID string) (bool, error) {
+	path := "/calendar/v3/users/me/calendarList/" + url.PathEscape(calendarID)
+	err := c.call(ctx, http.MethodGet, accessToken, path, "calendarList get", nil, nil)
+	if errors.Is(err, ErrNotFound) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// DeleteCalendar removes a secondary calendar entirely. Only used to tidy up
+// an abandoned calendar after a recreate-and-migrate handover, with the
+// disconnecting owner's dying token — never allowed to fail a disconnect.
+func (c *Client) DeleteCalendar(ctx context.Context, accessToken, calendarID string) error {
+	path := "/calendar/v3/calendars/" + url.PathEscape(calendarID)
+	return c.call(ctx, http.MethodDelete, accessToken, path, "calendar delete", nil, nil)
 }

@@ -7,7 +7,7 @@ Use a Google Cloud iOS OAuth client for mobile testing. Keep the consent screen 
 Required test scopes:
 
 - Gmail labeled-message read: `https://www.googleapis.com/auth/gmail.readonly`
-- Calendar event write: `https://www.googleapis.com/auth/calendar.events`
+- Calendar (create secondary calendar, share ACL, event write): `https://www.googleapis.com/auth/calendar`
 - User identity: `openid email profile`
 
 The app first imports messages labeled `HouseholdTodo` when that label exists. If the label is missing, it searches recent Gmail for likely household work such as bills, invoices, renewals, reminders, appointments, repairs, school/admin messages, and subscriptions. Do not request full mailbox mutation scopes for v1.
