@@ -648,6 +648,160 @@ final class TodayFeatureTests: XCTestCase {
         XCTAssertTrue(deleted.value)
     }
 
+    /// Hard rule: nothing done on either side → no pebble, and a level beam.
+    /// Adding a task is not work done, so it must not touch the pans.
+    func testCreateOnAnUntouchedWeekLeavesTheBeamEmptyAndLevel() async throws {
+        var summary = PreviewData.summary
+        summary.pebbles = []
+        summary.sections = summary.sections.map { section in
+            var next = section
+            next.tasks = next.tasks.map {
+                var task = $0
+                task.done = false
+                task.doneByMemberId = nil
+                return task
+            }
+            return next
+        }
+        summary.recomputeShares(
+            meId: PreviewData.ada.id,
+            meName: PreviewData.ada.displayName,
+            partnerId: PreviewData.umut.id,
+            partnerName: PreviewData.umut.displayName
+        )
+        XCTAssertEqual(summary.caption, "Empty pans. A new week, level by definition")
+
+        var state = TodayReducer.State()
+        state.summary = summary
+        state.me = PreviewData.ada
+        state.partner = PreviewData.umut
+        state.isLoading = false
+        var composer = ComposerReducer.State()
+        composer.title = "Walk the dog"
+        composer.weight = 3
+        state.composer = composer
+
+        let createdId = try XCTUnwrap(UUID(uuidString: "cccccccc-cccc-cccc-cccc-cccccccccccc"))
+        let created = PreviewData.task(
+            id: createdId,
+            title: "Walk the dog",
+            weight: 3,
+            meta: "TODAY"
+        )
+
+        let store = TestStore(initialState: state) {
+            TodayReducer()
+        } withDependencies: {
+            $0.tasksClient.create = { _ in created }
+            $0.widgetClient.publish = { _ in }
+            $0.toastClient.show = { _ in }
+        }
+        store.exhaustivity = .off
+
+        await store.send(.composer(.presented(.view(.saveTapped))))
+        await store.receive(\.createTask)
+        XCTAssertEqual(store.state.summary?.pebbles, [])
+        XCTAssertEqual(store.state.summary?.percentMe, 50)
+        XCTAssertEqual(store.state.summary?.percentPartner, 50)
+
+        await store.receive(\.createSucceeded)
+        await store.finish()
+        XCTAssertEqual(store.state.summary?.pebbles, [])
+        XCTAssertEqual(store.state.summary?.percentMe, 50)
+        XCTAssertEqual(store.state.summary?.percentPartner, 50)
+        XCTAssertEqual(store.state.summary?.caption, "Empty pans. A new week, level by definition")
+    }
+
+    /// Regression: deleting a completed task left its pebble on the pan, so a
+    /// week with nothing done still read "Leaning …" at 100/0.
+    func testDeletingTheOnlyDoneTaskTakesItsPebbleOffTheBeam() async {
+        var summary = PreviewData.summary
+        summary.pebbles = [Pebble(memberId: PreviewData.ada.id, weight: PreviewData.trash.weight)]
+        summary.sections = summary.sections.map { section in
+            var next = section
+            next.tasks = next.tasks.map { task in
+                guard task.id != PreviewData.trash.id else { return task }
+                var open = task
+                open.done = false
+                open.doneByMemberId = nil
+                return open
+            }
+            return next
+        }
+        summary.recomputeShares(
+            meId: PreviewData.ada.id,
+            meName: PreviewData.ada.displayName,
+            partnerId: PreviewData.umut.id,
+            partnerName: PreviewData.umut.displayName
+        )
+        XCTAssertEqual(summary.percentMe, 100)
+
+        var state = TodayReducer.State()
+        state.summary = summary
+        state.me = PreviewData.ada
+        state.partner = PreviewData.umut
+        state.isLoading = false
+
+        let store = TestStore(initialState: state) {
+            TodayReducer()
+        } withDependencies: {
+            $0.tasksClient.delete = { _ in }
+        }
+        store.exhaustivity = .off
+
+        await store.send(.view(.delete(PreviewData.trash.id)))
+        await store.finish()
+
+        XCTAssertFalse(
+            store.state.summary?.sections.flatMap(\.tasks).contains { $0.done } ?? true
+        )
+        XCTAssertEqual(store.state.summary?.pebbles, [])
+        XCTAssertEqual(store.state.summary?.percentMe, 50)
+        XCTAssertEqual(store.state.summary?.percentPartner, 50)
+        XCTAssertEqual(
+            store.state.summary?.caption,
+            "Empty pans. A new week, level by definition"
+        )
+    }
+
+    /// Deleting open work must not disturb pebbles earned by other tasks.
+    func testDeletingAnOpenTaskKeepsEarnedPebbles() async {
+        var state = TodayReducer.State()
+        state.summary = PreviewData.summary
+        state.me = PreviewData.ada
+        state.partner = PreviewData.umut
+        state.isLoading = false
+
+        let store = TestStore(initialState: state) {
+            TodayReducer()
+        } withDependencies: {
+            $0.tasksClient.delete = { _ in }
+        }
+        store.exhaustivity = .off
+
+        await store.send(.view(.delete(PreviewData.laundry.id)))
+        await store.finish()
+
+        XCTAssertEqual(store.state.summary?.pebbles, PreviewData.summary.pebbles)
+        XCTAssertEqual(store.state.summary?.percentMe, PreviewData.summary.percentMe)
+    }
+
+    /// A solo household with nothing done is level, not 100/0 — the client must
+    /// not invent a lead the backend never reports (`summary.go` pctMe = 50).
+    func testSoloHouseholdWithNothingDoneStaysLevel() {
+        var summary = PreviewData.summary
+        summary.pebbles = []
+        summary.recomputeShares(
+            meId: PreviewData.ada.id,
+            meName: PreviewData.ada.displayName,
+            partnerId: nil,
+            partnerName: "Partner"
+        )
+        XCTAssertEqual(summary.percentMe, 50)
+        XCTAssertEqual(summary.percentPartner, 50)
+        XCTAssertEqual(summary.caption, "Empty pans. A new week, level by definition")
+    }
+
     func testCancelDismissesComposer() async {
         var state = TodayReducer.State()
         state.composer = ComposerReducer.State()

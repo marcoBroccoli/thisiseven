@@ -229,7 +229,15 @@ private final class PreviewSummarySession: @unchecked Sendable {
                 return toggled
             },
             delete: { [self] id in
-                mutate { $0.removingTask(id: id) }
+                mutate {
+                    $0.removingTask(
+                        id: id,
+                        meId: PreviewData.ada.id,
+                        meName: PreviewData.ada.displayName,
+                        partnerId: PreviewData.umut.id,
+                        partnerName: PreviewData.umut.displayName
+                    )
+                }
             },
             update: { [self] id, body in
                 let calendar = Calendar.evenHousehold

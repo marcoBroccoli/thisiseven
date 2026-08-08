@@ -134,10 +134,9 @@ public enum PreviewData {
 
     public static let summaryEmpty = Summary(
         week: week,
-        pebbles: [
-            Pebble(memberId: adaId, weight: 0),
-            Pebble(memberId: umutId, weight: 0),
-        ],
+        // Nothing done on either side → no pebbles. Weight-0 placeholders are
+        // not the same as none: the beam draws a ball for every entry.
+        pebbles: [],
         percentMe: 50,
         percentPartner: 50,
         caption: "Nothing on the beam yet.",

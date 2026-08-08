@@ -173,6 +173,9 @@ final class ProfileFeatureTests: XCTestCase {
         await store.send(.view(.confirmSignOut)) {
             $0.confirmSignOut = false
         }
+        // The delegate is the point: AppReducer is one-way, so clearing the
+        // session without bubbling `signedOut` strands the app on `.ready`.
+        await store.receive(\.delegate.signedOut)
         XCTAssertTrue(signedOut.value)
     }
 }

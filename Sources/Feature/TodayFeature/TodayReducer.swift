@@ -149,7 +149,13 @@ public struct TodayReducer {
 
             case let .view(.delete(id)):
                 if var summary = state.summary {
-                    summary.removingTask(id: id)
+                    summary.removingTask(
+                        id: id,
+                        meId: state.me?.id,
+                        meName: state.me?.displayName ?? "You",
+                        partnerId: state.partner?.id,
+                        partnerName: state.partner?.displayName ?? "Partner"
+                    )
                     state.summary = summary
                 }
                 return .run { [tasksClient] send in
@@ -510,12 +516,8 @@ public extension Summary {
 
             if task.done {
                 pebbles.append(Pebble(memberId: task.ownerMemberId, weight: task.weight))
-            } else if let idx = pebbles.lastIndex(where: {
-                $0.memberId == task.ownerMemberId && $0.weight == task.weight
-            }) {
-                pebbles.remove(at: idx)
-            } else if let idx = pebbles.lastIndex(where: { $0.memberId == task.ownerMemberId }) {
-                pebbles.remove(at: idx)
+            } else {
+                removingPebble(memberId: task.ownerMemberId, weight: task.weight)
             }
             recomputeShares(
                 meId: meId,
@@ -527,11 +529,42 @@ public extension Summary {
         }
     }
 
-    mutating func removingTask(id: UUID) {
+    /// Drop a task from the week. A completed one takes its pebble with it —
+    /// a pan must never hold weight for work that no longer exists. Earlier
+    /// occurrences of a repeat keep theirs; only `/v1/summary` knows about days
+    /// this screen isn't showing.
+    mutating func removingTask(
+        id: UUID,
+        meId: UUID? = nil,
+        meName: String = "You",
+        partnerId: UUID? = nil,
+        partnerName: String = "Partner"
+    ) {
+        let removed = sections.flatMap(\.tasks).first { $0.id == id }
         sections = sections.map { section in
             var next = section
             next.tasks.removeAll { $0.id == id }
             return next
+        }
+        guard let removed, removed.done else { return }
+        removingPebble(memberId: removed.ownerMemberId, weight: removed.weight)
+        recomputeShares(
+            meId: meId,
+            meName: meName,
+            partnerId: partnerId,
+            partnerName: partnerName
+        )
+    }
+
+    /// Take one pebble off a member's pan — the exact weight first, then any of
+    /// theirs so a weight edited after completion can't strand it.
+    private mutating func removingPebble(memberId: UUID, weight: Int) {
+        if let idx = pebbles.lastIndex(where: {
+            $0.memberId == memberId && $0.weight == weight
+        }) {
+            pebbles.remove(at: idx)
+        } else if let idx = pebbles.lastIndex(where: { $0.memberId == memberId }) {
+            pebbles.remove(at: idx)
         }
     }
 
@@ -576,8 +609,12 @@ public extension Summary {
         let partnerWeight = pebbles.filter { $0.memberId == partnerId }.map(\.weight).reduce(0, +)
         let total = meWeight + partnerWeight
         if total == 0 {
-            percentMe = partnerId == nil ? 100 : 50
-            percentPartner = partnerId == nil ? 0 : 50
+            // No completions on either side yet — stay level. Matches the
+            // backend's unconditional 50/50 default (see summary.go pctMe);
+            // solo households used to tilt fully to "me" here with nothing
+            // actually done.
+            percentMe = 50
+            percentPartner = 50
         } else {
             percentMe = Int((Double(meWeight) / Double(total) * 100).rounded())
             percentPartner = 100 - percentMe
