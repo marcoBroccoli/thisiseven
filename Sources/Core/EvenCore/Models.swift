@@ -656,7 +656,12 @@ public struct WeekCloseResponse: Codable, Sendable {
 }
 
 public struct GoogleStatus: Codable, Sendable {
+    /// Whether *this* member has connected their own mailbox. Each member
+    /// connects their own Gmail; only the Calendar is shared.
     public var connected: Bool
+    /// Whether the partner has connected theirs — a bare flag, so the app can
+    /// explain the shared calendar without ever naming their address.
+    public var partnerConnected: Bool?
     public var email: String?
     public var lastSyncAt: Date?
     public var lastSyncCount: Int?
@@ -670,6 +675,7 @@ public struct GoogleStatus: Codable, Sendable {
 
     public init(
         connected: Bool,
+        partnerConnected: Bool? = nil,
         email: String? = nil,
         lastSyncAt: Date? = nil,
         lastSyncCount: Int? = nil,
@@ -681,6 +687,7 @@ public struct GoogleStatus: Codable, Sendable {
         hasMore: Bool? = nil
     ) {
         self.connected = connected
+        self.partnerConnected = partnerConnected
         self.email = email
         self.lastSyncAt = lastSyncAt
         self.lastSyncCount = lastSyncCount
@@ -694,6 +701,10 @@ public struct GoogleStatus: Codable, Sendable {
 
     public var isSyncing: Bool {
         syncRunning ?? false
+    }
+
+    public var hasPartnerConnected: Bool {
+        partnerConnected ?? false
     }
 }
 

@@ -13,6 +13,9 @@ public struct ConnectionsReducer {
     public struct State: Equatable, Sendable {
         public var path: Path = .why
         public var email: String?
+        /// The partner's Gmail is theirs alone — all we ever learn is whether
+        /// they have one, so we can explain the already-live shared calendar.
+        public var partnerConnected = false
         public var working = false
         public var isCheckingStatus = false
         public var gmailEnabled = true
@@ -120,8 +123,8 @@ public struct ConnectionsReducer {
     public enum Action: ViewAction, BindableAction {
         case view(View)
         case binding(BindingAction<State>)
-        case statusLoaded(connected: Bool, email: String?)
-        case connectSucceeded(email: String?)
+        case statusLoaded(connected: Bool, email: String?, partnerConnected: Bool)
+        case connectSucceeded(email: String?, partnerConnected: Bool)
         case connectCancelled
         case disconnectSucceeded
         /// Error (or other) toast — `ToastClient` → feature `.evenToastHost()`.
@@ -164,16 +167,24 @@ public struct ConnectionsReducer {
                 return .run { [googleClient] send in
                     do {
                         let status = try await googleClient.status()
-                        await send(.statusLoaded(connected: status.connected, email: status.email))
+                        await send(.statusLoaded(
+                            connected: status.connected,
+                            email: status.email,
+                            partnerConnected: status.hasPartnerConnected
+                        ))
                     } catch {
                         await send(.presentToast(.googleFailure(error)))
                     }
                 }
 
-            case let .statusLoaded(connected, email):
+            case let .statusLoaded(connected, email, partnerConnected):
                 state.isCheckingStatus = false
                 state.email = email
-                if connected { state.path = .connected }
+                state.partnerConnected = partnerConnected
+                // Only the caller's own connection opens the success screen. A
+                // partner who joined by invite code lands on `.why` with their
+                // own connect flow, never on someone else's "connected".
+                state.path = connected ? .connected : .why
                 return .none
 
             case .view(.primaryTapped):
@@ -185,7 +196,10 @@ public struct ConnectionsReducer {
                         do {
                             try await googleClient.connect()
                             let status = try await googleClient.status()
-                            await send(.connectSucceeded(email: status.email))
+                            await send(.connectSucceeded(
+                                email: status.email,
+                                partnerConnected: status.hasPartnerConnected
+                            ))
                         } catch {
                             if Self.isUserCancellation(error) {
                                 await send(.connectCancelled)
@@ -202,9 +216,10 @@ public struct ConnectionsReducer {
                     return finishWithNotificationPrompt()
                 }
 
-            case let .connectSucceeded(email):
+            case let .connectSucceeded(email, partnerConnected):
                 state.working = false
                 state.email = email
+                state.partnerConnected = partnerConnected
                 state.path = .scopes
                 return toastEffect(.init(message: "Google connected", tone: .success))
 

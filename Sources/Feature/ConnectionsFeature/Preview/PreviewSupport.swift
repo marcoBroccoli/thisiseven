@@ -137,7 +137,35 @@ public enum ConnectionsPreviewSupport {
         var state = ConnectionsReducer.State()
         state.path = .connected
         state.email = PreviewData.googleConnected.email
+        state.partnerConnected = true
         return snapshotStore(state, connected: true)
+    }
+
+    /// Connected, but the partner has not linked a mailbox of their own — the
+    /// copy has to say so without implying their inbox is visible.
+    public static func connectedPartnerMissing() -> StoreOf<ConnectionsReducer> {
+        var state = ConnectionsReducer.State()
+        state.path = .connected
+        state.email = PreviewData.googleConnected.email
+        return snapshotStore(state, connected: true)
+    }
+
+    /// The bug this screen exists to prevent: a partner who joined by invite
+    /// code sees their OWN not-connected state, not the other member's success.
+    public static func whyPartnerConnected() -> StoreOf<ConnectionsReducer> {
+        var state = ConnectionsReducer.State()
+        state.path = .why
+        state.partnerConnected = true
+        return Store(initialState: state) {
+            ConnectionsReducer()
+        } withDependencies: { deps in
+            mockConnections(
+                &deps,
+                status: PreviewDelay.delayed(.milliseconds(50)) { PreviewData.googlePartnerConnectedOnly },
+                connect: PreviewDelay.delayed(.milliseconds(50)),
+                disconnect: PreviewDelay.delayed(.milliseconds(50))
+            )
+        }
     }
 
     /// Design 04 — Settings manage surface (not on the setup path).

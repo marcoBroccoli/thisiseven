@@ -76,11 +76,11 @@
         private var pathContent: some View {
             switch store.path {
             case .why:
-                ConnectionsWhyView()
+                ConnectionsWhyView(partnerConnected: store.partnerConnected)
             case .scopes:
                 ConnectionsScopesView(store: store)
             case .connected:
-                ConnectionsConnectedView()
+                ConnectionsConnectedView(partnerConnected: store.partnerConnected)
             }
         }
     }

@@ -225,6 +225,40 @@
         }
     }
 
+    /// States the one thing we may say about the partner's mailbox: whether
+    /// they have connected one. Never their address, never their mail.
+    struct ConnectionsPartnerNote: View {
+        let partnerConnected: Bool
+
+        var body: some View {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: partnerConnected ? "person.2.fill" : "lock.fill")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(partnerConnected ? EvenTokens.pine : EvenTokens.stone)
+                    .padding(.top, 1)
+
+                Text(message)
+                    .font(.system(size: 12.5))
+                    .foregroundStyle(EvenTokens.stone)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .multilineTextAlignment(.leading)
+            }
+            .padding(12)
+            .frame(maxWidth: 300, alignment: .leading)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(EvenTokens.espresso.opacity(0.14), lineWidth: 1)
+            )
+            .accessibilityIdentifier("connections-partner-note")
+        }
+
+        private var message: String {
+            partnerConnected
+                ? "Your partner has connected their own Gmail, so the shared calendar is already live. Their mail stays theirs — connect yours to get your own inbox."
+                : "Your partner connects their own Gmail separately. Each inbox stays private; only the calendar and your todos are shared."
+        }
+    }
+
     /// Shell-owned CTA strip — always the same two slots.
     ///
     /// Primary is one persistent control that morphs style/title in place.

@@ -54,6 +54,53 @@ final class ConnectionsFeatureTests: XCTestCase {
         }
     }
 
+    /// The real bug: a partner who joined by invite code used to inherit the
+    /// other member's household-wide connection and land on their success
+    /// screen. Their own status is what decides the screen now.
+    func testJoinedPartnerSeesOwnNotConnectedState() async {
+        let store = TestStore(initialState: ConnectionsReducer.State()) {
+            ConnectionsReducer()
+        } withDependencies: {
+            $0.googleClient.status = { PreviewData.googlePartnerConnectedOnly }
+        }
+
+        await store.send(.view(.appear)) {
+            $0.isCheckingStatus = true
+        }
+        await store.receive(\.statusLoaded) {
+            $0.isCheckingStatus = false
+            $0.partnerConnected = true
+            $0.path = .why
+        }
+        XCTAssertNil(store.state.email, "the partner's address must never reach this member")
+    }
+
+    /// A member who disconnects returns to their own connect flow while the
+    /// partner's connection — and the shared calendar — are untouched.
+    func testDisconnectKeepsPartnerConnectionKnown() async {
+        var state = ConnectionsReducer.State()
+        state.path = .connected
+        state.email = PreviewData.googleConnected.email
+        state.partnerConnected = true
+
+        let store = TestStore(initialState: state) {
+            ConnectionsReducer()
+        } withDependencies: {
+            $0.googleClient.disconnect = {}
+            $0.toastClient.show = { _ in }
+        }
+
+        await store.send(.view(.disconnectTapped)) {
+            $0.working = true
+        }
+        await store.receive(\.disconnectSucceeded) {
+            $0.working = false
+            $0.email = nil
+            $0.path = .why
+        }
+        XCTAssertTrue(store.state.partnerConnected)
+    }
+
     func testConnectAdvancesToScopes() async {
         let store = TestStore(initialState: ConnectionsReducer.State()) {
             ConnectionsReducer()

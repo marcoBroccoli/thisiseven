@@ -4,12 +4,14 @@
     import SwiftUI
 
     struct ConnectionsWhyView: View {
+        let partnerConnected: Bool
+
         var body: some View {
             ConnectionsSetupChrome.stepScreen {
                 ConnectionsSetupChrome.heroBlock(
                     eyebrow: "OPTIONAL · YOU CAN DO THIS ANY TIME",
                     title: "Let Gmail do\nthe noticing.",
-                    subtitle: "Read-only. Even never sends, moves, or deletes mail."
+                    subtitle: "Read-only, and yours alone. Even never sends, moves, or deletes mail."
                 )
 
                 VStack(alignment: .leading, spacing: 18) {
@@ -20,14 +22,17 @@
                     )
                     ConnectionsBenefitRow(
                         systemImage: "tray",
-                        title: "Everything lands as a draft",
-                        bodyText: "Into the shared Approval Inbox. Your partner approves before anything becomes a task."
+                        title: "Everything lands in your inbox",
+                        bodyText: "Yours to review, and no one else’s to read. You decide what leaves it and becomes a shared todo."
                     )
                     ConnectionsBenefitRow(
                         systemImage: "calendar",
                         title: "Approved drafts hit the calendar",
-                        bodyText: "One event, one reminder. Never without a yes from one of you."
+                        bodyText: "One event, one reminder, on the calendar you both share. Never without your yes."
                     )
+
+                    ConnectionsPartnerNote(partnerConnected: partnerConnected)
+                        .padding(.top, 4)
                 }
                 .padding(.top, 30)
             }
@@ -36,6 +41,10 @@
 
     #Preview("Connections · why") {
         ConnectionsView(store: ConnectionsPreviewSupport.why())
+    }
+
+    #Preview("Connections · why · partner already connected") {
+        ConnectionsView(store: ConnectionsPreviewSupport.whyPartnerConnected())
     }
 
     #Preview("Connections · why · checking") {

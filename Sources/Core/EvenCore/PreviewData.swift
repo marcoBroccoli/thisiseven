@@ -222,6 +222,7 @@ public enum PreviewData {
 
     public static let googleConnected = GoogleStatus(
         connected: true,
+        partnerConnected: false,
         email: "ada@example.com",
         lastSyncAt: Date(timeIntervalSince1970: 1_720_000_000),
         lastSyncCount: 6,
@@ -235,10 +236,27 @@ public enum PreviewData {
 
     public static let googleDisconnected = GoogleStatus(
         connected: false,
+        partnerConnected: false,
         email: nil,
         lastSyncAt: nil,
         lastSyncCount: nil,
         calendarLastSyncAt: nil,
+        syncRunning: nil,
+        scanned: nil,
+        classified: nil,
+        created: nil,
+        hasMore: nil
+    )
+
+    /// The joined partner's view before they connect anything of their own:
+    /// not connected, but the household's calendar is already live.
+    public static let googlePartnerConnectedOnly = GoogleStatus(
+        connected: false,
+        partnerConnected: true,
+        email: nil,
+        lastSyncAt: nil,
+        lastSyncCount: nil,
+        calendarLastSyncAt: Date(timeIntervalSince1970: 1_720_000_000),
         syncRunning: nil,
         scanned: nil,
         classified: nil,
