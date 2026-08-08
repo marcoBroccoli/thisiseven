@@ -11,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 
+	"github.com/marcoBroccoli/thisiseven/backend/internal/google"
 	"github.com/marcoBroccoli/thisiseven/backend/internal/httpx"
 )
 
@@ -118,7 +119,7 @@ func scanTask(row pgx.Row) (TaskJSON, error) {
 	var dueOn, until, calendarSyncedAt *time.Time
 	var origin, doneBy *string
 	err := row.Scan(&t.ID, &t.Title, &t.Section, &t.OwnerMemberID, &t.Weight,
-		&t.Recurrence, &dueOn, &until, &t.RecurrenceCount, &origin,
+		&t.Recurrence, &dueOn, &t.DueTime, &until, &t.RecurrenceCount, &origin,
 		&t.GoogleEventURL, &t.CalendarSyncState,
 		&calendarSyncedAt, &t.CalendarLastError, &t.createdAt, &doneBy)
 	if err != nil {
@@ -147,8 +148,26 @@ func scanTask(row pgx.Row) (TaskJSON, error) {
 	return t, nil
 }
 
+// dueTimeCol renders the stored `time` as the wire shape ("09:30"), so nothing
+// above the database has to know Postgres hands back 09:30:00.
+const dueTimeCol = `to_char(t.due_time, 'HH24:MI')`
+
+// parseDueTime turns a stored "HH:MM" into the value the Calendar payload
+// wants. A missing or unreadable time means all-day — a publish is never lost
+// over an hour nobody can parse.
+func parseDueTime(text *string) *google.TimeOfDay {
+	if text == nil || strings.TrimSpace(*text) == "" {
+		return nil
+	}
+	t, err := google.ParseTimeOfDay(*text)
+	if err != nil {
+		return nil
+	}
+	return &t
+}
+
 const taskCols = `t.id, t.title, t.section, t.owner_member_id, t.weight,
-	t.recurrence, t.due_on, t.recurrence_until, t.recurrence_count, t.origin_label,
+	t.recurrence, t.due_on, ` + dueTimeCol + `, t.recurrence_until, t.recurrence_count, t.origin_label,
 	t.google_event_url, t.calendar_sync_state,
 	t.calendar_last_synced_at, t.calendar_last_error, t.created_at,
 	case when t.recurrence in ('daily', 'every_2_days') then rc.member_id else c.member_id end`
@@ -182,6 +201,8 @@ type taskInput struct {
 	Recurrence         *string `json:"recurrence"`
 	DueOn              *string `json:"due_on"`
 	ClearDueOn         bool    `json:"clear_due_on"`
+	DueTime            *string `json:"due_time"`
+	ClearDueTime       bool    `json:"clear_due_time"`
 	RecurrenceUntil    *string `json:"recurrence_until"`
 	RecurrenceCount    *int    `json:"recurrence_count"`
 	ClearRecurrenceEnd bool    `json:"clear_recurrence_end"`
@@ -189,9 +210,10 @@ type taskInput struct {
 
 // taskWrite holds the parsed date values a task write needs. recurrenceUntil is
 // what the client sent; the stored value is derived by resolveRecurrenceEnd once
-// the final recurrence and anchor are known.
+// the final recurrence and anchor are known. dueTime is normalized to "HH:MM".
 type taskWrite struct {
 	dueOn           *time.Time
+	dueTime         *string
 	recurrenceUntil *time.Time
 	recurrenceCount *int
 }
@@ -276,6 +298,28 @@ func (in *taskInput) validate(w http.ResponseWriter, m *Membership, forCreate bo
 		httpx.Error(w, http.StatusBadRequest, "bad_date", "set due_on or clear_due_on, not both")
 		return out, false
 	}
+	if in.DueTime != nil && *in.DueTime != "" {
+		t, err := google.ParseTimeOfDay(*in.DueTime)
+		if err != nil {
+			httpx.Error(w, http.StatusBadRequest, "bad_time", "due_time must be HH:MM (00:00–23:59)")
+			return out, false
+		}
+		out.dueTime = strPtr(t.String())
+	}
+	if in.ClearDueTime && in.DueTime != nil && *in.DueTime != "" {
+		httpx.Error(w, http.StatusBadRequest, "bad_time", "set due_time or clear_due_time, not both")
+		return out, false
+	}
+	// An hour with no day is not a schedule. The date is what the time hangs
+	// off, so a time can only arrive with (or onto) one.
+	if out.dueTime != nil && in.ClearDueOn {
+		httpx.Error(w, http.StatusBadRequest, "bad_time", "a due_time needs a due_on")
+		return out, false
+	}
+	if forCreate && out.dueTime != nil && out.dueOn == nil {
+		httpx.Error(w, http.StatusBadRequest, "bad_time", "a due_time needs a due_on")
+		return out, false
+	}
 	// A repeat ends never, on a date, or after a number of occurrences — the
 	// last two are two spellings of one bound, so only one may be sent.
 	if in.RecurrenceUntil != nil && *in.RecurrenceUntil != "" && in.RecurrenceCount != nil {
@@ -343,10 +387,11 @@ func (a *API) CreateTask(w http.ResponseWriter, r *http.Request) {
 	var id string
 	err := a.DB.QueryRow(r.Context(), `
 		insert into tasks (household_id, title, section, owner_member_id, weight,
-			recurrence, due_on, recurrence_until, recurrence_count, created_by)
-		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) returning id`,
+			recurrence, due_on, due_time, recurrence_until, recurrence_count, created_by)
+		values ($1, $2, $3, $4, $5, $6, $7, $8::text::time, $9, $10, $11) returning id`,
 		m.HouseholdID, strings.TrimSpace(*in.Title), *in.Section, *in.OwnerMemberID,
-		*in.Weight, recurrence, write.dueOn, until, write.recurrenceCount, m.MemberID).Scan(&id)
+		*in.Weight, recurrence, write.dueOn, write.dueTime, until,
+		write.recurrenceCount, m.MemberID).Scan(&id)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "internal", "could not create task")
 		return
@@ -384,16 +429,19 @@ func (a *API) UpdateTask(w http.ResponseWriter, r *http.Request) {
 		owner      string
 		recurrence string
 		dueOn      *time.Time
+		dueTime    *string
 		until      *time.Time
 		count      *int
 		createdAt  time.Time
 	}
 	if err := a.DB.QueryRow(r.Context(), `
-		select google_event_id, owner_member_id, recurrence, due_on, recurrence_until,
+		select google_event_id, owner_member_id, recurrence, due_on,
+			to_char(due_time, 'HH24:MI'), recurrence_until,
 			recurrence_count, created_at
 		from tasks where id = $1 and household_id = $2 and archived_at is null`,
 		id, m.HouseholdID).Scan(&previousEventID, &current.owner, &current.recurrence,
-		&current.dueOn, &current.until, &current.count, &current.createdAt); errors.Is(err, pgx.ErrNoRows) {
+		&current.dueOn, &current.dueTime, &current.until, &current.count,
+		&current.createdAt); errors.Is(err, pgx.ErrNoRows) {
 		httpx.Error(w, http.StatusNotFound, "not_found", "no such task")
 		return
 	} else if err != nil {
@@ -426,6 +474,22 @@ func (a *API) UpdateTask(w http.ResponseWriter, r *http.Request) {
 	case write.dueOn != nil:
 		finalDueOn = write.dueOn
 	}
+	// The time hangs off the date: removing the date removes the hour with it,
+	// and a time may never be set onto a todo that has no day.
+	finalDueTime := current.dueTime
+	switch {
+	case in.ClearDueTime:
+		finalDueTime = nil
+	case write.dueTime != nil:
+		finalDueTime = write.dueTime
+	}
+	if finalDueOn == nil {
+		if write.dueTime != nil {
+			httpx.Error(w, http.StatusBadRequest, "bad_time", "a due_time needs a due_on")
+			return
+		}
+		finalDueTime = nil
+	}
 	untilInput, countInput := write.recurrenceUntil, write.recurrenceCount
 	switch {
 	case in.ClearRecurrenceEnd:
@@ -447,11 +511,12 @@ func (a *API) UpdateTask(w http.ResponseWriter, r *http.Request) {
 			weight = coalesce($4, weight),
 			recurrence = $5,
 			due_on = $6,
-			recurrence_until = $7,
-			recurrence_count = $8
-		where id = $9 and household_id = $10 and archived_at is null`,
+			due_time = $7::text::time,
+			recurrence_until = $8,
+			recurrence_count = $9
+		where id = $10 and household_id = $11 and archived_at is null`,
 		in.Title, in.Section, in.OwnerMemberID, in.Weight, recurrence, finalDueOn,
-		until, countInput, id, m.HouseholdID)
+		finalDueTime, until, countInput, id, m.HouseholdID)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "internal", "could not update task")
 		return

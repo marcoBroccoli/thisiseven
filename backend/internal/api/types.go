@@ -81,6 +81,9 @@ type TaskJSON struct {
 	Weight        int     `json:"weight"`
 	Recurrence    string  `json:"recurrence"`
 	DueOn         *string `json:"due_on,omitempty"`
+	// DueTime is the optional "HH:MM" the todo is due at on that day. Absent
+	// means all day — the shape every todo had before timed slots existed.
+	DueTime *string `json:"due_time,omitempty"`
 	// RecurrenceUntil is the last scheduled day of a bounded repeat, derived
 	// from RecurrenceCount when the household picked a number of times.
 	RecurrenceUntil      *string `json:"recurrence_until,omitempty"`

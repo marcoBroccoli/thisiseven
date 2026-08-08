@@ -260,4 +260,116 @@ func TestBuildEventMarshalsExactlyOneDateKind(t *testing.T) {
 	if strings.Contains(string(raw), "dateTime") {
 		t.Fatalf("empty dateTime must not survive marshalling: %s", raw)
 	}
+	if strings.Contains(string(raw), "timeZone") {
+		t.Fatalf("an all-day event carries no timeZone: %s", raw)
+	}
+}
+
+// The same rule from the other side: a timed todo marshals dateTime and never
+// an empty date, or Google answers 400 badRequest.
+func TestBuildEventTimedMarshalsExactlyOneDateKind(t *testing.T) {
+	at := TimeOfDay{Hour: 9, Minute: 30}
+	payload := BuildEventAt("Dentist", "", nil,
+		time.Date(2026, 8, 9, 0, 0, 0, 0, time.UTC), &at, "on_day")
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), `"dateTime":"2026-08-09T09:30:00+02:00"`) {
+		t.Fatalf("timed start missing: %s", raw)
+	}
+	// An hour long, so the household sees a slot rather than a whole day.
+	if !strings.Contains(string(raw), `"dateTime":"2026-08-09T10:30:00+02:00"`) {
+		t.Fatalf("timed end must be start + 1h: %s", raw)
+	}
+	if strings.Contains(string(raw), `"date":"`) {
+		t.Fatalf("empty all-day date must not survive marshalling: %s", raw)
+	}
+	// Google expands a recurring timed event in this zone.
+	if !strings.Contains(string(raw), `"timeZone":"Europe/Amsterdam"`) {
+		t.Fatalf("timed event needs its zone: %s", raw)
+	}
+	if payload.Start.Date != "" || payload.End.Date != "" {
+		t.Fatalf("timed event carries a date: %+v", payload)
+	}
+}
+
+// A time of day is a wall clock, not an instant: 09:30 stays 09:30 when the
+// clocks change, so the offset — not the hour — is what moves.
+func TestBuildEventTimedKeepsWallClockAcrossDST(t *testing.T) {
+	at := TimeOfDay{Hour: 9, Minute: 30}
+	winter := BuildEventAt("Dentist", "", nil,
+		time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC), &at, "on_day")
+	if winter.Start.DateTime != "2026-01-15T09:30:00+01:00" {
+		t.Fatalf("winter start = %q", winter.Start.DateTime)
+	}
+}
+
+// No time means the event Even has always written — BuildEvent is that call.
+func TestBuildEventAtWithoutTimeIsAllDay(t *testing.T) {
+	day := time.Date(2026, 8, 9, 0, 0, 0, 0, time.UTC)
+	timed := BuildEventAt("Go to Delft", "", nil, day, nil, "1_day")
+	allDay := BuildEvent("Go to Delft", "", nil, day, "1_day")
+	if timed.Start != allDay.Start || timed.End != allDay.End {
+		t.Fatalf("untimed payload drifted: %+v vs %+v", timed, allDay)
+	}
+	if timed.Reminders.Overrides[0].Minutes != ReminderMinutes("1_day") {
+		t.Fatalf("all-day reminder = %d", timed.Reminders.Overrides[0].Minutes)
+	}
+}
+
+// A timed todo has a real hour to count back from, so the 09:00-on-the-earlier
+// -day heuristic that all-day events need does not apply to it.
+func TestTimedReminderMinutes(t *testing.T) {
+	for reminder, want := range map[string]int{
+		"on_day": 0, "1_day": 1440, "3_days": 4320, "1_week": 10080,
+	} {
+		if got := TimedReminderMinutes(reminder); got != want {
+			t.Errorf("TimedReminderMinutes(%q) = %d, want %d", reminder, got, want)
+		}
+		at := TimeOfDay{Hour: 18, Minute: 0}
+		payload := BuildEventAt("Call the landlord", "", nil,
+			time.Date(2026, 8, 9, 0, 0, 0, 0, time.UTC), &at, reminder)
+		if got := payload.Reminders.Overrides[0].Minutes; got != want {
+			t.Errorf("%q payload reminder = %d, want %d", reminder, got, want)
+		}
+	}
+}
+
+func TestParseTimeOfDay(t *testing.T) {
+	for _, in := range []string{"00:00", "09:30", "23:59"} {
+		got, err := ParseTimeOfDay(in)
+		if err != nil {
+			t.Fatalf("ParseTimeOfDay(%q): %v", in, err)
+		}
+		if got.String() != in {
+			t.Fatalf("ParseTimeOfDay(%q).String() = %q", in, got.String())
+		}
+	}
+	// A single-digit hour is understood and normalized — the wire shape stays
+	// HH:MM whatever a client typed.
+	if got, err := ParseTimeOfDay(" 9:30 "); err != nil || got.String() != "09:30" {
+		t.Fatalf("ParseTimeOfDay(\" 9:30 \") = %q, %v", got.String(), err)
+	}
+	for _, in := range []string{"", "24:00", "23:60", "09:30:00", "half nine", "0930"} {
+		if _, err := ParseTimeOfDay(in); err == nil {
+			t.Fatalf("ParseTimeOfDay(%q) should fail", in)
+		}
+	}
+}
+
+// A slot booked directly in Google keeps its household-local hour; an all-day
+// event has none, which is how a todo says "that day, no particular time".
+func TestCalendarEventDueTime(t *testing.T) {
+	timed := CalendarEvent{Start: EventDate{DateTime: "2026-07-23T23:30:00Z"}}
+	at, ok := timed.DueTime()
+	if !ok || at.String() != "01:30" {
+		t.Fatalf("timed due time = %q, %t", at.String(), ok)
+	}
+	if due, _ := timed.DueOn(); due != "2026-07-24" {
+		t.Fatalf("timed due date = %q", due)
+	}
+	if _, ok := (CalendarEvent{Start: EventDate{Date: "2026-07-22"}}).DueTime(); ok {
+		t.Fatal("an all-day event has no time of day")
+	}
 }

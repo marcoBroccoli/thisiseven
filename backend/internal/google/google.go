@@ -431,7 +431,11 @@ type EventExtendedProperties struct {
 // may survive marshalling.
 type EventDate struct {
 	Date     string `json:"date,omitempty"`     // YYYY-MM-DD, all-day
-	DateTime string `json:"dateTime,omitempty"` // RFC3339 for a direct timed event
+	DateTime string `json:"dateTime,omitempty"` // RFC3339 for a timed event
+	// TimeZone rides along with dateTime only. Google requires it to expand a
+	// recurring timed event, and it is what keeps a 09:30 chore at 09:30 across
+	// a DST change rather than drifting an hour.
+	TimeZone string `json:"timeZone,omitempty"`
 }
 
 type EventReminder struct {
@@ -465,13 +469,68 @@ func (e CalendarEvent) DueOn() (string, bool) {
 		return e.Start.Date, true
 	}
 	if t, err := time.Parse(time.RFC3339, e.Start.DateTime); err == nil {
-		if amsterdam, err := time.LoadLocation("Europe/Amsterdam"); err == nil {
-			return t.In(amsterdam).Format("2006-01-02"), true
-		}
-		return t.Format("2006-01-02"), true
+		return t.In(Amsterdam).Format("2006-01-02"), true
 	}
 	return "", false
 }
+
+// DueTime is the household-local start of a timed event. An all-day event has
+// none, which is how a todo says "that day, no particular hour".
+func (e CalendarEvent) DueTime() (TimeOfDay, bool) {
+	if len(e.Start.Date) == len("2006-01-02") {
+		return TimeOfDay{}, false
+	}
+	t, err := time.Parse(time.RFC3339, e.Start.DateTime)
+	if err != nil {
+		return TimeOfDay{}, false
+	}
+	local := t.In(Amsterdam)
+	return TimeOfDay{Hour: local.Hour(), Minute: local.Minute()}, true
+}
+
+// Amsterdam is the household's civil timezone. A due date — and now a due time
+// — is a wall-clock value on their day, never a UTC instant. tzdata is embedded
+// via time/tzdata in main.
+var Amsterdam = func() *time.Location {
+	loc, err := time.LoadLocation("Europe/Amsterdam")
+	if err != nil {
+		return time.UTC
+	}
+	return loc
+}()
+
+// TimeOfDay is the optional wall-clock start of a dated todo. No time means the
+// all-day event Even has always written.
+type TimeOfDay struct {
+	Hour   int
+	Minute int
+}
+
+// ParseTimeOfDay reads the wire shape, "HH:MM" between 00:00 and 23:59.
+func ParseTimeOfDay(s string) (TimeOfDay, error) {
+	t, err := time.Parse("15:04", strings.TrimSpace(s))
+	if err != nil {
+		return TimeOfDay{}, fmt.Errorf("google: %q is not a HH:MM time of day", s)
+	}
+	return TimeOfDay{Hour: t.Hour(), Minute: t.Minute()}, nil
+}
+
+func (t TimeOfDay) String() string {
+	return fmt.Sprintf("%02d:%02d", t.Hour, t.Minute)
+}
+
+// On places the time on a calendar day, in the household's zone. The day is
+// read in its own location, the same way the all-day payload formats it, so a
+// date scanned as UTC midnight keeps its civil date.
+func (t TimeOfDay) On(day time.Time) time.Time {
+	y, m, d := day.Date()
+	return time.Date(y, m, d, t.Hour, t.Minute, 0, 0, Amsterdam)
+}
+
+// TimedEventDuration is how long a timed todo occupies the shared calendar.
+// Even has no duration field: a todo is a moment to act, and an hour is enough
+// room for the household to see it without swallowing the day.
+const TimedEventDuration = time.Hour
 
 // ReminderMinutes maps a draft reminder to popup minutes before the all-day
 // event's midnight start, aiming for 09:00 on the earlier day (on_day fires
@@ -484,6 +543,23 @@ func ReminderMinutes(reminder string) int {
 		return 3*1440 - 540
 	case "1_week":
 		return 7*1440 - 540
+	default: // on_day
+		return 0
+	}
+}
+
+// TimedReminderMinutes is the same choice measured from a real start time. The
+// 09:00 heuristic exists only because an all-day event starts at midnight; a
+// timed todo has an actual hour to count back from, so "on the day" means when
+// it happens and "1 day before" means exactly 24 hours earlier.
+func TimedReminderMinutes(reminder string) int {
+	switch reminder {
+	case "1_day":
+		return 1440
+	case "3_days":
+		return 3 * 1440
+	case "1_week":
+		return 7 * 1440
 	default: // on_day
 		return 0
 	}
@@ -513,10 +589,20 @@ func RecurrenceRule(recurrence string, until *time.Time, count *int) []string {
 	return []string{rule}
 }
 
-// BuildEvent renders the payload for a shared household todo. recurrence is
-// optional for compatibility with one-off callers; repeat values become a
-// Google Calendar RRULE rather than a chain of copied events.
+// BuildEvent renders the all-day payload for a shared household todo.
+// recurrence is optional for compatibility with one-off callers; repeat values
+// become a Google Calendar RRULE rather than a chain of copied events.
 func BuildEvent(title, fromLabel string, amountCents *int64, dueOn time.Time, reminder string, recurrence ...string) EventPayload {
+	return BuildEventAt(title, fromLabel, amountCents, dueOn, nil, reminder, recurrence...)
+}
+
+// BuildEventAt renders the payload for a shared household todo, timed when the
+// household said *when*. With a dueTime the event is a real one-hour slot at
+// that local hour; without one it is the all-day event Even has always written
+// — the two shapes never mix, because Google 400s a start carrying both a date
+// and a dateTime.
+func BuildEventAt(title, fromLabel string, amountCents *int64, dueOn time.Time,
+	dueTime *TimeOfDay, reminder string, recurrence ...string) EventPayload {
 	desc := "Managed in Even — shared household todo."
 	if fromLabel != "" {
 		desc += "\nFrom: " + fromLabel
@@ -524,15 +610,22 @@ func BuildEvent(title, fromLabel string, amountCents *int64, dueOn time.Time, re
 	if amountCents != nil {
 		desc += fmt.Sprintf("\nAmount: €%d.%02d", *amountCents/100, *amountCents%100)
 	}
-	payload := EventPayload{
-		Summary:     title,
-		Description: desc,
-		Start:       EventDate{Date: dueOn.Format("2006-01-02")},
-		End:         EventDate{Date: dueOn.AddDate(0, 0, 1).Format("2006-01-02")},
-		Reminders: EventReminder{
-			UseDefault: false,
-			Overrides:  []ReminderOverride{{Method: "popup", Minutes: ReminderMinutes(reminder)}},
-		},
+	payload := EventPayload{Summary: title, Description: desc}
+	minutes := ReminderMinutes(reminder)
+	if dueTime == nil {
+		payload.Start = EventDate{Date: dueOn.Format("2006-01-02")}
+		payload.End = EventDate{Date: dueOn.AddDate(0, 0, 1).Format("2006-01-02")}
+	} else {
+		start := dueTime.On(dueOn)
+		end := start.Add(TimedEventDuration)
+		zone := Amsterdam.String()
+		payload.Start = EventDate{DateTime: start.Format(time.RFC3339), TimeZone: zone}
+		payload.End = EventDate{DateTime: end.Format(time.RFC3339), TimeZone: zone}
+		minutes = TimedReminderMinutes(reminder)
+	}
+	payload.Reminders = EventReminder{
+		UseDefault: false,
+		Overrides:  []ReminderOverride{{Method: "popup", Minutes: minutes}},
 	}
 	if len(recurrence) > 0 {
 		payload.Recurrence = RecurrenceRule(recurrence[0], nil, nil)

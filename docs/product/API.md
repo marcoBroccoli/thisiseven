@@ -42,6 +42,7 @@ invite      {id, household_id, household_name, invited_by_name, email, status,
 week        {id, index, started_on, closed_at?}          // index: 1,2,3…
 task        {id, title, section: "chore"|"admin", owner_member_id, weight: 1|2|3,
              recurrence: "none"|"daily"|"every_2_days"|"weekly", due_on?,
+             due_time?,                                   // "HH:MM"; absent = all day
              recurrence_until?, recurrence_count?,
              done, done_by_member_id?, meta_line, google_event_url?,
              calendar_sync_state: "not_scheduled"|"synced"|"external_changed"|
@@ -155,11 +156,12 @@ trade       {id, task_id, task_title, from_member_id, to_member_id, accepted}
     them). Single-node in-process hub (home `evend`); not multi-replica.
 
 - `POST /v1/tasks` `{title, section, owner_member_id, weight, recurrence, due_on?,
-  recurrence_until?, recurrence_count?}` — either partner may create, for
-  **either** owner (sending work over is allowed)
+  due_time?, recurrence_until?, recurrence_count?}` — either partner may create,
+  for **either** owner (sending work over is allowed)
 - `PATCH /v1/tasks/{id}` (same fields, plus `clear_due_on?: true` to remove a
-  date and its mapped Calendar event, and `clear_recurrence_end?: true` to make a
-  repeat unbounded again) · `DELETE /v1/tasks/{id}` (archives) — **owner only**
+  date and its mapped Calendar event, `clear_due_time?: true` to drop back to an
+  all-day todo, and `clear_recurrence_end?: true` to make a repeat unbounded
+  again) · `DELETE /v1/tasks/{id}` (archives) — **owner only**
 - `POST /v1/tasks/{id}/toggle` → task — creates/removes open-week completion —
   **owner only**
 - `POST /v1/tasks/{id}/calendar/resolve` `{action:"acknowledge"|"restore"|"retry"}`
@@ -223,12 +225,44 @@ AUG 15 · WEEKLY · UNTIL SEP 12
 DAILY · 6 TIMES
 VATTENFALL · TODAY           one-off from a Gmail draft
 ```
+
+### A time of day — optional, and only then a timed event
+
+A todo may say *when* on its due day. `due_time` is `"HH:MM"` (00:00–23:59) in
+the household's zone (Europe/Amsterdam) — a wall clock, not an instant, so 09:30
+stays 09:30 across a DST change. Absent means all day, which is every todo that
+existed before this field and the default for every todo created without one.
+
+| Todo | Shared Calendar event | Reminder `on_day` · `1_day` · `3_days` · `1_week` |
+| --- | --- | --- |
+| `due_on` only | all-day, `start.date` | 0 · 900 · 3780 · 9540 min (09:00 the earlier day) |
+| `due_on` + `due_time` | one-hour slot, `start.dateTime` + `timeZone` | 0 · 1440 · 4320 · 10080 min before the start |
+
+- The event carries **either** a date or a dateTime, never both — Google answers
+  `400 badRequest` to a start holding both keys.
+- One hour is Even's slot length; there is no duration field. `timeZone` rides
+  along with a timed start because Google needs it to expand a recurring one.
+- The time hangs off the date: `due_time` without a `due_on` is `400 bad_time`
+  (*"a due_time needs a due_on"*), and `clear_due_on` clears the time with it.
+  `clear_due_time` alone keeps the date and returns the todo to all-day.
+  A malformed time is `400 bad_time`; sending both `due_time` and
+  `clear_due_time` is the same error.
+- **Drafts stay date-only.** A Gmail suggestion carries `due_on` and no hour, so
+  an approved draft becomes an all-day todo the household can time afterwards.
+  Nothing in `/v1/drafts` gained a time field.
+- Round trip: a slot booked or moved directly in the shared Calendar imports its
+  hour into `due_time` (see `POST /v1/calendar/sync`).
+
 - `GET  /v1/calendar?from=YYYY-MM-DD&to=YYYY-MM-DD` → `{from, to, items}` —
-  dated todos in the requested window (maximum 120 days)
+  dated todos in the requested window (maximum 120 days). Items carry the
+  occurrence date only; the hour lives on the task (`GET /v1/summary`).
 - `POST /v1/calendar/sync` → `{calendar_id, imported, updated, deleted,
   unchanged, last_synced_at}` — reconciles only the dedicated shared Google
-  Calendar; imports direct events, applies external title/date edits, and marks
-  remote deletions for review without archiving local todos.
+  Calendar; imports direct events, applies external title/date/time edits, and
+  marks remote deletions for review without archiving local todos.
+  A timed event imports as a todo with `due_time`; an event dragged onto a time
+  (or off one) in Google is an external change like any other — the todo takes
+  the new hour and turns `external_changed` for review.
   **Self-healing:** each sync first re-publishes any open dated todo that never
   reached the calendar (no event id, or `retry_required`) — todos dated before
   the calendar existed, or whose publish failed, appear on the next sync

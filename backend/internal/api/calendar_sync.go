@@ -28,9 +28,20 @@ type CalendarSyncJSON struct {
 }
 
 type calendarMappedTask struct {
-	ID    string
-	Title string
-	DueOn time.Time
+	ID      string
+	Title   string
+	DueOn   time.Time
+	DueTime *string // "HH:MM"; nil is an all-day todo
+}
+
+// sameDueTime compares two optional times of day. Nil is a real value here —
+// "all day" — so a slot dragged onto an all-day event is a change, and so is
+// a time cleared in Google.
+func sameDueTime(a, b *string) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	return *a == *b
 }
 
 // POST /v1/calendar/sync reconciles the dedicated household Calendar with
@@ -167,15 +178,22 @@ func (a *API) syncCalendar(ctx context.Context, m *Membership) (CalendarSyncJSON
 		if err != nil {
 			continue
 		}
+		// A timed event carries its hour into the todo, so a slot booked (or
+		// moved) directly in Google round-trips instead of flattening to a day.
+		var dueTime *string
+		if tod, timed := event.DueTime(); timed {
+			dueTime = strPtr(tod.String())
+		}
 
 		if isMapped {
-			if local.Title != title || dateStr(local.DueOn) != dueOn {
+			if local.Title != title || dateStr(local.DueOn) != dueOn || !sameDueTime(local.DueTime, dueTime) {
 				if _, err := a.DB.Exec(ctx, `
-					update tasks set title = $1, due_on = $2, google_event_url = nullif($3, ''),
-						calendar_sync_state = 'external_changed', calendar_last_synced_at = $4,
+					update tasks set title = $1, due_on = $2, due_time = $3::text::time,
+						google_event_url = nullif($4, ''),
+						calendar_sync_state = 'external_changed', calendar_last_synced_at = $5,
 						calendar_last_error = null
-					where id = $5 and household_id = $6`,
-					title, due, event.HTMLLink, now, local.ID, m.HouseholdID); err != nil {
+					where id = $6 and household_id = $7`,
+					title, due, dueTime, event.HTMLLink, now, local.ID, m.HouseholdID); err != nil {
 					return CalendarSyncJSON{}, err
 				}
 				out.Updated++
@@ -198,12 +216,12 @@ func (a *API) syncCalendar(ctx context.Context, m *Membership) (CalendarSyncJSON
 		// assignment remains a normal todo action in the app.
 		tag, err := a.DB.Exec(ctx, `
 			insert into tasks (household_id, title, section, owner_member_id, weight,
-				recurrence, due_on, origin_label, created_by, google_event_id,
+				recurrence, due_on, due_time, origin_label, created_by, google_event_id,
 				google_event_url, calendar_sync_state, calendar_last_synced_at)
-			values ($1, $2, 'admin', $3, 1, 'none', $4, 'CALENDAR · IMPORTED',
-				$3, $5, nullif($6, ''), 'synced', $7)
+			values ($1, $2, 'admin', $3, 1, 'none', $4, $5::text::time, 'CALENDAR · IMPORTED',
+				$3, $6, nullif($7, ''), 'synced', $8)
 			on conflict do nothing`,
-			m.HouseholdID, title, m.MemberID, due, event.ID, event.HTMLLink, now)
+			m.HouseholdID, title, m.MemberID, due, dueTime, event.ID, event.HTMLLink, now)
 		if err != nil {
 			return CalendarSyncJSON{}, err
 		}
@@ -223,7 +241,7 @@ func (a *API) syncCalendar(ctx context.Context, m *Membership) (CalendarSyncJSON
 
 func (a *API) mappedCalendarTasks(ctx context.Context, householdID string) (map[string]calendarMappedTask, error) {
 	rows, err := a.DB.Query(ctx, `
-		select id, title, due_on, google_event_id from tasks
+		select id, title, due_on, to_char(due_time, 'HH24:MI'), google_event_id from tasks
 		where household_id = $1 and archived_at is null and google_event_id is not null
 		and due_on is not null`, householdID)
 	if err != nil {
@@ -235,7 +253,7 @@ func (a *API) mappedCalendarTasks(ctx context.Context, householdID string) (map[
 	for rows.Next() {
 		var item calendarMappedTask
 		var eventID string
-		if err := rows.Scan(&item.ID, &item.Title, &item.DueOn, &eventID); err != nil {
+		if err := rows.Scan(&item.ID, &item.Title, &item.DueOn, &item.DueTime, &eventID); err != nil {
 			return nil, err
 		}
 		items[eventID] = item

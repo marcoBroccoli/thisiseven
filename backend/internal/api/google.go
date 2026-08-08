@@ -690,13 +690,20 @@ func (a *API) publishTaskToCalendar(ctx context.Context, m *Membership,
 	var recurrence string
 	var recurrenceUntil *time.Time
 	var recurrenceCount *int
+	var dueTimeText *string
 	if err := a.DB.QueryRow(ctx, `
-		select google_event_id, recurrence, recurrence_until, recurrence_count
+		select google_event_id, recurrence, recurrence_until, recurrence_count,
+			to_char(due_time, 'HH24:MI')
 		from tasks where id = $1`, taskID).
-		Scan(&existingEventID, &recurrence, &recurrenceUntil, &recurrenceCount); err != nil {
+		Scan(&existingEventID, &recurrence, &recurrenceUntil, &recurrenceCount,
+			&dueTimeText); err != nil {
 		return a.recordCalendarFailure(ctx, taskID, "the todo could not be prepared for Calendar")
 	}
-	payload := google.BuildEvent(title, fromLabel, amountCents, *dueOn, reminder)
+	// The hour is read from the stored row, never passed in: every caller
+	// publishes *after* writing the todo, so the row is the honest answer to
+	// "is this an all-day event or a slot?".
+	payload := google.BuildEventAt(title, fromLabel, amountCents, *dueOn,
+		parseDueTime(dueTimeText), reminder)
 	payload.Recurrence = google.RecurrenceRule(recurrence, recurrenceUntil, recurrenceCount)
 	payload.ExtendedProperties = &google.EventExtendedProperties{
 		Private: map[string]string{"evenTaskId": taskID},

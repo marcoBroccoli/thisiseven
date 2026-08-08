@@ -203,7 +203,8 @@ func (a *API) republishDatedTodos(ctx context.Context, householdID, token, calen
 		filter = ` and (google_event_id is null or calendar_sync_state = 'retry_required')`
 	}
 	rows, err := a.DB.Query(ctx, `
-		select id, title, coalesce(origin_label, ''), due_on, recurrence,
+		select id, title, coalesce(origin_label, ''), due_on,
+			to_char(due_time, 'HH24:MI'), recurrence,
 			recurrence_until, recurrence_count
 		from tasks
 		where household_id = $1 and archived_at is null and due_on is not null`+filter, householdID)
@@ -214,6 +215,7 @@ func (a *API) republishDatedTodos(ctx context.Context, householdID, token, calen
 	type todo struct {
 		id, title, label string
 		due              time.Time
+		dueTime          *string
 		recurrence       string
 		until            *time.Time
 		count            *int
@@ -221,14 +223,17 @@ func (a *API) republishDatedTodos(ctx context.Context, householdID, token, calen
 	var todos []todo
 	for rows.Next() {
 		var t todo
-		if err := rows.Scan(&t.id, &t.title, &t.label, &t.due, &t.recurrence, &t.until, &t.count); err == nil {
+		if err := rows.Scan(&t.id, &t.title, &t.label, &t.due, &t.dueTime,
+			&t.recurrence, &t.until, &t.count); err == nil {
 			todos = append(todos, t)
 		}
 	}
 	rows.Close()
 
 	for _, t := range todos {
-		payload := google.BuildEvent(t.title, t.label, nil, t.due, "1_day")
+		// A timed todo is re-published as the same slot it already was — a
+		// recovery sweep must not quietly turn somebody's 09:30 into all-day.
+		payload := google.BuildEventAt(t.title, t.label, nil, t.due, parseDueTime(t.dueTime), "1_day")
 		payload.Recurrence = google.RecurrenceRule(t.recurrence, t.until, t.count)
 		payload.ExtendedProperties = &google.EventExtendedProperties{
 			Private: map[string]string{"evenTaskId": t.id},
