@@ -199,8 +199,9 @@ func (a *API) GoogleStatus(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, http.StatusOK, out)
 }
 
-// POST /v1/google/disconnect — only the caller's own mailbox. Drafts already
-// discovered stay; they simply stop being refreshed.
+// POST /v1/google/disconnect — only the caller's own mailbox, and everything
+// that mailbox produced: disconnecting empties their inbox rather than leaving
+// mail-derived drafts behind with no way to refresh them.
 //
 // Calendar side effect: when the caller owns the shared calendar, ownership
 // moves to the other connected partner FIRST — the handover needs the
@@ -216,15 +217,45 @@ func (a *API) GoogleDisconnect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.Google.Forget(m.MemberID)
+	removed, flushError := a.flushMailboxForMember(r.Context(), m.MemberID)
 	out := map[string]any{
 		"connected":                  false,
 		"partner_connected":          a.partnerConnected(r.Context(), m),
 		"calendar_owner_transferred": transferred,
+		"drafts_removed":             removed,
 	}
 	if calendarError != "" {
 		out["calendar_error"] = calendarError
 	}
+	if flushError != "" {
+		out["flush_error"] = flushError
+	}
 	httpx.JSON(w, http.StatusOK, out)
+}
+
+// flushMailboxForMember erases what one member's mailbox produced: every draft
+// it discovered — pending, approved or dismissed — and every processed-email
+// verdict, so a later reconnect rediscovers the mail from scratch instead of
+// skipping it. The partner's drafts are a different mailbox and are untouched.
+//
+// Approved drafts already became household todos; those tasks stay. They are
+// the household's work now, not a copy of anyone's mail.
+//
+// It runs AFTER the calendar handover and the token delete: privacy first, and
+// the handover needs the token this disconnect destroys.
+func (a *API) flushMailboxForMember(ctx context.Context, memberID string) (removed int, flushError string) {
+	tag, err := a.DB.Exec(ctx, `delete from drafts where source_member_id = $1`, memberID)
+	if err != nil {
+		slog.Error("disconnect draft flush", "member", memberID, "err", err)
+		return 0, "the inbox could not be emptied — reconnect and try again"
+	}
+	removed = int(tag.RowsAffected())
+	if _, err := a.DB.Exec(ctx,
+		`delete from processed_emails where member_id = $1`, memberID); err != nil {
+		slog.Error("disconnect processed_emails flush", "member", memberID, "err", err)
+		return removed, "some mail history could not be cleared — a reconnect may skip old mail"
+	}
+	return removed, ""
 }
 
 // POST /v1/google/sync — start (or join) an async scan-and-classify job.

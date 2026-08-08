@@ -168,9 +168,18 @@ VATTENFALL · TODAY           one-off from a Gmail draft
   `partner_connected` is a bare boolean: the partner's address is never
   disclosed. `calendar_last_sync_at` is the household's shared calendar.
 - `POST /v1/google/disconnect` → `{connected: false, partner_connected,
-  calendar_owner_transferred, calendar_error?}` — drops only the caller's
-  mailbox. Drafts it already produced stay in their inbox; they simply stop
-  refreshing. The shared calendar survives.
+  calendar_owner_transferred, drafts_removed, calendar_error?, flush_error?}` —
+  drops only the caller's mailbox. The shared calendar survives.
+  **Inbox flush:** disconnecting also **deletes every draft that mailbox
+  produced** (`drafts.source_member_id = caller`, *all* statuses — pending,
+  approved and dismissed) and every `processed_emails` row for that member, so
+  the inbox is empty and a later reconnect rediscovers the mail from scratch
+  instead of skipping it. `drafts_removed` counts the deleted rows. Todos that
+  approved drafts already created **stay**: they are household work, not a copy
+  of anyone's mail. The partner's drafts and verdicts are a different mailbox
+  and are untouched. The flush runs **after** the calendar handover and the
+  token delete; if it fails the disconnect still succeeds and returns
+  `flush_error` copy.
   **Calendar side effect:** when the caller owns the shared calendar and the
   partner is connected, ownership is transferred **before** the caller's token
   is deleted (the handover needs it) — `calendar_owner_transferred: true`.
@@ -182,6 +191,9 @@ VATTENFALL · TODAY           one-off from a Gmail draft
 - `POST /v1/google/sync` → `202 {started: true}` — scans the caller's mailbox.
   409 `not_connected` when the caller has not connected, 409 `sync_running`
   while their own scan is in flight (the partner's scan never blocks it).
+  This is what the Inbox's **Fetch** control calls: the app starts the scan,
+  then polls `GET /v1/google/status` (`sync_running`, `scanned`, `created`) and
+  re-reads `GET /v1/drafts` between polls, so mail arrives batch by batch.
 - `GET  /v1/google/calendar-info` → `{calendar_id, shared, share_url?, owner,
   listed, can_add}` — the household's shared calendar, readable by either
   member as soon as **one** of them is connected.
