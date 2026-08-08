@@ -20,15 +20,23 @@
                             drafts: store.drafts,
                             isLoading: store.isLoading,
                             onSelectDraft: { send(.selectDraft($0)) },
+                            onApprove: { send(.approveDraft($0), animation: EvenMotion.reveal) },
+                            onDismiss: { send(.dismissDraft($0), animation: EvenMotion.reveal) },
                             onRefresh: { await send(.refresh).finish() }
                         )
                     case .calendar:
                         InboxCalendarSurface(
                             monthTitle: store.calendarMonthTitle,
+                            monthStart: store.calendarFrom,
                             items: store.calendarItems,
+                            layout: store.calendarLayout,
+                            selectedDay: store.selectedCalendarDay,
                             me: store.me,
                             partner: store.partner,
                             isLoading: store.isCalendarLoading,
+                            onSelectLayout: { send(.selectCalendarLayout($0), animation: EvenMotion.reveal) },
+                            onStepMonth: { send(.stepCalendarMonth($0)) },
+                            onSelectDay: { send(.selectCalendarDay($0), animation: EvenMotion.reveal) },
                             onRefresh: { await send(.refresh).finish() }
                         )
                     }
@@ -47,8 +55,6 @@
                         surface: store.surface,
                         onSelect: { send(.selectSurface($0), animation: EvenMotion.page) }
                     )
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 14)
                 }
                 .sheet(item: $store.scope(state: \.review, action: \.review)) { reviewStore in
                     ReviewView(store: reviewStore)

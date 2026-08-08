@@ -105,8 +105,8 @@
 
         @ViewBuilder
         private var metaLine: some View {
-            if !dueAmountLine.isEmpty {
-                Text(dueAmountLine)
+            if !amountLine.isEmpty {
+                Text(amountLine)
                     .font(.system(size: 14, weight: .semibold))
                     .monospacedDigit()
                     .foregroundStyle(EvenTokens.espresso)
@@ -130,16 +130,114 @@
             .padding(.top, 28)
         }
 
+        /// Due date + reminder offset. The API carries no "detected" flag, so the
+        /// provenance line is derived from what it *does* carry: a Gmail draft's
+        /// `due_on` can only have come from the email extractor.
         private var reminderSection: some View {
             VStack(alignment: .leading, spacing: 12) {
                 sectionLabel("Calendar reminder")
-                FlowLayout(spacing: 8) {
-                    ForEach(DraftReminder.allCases, id: \.self) { option in
-                        reminderPill(option)
+                dueDateRow
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(reminderCaption)
+                        .font(.system(size: 12.5, design: .serif))
+                        .italic()
+                        .foregroundStyle(EvenTokens.stone)
+                        .fixedSize(horizontal: false, vertical: true)
+                    FlowLayout(spacing: 8) {
+                        ForEach(DraftReminder.allCases, id: \.self) { option in
+                            reminderPill(option)
+                        }
                     }
                 }
+                .padding(.top, 4)
             }
             .padding(.top, 28)
+        }
+
+        @ViewBuilder
+        private var dueDateRow: some View {
+            if let due = dueDate {
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(dueProvenance)
+                            .font(.system(size: 9.5, weight: .semibold))
+                            .tracking(1.2)
+                            .foregroundStyle(store.dueOnEdited ? EvenTokens.pine : EvenTokens.stone)
+                        Text(InboxFormat.weekdayMonthDay.string(from: due))
+                            .font(.system(size: 17, design: .serif))
+                            .foregroundStyle(EvenTokens.espresso)
+                    }
+                    Spacer(minLength: 0)
+                    DatePicker(
+                        "Due date",
+                        selection: dueBinding(fallback: due),
+                        displayedComponents: .date
+                    )
+                    .labelsHidden()
+                    .datePickerStyle(.compact)
+                    .accessibilityIdentifier("draft-due-date")
+                }
+                .padding(.vertical, 12)
+                .padding(.horizontal, 14)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(EvenTokens.paperCard)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(EvenTokens.espresso.opacity(0.12), lineWidth: 1)
+                        )
+                )
+            } else {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(store.draft.isFromGmail ? "NO DATE FOUND IN THE EMAIL" : "NO DATE ON THIS DRAFT")
+                        .font(.system(size: 9.5, weight: .semibold))
+                        .tracking(1.2)
+                        .foregroundStyle(EvenTokens.stone)
+                    Text("Nothing to count back from yet — add a date and the reminder has a day to work with.")
+                        .font(.system(size: 12.5, design: .serif))
+                        .italic()
+                        .foregroundStyle(EvenTokens.stone)
+                        .fixedSize(horizontal: false, vertical: true)
+                    chip("ADD A DATE", selected: false) {
+                        send(.setDueDate(Date()))
+                    }
+                    .accessibilityIdentifier("draft-add-due-date")
+                }
+                .padding(.vertical, 12)
+                .padding(.horizontal, 14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(EvenTokens.paperCard)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(EvenTokens.espresso.opacity(0.12), lineWidth: 1)
+                        )
+                )
+            }
+        }
+
+        private var dueDate: Date? {
+            store.dueOn.flatMap { InboxFormat.day.date(from: $0) }
+        }
+
+        private func dueBinding(fallback: Date) -> Binding<Date> {
+            Binding(
+                get: { dueDate ?? fallback },
+                set: { send(.setDueDate($0)) }
+            )
+        }
+
+        private var dueProvenance: String {
+            if store.dueOnEdited { return "YOU CHANGED THIS" }
+            if store.dueOnWasDetected { return "DETECTED FROM THE EMAIL" }
+            return "ON THIS DRAFT"
+        }
+
+        private var reminderCaption: String {
+            store.dueOn == nil
+                ? "Pick how early Calendar should nudge you — it needs a date above to count back from."
+                : "Tap the date to change it. Calendar nudges you this far ahead of it."
         }
 
         private func sectionLabel(_ text: String) -> some View {
@@ -213,15 +311,11 @@
             .buttonStyle(.evenPlain)
         }
 
-        private var dueAmountLine: String {
-            var parts: [String] = []
-            if let cents = store.draft.amountCents {
-                parts.append((Double(cents) / 100).formatted(.currency(code: "EUR")))
-            }
-            if let due = store.draft.dueOn {
-                parts.append("Due \(due)")
-            }
-            return parts.joined(separator: " · ")
+        /// Amount only — the date moved into the reminder section, where it is
+        /// formatted, sourced and editable instead of a raw ISO string.
+        private var amountLine: String {
+            guard let cents = store.draft.amountCents else { return "" }
+            return (Double(cents) / 100).formatted(.currency(code: "EUR"))
         }
     }
 
@@ -267,6 +361,27 @@
     }
 
     #if DEBUG
+        #Preview("Review draft · no date detected") {
+            Color.clear
+                .sheet(isPresented: .constant(true)) {
+                    ReviewView(
+                        store: Store(
+                            initialState: ReviewReducer.State(
+                                draft: {
+                                    var draft = PreviewData.pendingDrafts[1]
+                                    draft.dueOn = nil
+                                    return draft
+                                }(),
+                                me: PreviewData.ada,
+                                partner: PreviewData.umut
+                            )
+                        ) {
+                            ReviewReducer()
+                        }
+                    )
+                }
+        }
+
         #Preview("Review draft") {
             Color.clear
                 .sheet(isPresented: .constant(true)) {

@@ -3,10 +3,14 @@
     import Design
     import EvenCore
     import SwiftUI
+    import UIKit
     import VisualEffects
 
     // MARK: - Chrome
 
+    /// Pinned page chrome. The native segmented control is translucent, so the
+    /// strip carries its own **opaque** paper band (plus a paper capsule under
+    /// the control itself) — otherwise the list scrolls visibly through it.
     struct InboxSurfaceSwitcher: View {
         let surface: InboxReducer.State.Surface
         let onSelect: (InboxReducer.State.Surface) -> Void
@@ -18,7 +22,23 @@
             }
             .pickerStyle(.segmented)
             .labelsHidden()
+            .background(
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .fill(EvenTokens.paperCard)
+            )
             .accessibilityIdentifier("inbox-surface-switch")
+            .padding(.horizontal, 20)
+            .padding(.top, 2)
+            .padding(.bottom, 12)
+            .frame(maxWidth: .infinity)
+            .background {
+                // Paper + grain, matching the page ground — content must never
+                // ghost through this strip while the list scrolls under it.
+                EvenPaperBackground()
+            }
+            .overlay(alignment: .bottom) {
+                EvenTokens.espresso.opacity(0.08).frame(height: 1)
+            }
         }
 
         private var selection: Binding<InboxReducer.State.Surface> {
@@ -28,10 +48,14 @@
 
     // MARK: - Drafts surface
 
+    /// A `List`, not a `ScrollView` — `swipeActions` is List-only, and the
+    /// approve / dismiss swipes are the point of this surface.
     struct InboxDraftsSurface: View {
         let drafts: IdentifiedArrayOf<Draft>
         let isLoading: Bool
         let onSelectDraft: (UUID) -> Void
+        let onApprove: (UUID) -> Void
+        let onDismiss: (UUID) -> Void
         let onRefresh: () async -> Void
 
         private var showSkeleton: Bool {
@@ -39,36 +63,45 @@
         }
 
         var body: some View {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    InboxDraftsHeader(isEmpty: !showSkeleton && drafts.isEmpty)
+            List {
+                InboxDraftsHeader(
+                    isEmpty: !showSkeleton && drafts.isEmpty,
+                    showsSwipeLegend: showSkeleton || !drafts.isEmpty
+                )
+                .inboxPaperListRow()
+                .padding(.bottom, 14)
 
-                    ZStack(alignment: .topLeading) {
-                        if showSkeleton {
-                            InboxDraftsSkeleton()
-                                .padding(.top, 14)
-                                .transition(EvenMotion.fadeOnly)
-                        } else if drafts.isEmpty {
-                            InboxEmptyState()
-                                .padding(.top, 48)
-                                .frame(maxWidth: .infinity)
-                                .transition(EvenMotion.fadeUp)
-                        } else {
-                            InboxDraftList(
-                                drafts: drafts,
-                                onSelectDraft: onSelectDraft
-                            )
-                            .transition(EvenMotion.fadeUp)
-                        }
+                if showSkeleton {
+                    InboxDraftsSkeleton()
+                        .inboxPaperListRow()
+                } else if drafts.isEmpty {
+                    InboxEmptyState()
+                        .padding(.top, 48)
+                        .inboxPaperListRow()
+                } else {
+                    ForEach(drafts) { draft in
+                        InboxDraftRow(
+                            draft: draft,
+                            onSelect: { onSelectDraft(draft.id) },
+                            onApprove: { onApprove(draft.id) },
+                            onDismiss: { onDismiss(draft.id) }
+                        )
                     }
-                    .animation(EvenMotion.reveal, value: showSkeleton)
-                    .animation(EvenMotion.reveal, value: drafts.ids)
+
+                    Text("Nothing reaches Calendar until you approve it.")
+                        .font(.system(size: 12, design: .serif))
+                        .italic()
+                        .foregroundStyle(EvenTokens.stone)
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 18)
+                        .inboxPaperListRow()
                 }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 40)
             }
+            .listStyle(.plain)
+            .environment(\.defaultMinListRowHeight, 0)
             .evenScrollOnPaper()
             .refreshable { await onRefresh() }
+            .animation(EvenMotion.reveal, value: showSkeleton)
         }
     }
 
@@ -86,6 +119,7 @@
 
     struct InboxDraftsHeader: View {
         let isEmpty: Bool
+        let showsSwipeLegend: Bool
 
         var body: some View {
             VStack(alignment: .leading, spacing: 0) {
@@ -99,58 +133,92 @@
                     .padding(.top, 4)
                 Text(isEmpty
                     ? "Inbox zero. Rare — enjoy it."
-                    : "Drafts, not tasks. Tap one to review.")
+                    : "Tap a draft to fix the owner, title or date before it goes.")
                     .font(.system(size: 12.5, design: .serif))
                     .italic()
                     .foregroundStyle(EvenTokens.stone)
                     .padding(.top, 4)
+                    .fixedSize(horizontal: false, vertical: true)
                     .contentTransition(.opacity)
                     .animation(EvenMotion.reveal, value: isEmpty)
+                if showsSwipeLegend {
+                    InboxSwipeLegend()
+                        .padding(.top, 10)
+                }
             }
         }
     }
 
-    struct InboxDraftList: View {
-        let drafts: IdentifiedArrayOf<Draft>
-        let onSelectDraft: (UUID) -> Void
-
+    /// The two swipes, spelled out. Cheaper than a tutorial and it stays on
+    /// screen — "as-is" is the whole distinction against tapping the row.
+    struct InboxSwipeLegend: View {
         var body: some View {
-            VStack(spacing: 0) {
-                VStack(spacing: 10) {
-                    ForEach(drafts) { draft in
-                        Button {
-                            onSelectDraft(draft.id)
-                        } label: {
-                            InboxDraftCard(draft: draft)
-                                // On the label — `.plain` only hits glyphs unless the
-                                // full rounded rect is the content shape.
-                                .contentShape(
-                                    RoundedRectangle(cornerRadius: 13, style: .continuous)
-                                )
-                        }
-                        .buttonStyle(.evenPlain)
-                        .transition(Self.listTransition)
-                    }
-                }
-                .padding(.top, 14)
-
-                Text("Nothing reaches Calendar until you approve it.")
-                    .font(.system(size: 12, design: .serif))
-                    .italic()
-                    .foregroundStyle(EvenTokens.stone)
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, 14)
+            HStack(spacing: 14) {
+                legend(
+                    icon: "arrow.right",
+                    text: "SWIPE · APPROVE AS-IS",
+                    color: EvenTokens.pine
+                )
+                legend(
+                    icon: "arrow.left",
+                    text: "SWIPE · DISMISS",
+                    color: EvenTokens.terracotta
+                )
+                Spacer(minLength: 0)
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(
+                "Swipe a draft right to approve it as-is, left to dismiss it. Tap it to review first."
+            )
         }
 
-        /// Collapse upward on remove; settle in from below on insert.
-        private static var listTransition: AnyTransition {
-            .asymmetric(
-                insertion: EvenMotion.fadeUp,
-                removal: .opacity
-                    .combined(with: .scale(scale: 0.96, anchor: .top))
-                    .combined(with: .offset(y: -6))
-            )
+        private func legend(icon: String, text: String, color: Color) -> some View {
+            HStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.system(size: 8, weight: .bold))
+                Text(text)
+                    .font(.system(size: 8.5, weight: .semibold))
+                    .tracking(0.7)
+            }
+            .foregroundStyle(color)
+        }
+    }
+
+    /// Row = card + gestures. A whole-row `Button` competes with the
+    /// `swipeActions` recognizer (see `TodayTaskRow`), so tapping is a gesture.
+    struct InboxDraftRow: View {
+        let draft: Draft
+        let onSelect: () -> Void
+        let onApprove: () -> Void
+        let onDismiss: () -> Void
+
+        var body: some View {
+            InboxDraftCard(draft: draft)
+                .contentShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+                .gesture(
+                    TapGesture().onEnded {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        onSelect()
+                    }
+                )
+                .accessibilityAddTraits(.isButton)
+                .accessibilityHint("Opens review — owner, title and date — before approving.")
+                .accessibilityActions {
+                    Button("Approve as-is", action: onApprove)
+                    Button("Dismiss", action: onDismiss)
+                }
+                .padding(.vertical, 5)
+                // Text-only labels: iOS 26 stacks title over icon in the tray,
+                // and the words are what make "as-is" legible in the first place.
+                .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                    Button("Approve", action: onApprove)
+                        .tint(EvenTokens.pine)
+                }
+                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                    Button("Dismiss", role: .destructive, action: onDismiss)
+                        .tint(EvenTokens.terracotta)
+                }
+                .inboxPaperListRow()
         }
     }
 
@@ -159,16 +227,20 @@
 
         var body: some View {
             VStack(alignment: .leading, spacing: 4) {
-                HStack {
+                HStack(spacing: 8) {
                     Text(draft.fromLabel.uppercased())
                         .font(.system(size: 9.5, weight: .bold))
                         .tracking(0.8)
                         .foregroundStyle(EvenTokens.espresso)
-                    Spacer()
+                    Spacer(minLength: 0)
                     Text(InboxCopy.urgencyLabel(draft.urgency))
                         .font(.system(size: 8, weight: .bold))
                         .tracking(0.8)
                         .foregroundStyle(InboxCopy.urgencyColor(draft.urgency))
+                    // Reads as "this opens something" — the tap is review, not approve.
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 8, weight: .semibold))
+                        .foregroundStyle(EvenTokens.stone.opacity(0.6))
                 }
                 Text(draft.subject)
                     .font(.system(size: 14.5, design: .serif))
@@ -183,8 +255,12 @@
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 13, style: .continuous)
+                    .fill(EvenTokens.paperCard)
+            )
             .overlay(
-                RoundedRectangle(cornerRadius: 13)
+                RoundedRectangle(cornerRadius: 13, style: .continuous)
                     .stroke(EvenTokens.espresso.opacity(0.14), lineWidth: 1.5)
             )
             .accessibilityIdentifier("draft-card-\(draft.subject)")
@@ -209,39 +285,62 @@
 
     struct InboxCalendarSurface: View {
         let monthTitle: String
+        /// `YYYY-MM-DD` first day of the loaded window — the grid's anchor month.
+        let monthStart: String
         let items: [CalendarItem]
+        let layout: InboxReducer.State.CalendarLayout
+        let selectedDay: String?
         let me: Member?
         let partner: Member?
         let isLoading: Bool
+        let onSelectLayout: (InboxReducer.State.CalendarLayout) -> Void
+        let onStepMonth: (Int) -> Void
+        let onSelectDay: (String?) -> Void
         let onRefresh: () async -> Void
 
         private var showSkeleton: Bool {
             isLoading && items.isEmpty
         }
 
+        /// The grid filters the agenda below it; no selection means the month.
+        private var visibleItems: [CalendarItem] {
+            guard layout == .month, let selectedDay else { return items }
+            return items.filter { $0.dueOn == selectedDay }
+        }
+
         var body: some View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(monthTitle.isEmpty ? "Shared calendar" : monthTitle)
-                        .font(.system(size: 22, weight: .medium, design: .serif))
-                        .italic()
-                        .frame(maxWidth: .infinity)
+                    monthHeader
+                    layoutPicker
+                        .padding(.top, 14)
 
                     ZStack(alignment: .topLeading) {
                         if showSkeleton {
                             InboxCalendarSkeleton(me: me, partner: partner)
                                 .transition(EvenMotion.fadeOnly)
-                        } else if items.isEmpty {
-                            Text("No dated items this month yet.")
-                                .font(.system(size: 13, design: .serif))
-                                .italic()
-                                .foregroundStyle(EvenTokens.stone)
-                                .frame(maxWidth: .infinity)
-                                .padding(.top, 40)
-                                .transition(EvenMotion.fadeUp)
                         } else {
-                            calendarGroups
-                                .transition(EvenMotion.fadeUp)
+                            VStack(alignment: .leading, spacing: 0) {
+                                if layout == .month {
+                                    InboxMonthGrid(
+                                        monthStart: monthStart,
+                                        items: items,
+                                        selectedDay: selectedDay,
+                                        me: me,
+                                        partner: partner,
+                                        onSelectDay: onSelectDay
+                                    )
+                                    .padding(.top, 16)
+                                }
+                                if items.isEmpty {
+                                    emptyNote("No dated items this month yet.")
+                                } else if visibleItems.isEmpty {
+                                    emptyNote("Nothing on that day. Tap it again for the whole month.")
+                                } else {
+                                    calendarGroups
+                                }
+                            }
+                            .transition(EvenMotion.fadeUp)
                         }
                     }
                     .animation(EvenMotion.reveal, value: showSkeleton)
@@ -254,8 +353,61 @@
             .refreshable { await onRefresh() }
         }
 
+        private var monthHeader: some View {
+            HStack(spacing: 8) {
+                monthStepButton(-1, icon: "chevron.left", label: "Previous month")
+                Text(monthTitle.isEmpty ? "Shared calendar" : monthTitle)
+                    .font(.system(size: 22, weight: .medium, design: .serif))
+                    .italic()
+                    .foregroundStyle(EvenTokens.espresso)
+                    .frame(maxWidth: .infinity)
+                    .contentTransition(.opacity)
+                    .animation(EvenMotion.reveal, value: monthTitle)
+                monthStepButton(1, icon: "chevron.right", label: "Next month")
+            }
+        }
+
+        private func monthStepButton(_ step: Int, icon: String, label: String) -> some View {
+            Button { onStepMonth(step) } label: {
+                Image(systemName: icon)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(EvenTokens.espresso)
+                    .frame(width: 34, height: 34)
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.evenPlain)
+            .accessibilityLabel(label)
+            .accessibilityIdentifier("calendar-month-\(step > 0 ? "next" : "previous")")
+        }
+
+        private var layoutPicker: some View {
+            HStack(spacing: 8) {
+                ForEach(InboxReducer.State.CalendarLayout.allCases, id: \.self) { option in
+                    InboxSegmentChip(
+                        title: option.label,
+                        selected: layout == option
+                    ) {
+                        onSelectLayout(option)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("Calendar layout")
+            .accessibilityIdentifier("calendar-layout-switch")
+        }
+
+        private func emptyNote(_ text: String) -> some View {
+            Text(text)
+                .font(.system(size: 13, design: .serif))
+                .italic()
+                .foregroundStyle(EvenTokens.stone)
+                .frame(maxWidth: .infinity)
+                .padding(.top, 32)
+        }
+
         private var calendarGroups: some View {
-            let grouped = Dictionary(grouping: items, by: \.dueOn)
+            let grouped = Dictionary(grouping: visibleItems, by: \.dueOn)
             return ForEach(grouped.keys.sorted(), id: \.self) { day in
                 InboxCalendarDayGroup(
                     day: day,
@@ -265,6 +417,36 @@
                 )
                 .padding(.top, 14)
             }
+        }
+    }
+
+    /// Composer chip chrome (espresso fill / stroke) — same vocabulary as
+    /// Today's organize chips, not a second segmented control.
+    struct InboxSegmentChip: View {
+        let title: String
+        let selected: Bool
+        let action: () -> Void
+
+        var body: some View {
+            Button(action: action) {
+                Text(title.uppercased())
+                    .font(.system(size: 11, weight: .semibold))
+                    .tracking(0.8)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .foregroundStyle(selected ? EvenTokens.paperRaised : EvenTokens.espresso)
+                    .background(selected ? EvenTokens.espresso : Color.clear)
+                    .overlay(
+                        Capsule().stroke(
+                            EvenTokens.espresso.opacity(selected ? 0 : 0.16),
+                            lineWidth: 1.5
+                        )
+                    )
+                    .clipShape(Capsule())
+                    .contentShape(Capsule())
+            }
+            .buttonStyle(.evenPlain)
+            .accessibilityAddTraits(selected ? .isSelected : [])
         }
     }
 
@@ -300,8 +482,7 @@
                     .font(.system(size: 9.5, weight: .semibold))
                     .tracking(1.6)
                     .foregroundStyle(EvenTokens.stone)
-                    .padding(.top, 18)
-                    .padding(.bottom, 6)
+                    .padding(.bottom, 2)
                 ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
                     InboxCalendarRow(
                         item: item,
@@ -388,6 +569,19 @@
             if let me, ownerMemberId == me.id { return me }
             if let partner, ownerMemberId == partner.id { return partner }
             return nil
+        }
+    }
+
+    // MARK: - List row chrome
+
+    extension View {
+        /// Page gutter as row insets (never `.padding` on the List — that
+        /// narrows the scroll container and clips the swipe tray off the edge),
+        /// clear background, no separators.
+        func inboxPaperListRow() -> some View {
+            listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
         }
     }
 

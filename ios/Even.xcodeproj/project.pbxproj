@@ -22,6 +22,7 @@
 		8351BB659FA3BB3CBFB26E39 /* EvenCore in Frameworks */ = {isa = PBXBuildFile; productRef = ECE4C1DBF9EB08B2BEBF418F /* EvenCore */; };
 		913AC9278E61AF9F75A83C7D /* Provider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F78212281B874F7A9927CE9 /* Provider.swift */; };
 		97337179DADD98893FD04B03 /* EvenCore in Frameworks */ = {isa = PBXBuildFile; productRef = BC8855C5959238DB961D5E1E /* EvenCore */; };
+		A5CD8D48403E67F462D5E7CB /* EvenInboxCaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEC6F5F7799ACB4A7063D8E5 /* EvenInboxCaptureTests.swift */; };
 		B135015F35DAB6F6D9DB3719 /* EvenCore in Frameworks */ = {isa = PBXBuildFile; productRef = 77FE1BA83888A92694C148ED /* EvenCore */; };
 		B13B405352CFEEDD3214FE1B /* EvenWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D4D615724B500AF5E6A94D3 /* EvenWidgetsBundle.swift */; };
 		C4EB1926A7F34D55C3D46572 /* Newsreader-Italic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F84BCAA71BD336B04B69B68C /* Newsreader-Italic.ttf */; };
@@ -88,6 +89,7 @@
 		A95A43EE2CE1E45F9972E3E5 /* EvenApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvenApp.swift; sourceTree = "<group>"; };
 		AEA39CF6AF81E4C3FFCDD70C /* EvenUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = EvenUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		BBDDAB9B4AEDD5149420DEC2 /* EvenWatchWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = EvenWatchWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		BEC6F5F7799ACB4A7063D8E5 /* EvenInboxCaptureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvenInboxCaptureTests.swift; sourceTree = "<group>"; };
 		C4ADA82FF8A71056A43540F9 /* SourceSans3-Italic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SourceSans3-Italic.ttf"; sourceTree = "<group>"; };
 		C688FC6E0628DFA9807BE19F /* LockWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockWidgets.swift; sourceTree = "<group>"; };
 		D1EA31DAE6E54C9B701AEFB6 /* EvenWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EvenWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -148,6 +150,7 @@
 				485A1F14A32A42EC812D3FEC /* EvenCaptureTests.swift */,
 				13C1CDC5FE2BAE5109126544 /* EvenDemoWalkTests.swift */,
 				F0AAF5AFC5B42AA346D03E33 /* EvenE2ETests.swift */,
+				BEC6F5F7799ACB4A7063D8E5 /* EvenInboxCaptureTests.swift */,
 				931341DE12ABBB762C4D3C5F /* PhysicsStressTests.swift */,
 			);
 			path = EvenUITests;
@@ -430,6 +433,7 @@
 				11EB501584EEC0179413FDAB /* EvenCaptureTests.swift in Sources */,
 				19BA6F9E80E5AFB954B0A481 /* EvenDemoWalkTests.swift in Sources */,
 				821468CA8DC9C28DA7DFF161 /* EvenE2ETests.swift in Sources */,
+				A5CD8D48403E67F462D5E7CB /* EvenInboxCaptureTests.swift in Sources */,
 				CEDE401B661D23F2C09659D5 /* PhysicsStressTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

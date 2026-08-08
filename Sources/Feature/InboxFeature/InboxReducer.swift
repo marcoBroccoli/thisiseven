@@ -21,6 +21,13 @@ public struct InboxReducer {
         public var surface: Surface = .inbox
         public var calendarItems: [CalendarItem] = []
         public var calendarMonthTitle = ""
+        /// First day of the loaded window (`YYYY-MM-DD`) — the month grid's anchor.
+        public var calendarFrom = ""
+        /// Months away from the current one; the window is derived, never stored as a `Date`.
+        public var calendarMonthOffset = 0
+        public var calendarLayout: CalendarLayout = .month
+        /// Day filter under the month grid (`YYYY-MM-DD`); nil shows the whole month.
+        public var selectedCalendarDay: String?
         public var me: Member?
         public var partner: Member?
         @Presents public var review: ReviewReducer.State?
@@ -33,6 +40,18 @@ public struct InboxReducer {
 
         public enum Surface: Equatable, Sendable {
             case inbox, calendar
+        }
+
+        /// Month grid vs. the flat day-grouped agenda — same data, two readings.
+        public enum CalendarLayout: String, Equatable, Sendable, CaseIterable {
+            case month, agenda
+
+            public var label: String {
+                switch self {
+                case .month: "Month"
+                case .agenda: "List"
+                }
+            }
         }
     }
 
@@ -54,6 +73,13 @@ public struct InboxReducer {
             case refresh
             case selectDraft(UUID)
             case selectSurface(State.Surface)
+            /// Swipe-approve: take the draft exactly as Gmail suggested it.
+            case approveDraft(UUID)
+            /// Swipe-dismiss: same call the review sheet's "Dismiss draft" makes.
+            case dismissDraft(UUID)
+            case selectCalendarLayout(State.CalendarLayout)
+            case stepCalendarMonth(Int)
+            case selectCalendarDay(String?)
         }
     }
 
@@ -107,18 +133,29 @@ public struct InboxReducer {
                 let body = EvenAPIClient.DraftPatchBody(
                     title: review.title.trimmingCharacters(in: .whitespacesAndNewlines),
                     ownerMemberId: review.ownerMemberId,
+                    dueOn: review.dueOn,
                     reminder: review.reminder
                 )
                 state.review = nil
-                return .run { [draftsClient] send in
-                    do {
-                        _ = try await draftsClient.update(id, body)
-                        _ = try await draftsClient.approve(id)
-                        await send(.approved(id))
-                    } catch {
-                        await send(.presentToast(.inboxFailure(error, .approve)))
-                    }
-                }
+                return approve(id, body)
+
+            case let .view(.approveDraft(id)):
+                // "As-is" still patches — the sheet and the swipe must be one
+                // path, so the draft's own values go over the same two calls.
+                guard let draft = state.drafts[id: id] else { return .none }
+                return approve(
+                    id,
+                    EvenAPIClient.DraftPatchBody(
+                        title: draft.title.trimmingCharacters(in: .whitespacesAndNewlines),
+                        ownerMemberId: draft.ownerMemberId,
+                        dueOn: draft.dueOn,
+                        reminder: draft.reminder
+                    )
+                )
+
+            case let .view(.dismissDraft(id)):
+                guard state.drafts[id: id] != nil else { return .none }
+                return .send(.dismiss(id))
 
             case .review(.presented(.view(.dismissTapped))):
                 guard let review = state.review else { return .none }
@@ -160,7 +197,10 @@ public struct InboxReducer {
                 case .calendar:
                     let empty = state.calendarItems.isEmpty
                     if empty { state.isCalendarLoading = true }
-                    return loadCalendar(surviveStoreTaskCancellation: empty)
+                    return loadCalendar(
+                        monthOffset: state.calendarMonthOffset,
+                        surviveStoreTaskCancellation: empty
+                    )
                 }
 
             case let .view(.selectSurface(surface)):
@@ -169,11 +209,28 @@ public struct InboxReducer {
                 if state.calendarItems.isEmpty {
                     state.isCalendarLoading = true
                 }
-                return loadCalendar()
+                return loadCalendar(monthOffset: state.calendarMonthOffset)
+
+            case let .view(.selectCalendarLayout(layout)):
+                state.calendarLayout = layout
+                return .none
+
+            case let .view(.stepCalendarMonth(step)):
+                state.calendarMonthOffset += step
+                state.selectedCalendarDay = nil
+                state.calendarItems = []
+                state.isCalendarLoading = true
+                return loadCalendar(monthOffset: state.calendarMonthOffset)
+
+            case let .view(.selectCalendarDay(day)):
+                // Same day twice clears the filter — the grid is a filter, not a mode.
+                state.selectedCalendarDay = state.selectedCalendarDay == day ? nil : day
+                return .none
 
             case let .calendarLoaded(response):
                 state.isCalendarLoading = false
                 state.calendarItems = response.items
+                state.calendarFrom = response.from
                 state.calendarMonthTitle = monthTitle(from: response.from)
                 return .none
 
@@ -211,8 +268,25 @@ public struct InboxReducer {
         .cancellable(id: CancelID.drafts, cancelInFlight: true)
     }
 
-    private func loadCalendar(surviveStoreTaskCancellation: Bool = false) -> Effect<Action> {
-        .run { [calendarClient, context, surviveStoreTaskCancellation] send in
+    /// One approve = patch then approve. The review sheet and the swipe both
+    /// land here so "as-is" can never drift from "reviewed".
+    private func approve(_ id: UUID, _ body: EvenAPIClient.DraftPatchBody) -> Effect<Action> {
+        .run { [draftsClient] send in
+            do {
+                _ = try await draftsClient.update(id, body)
+                _ = try await draftsClient.approve(id)
+                await send(.approved(id))
+            } catch {
+                await send(.presentToast(.inboxFailure(error, .approve)))
+            }
+        }
+    }
+
+    private func loadCalendar(
+        monthOffset: Int = 0,
+        surviveStoreTaskCancellation: Bool = false
+    ) -> Effect<Action> {
+        .run { [calendarClient, context, surviveStoreTaskCancellation, monthOffset] send in
             await Self.runFetch(
                 surviveStoreTaskCancellation: surviveStoreTaskCancellation,
                 context: context,
@@ -220,13 +294,15 @@ public struct InboxReducer {
                 fetch: {
                     let cal = Calendar.current
                     let now = Date()
-                    let start = cal.date(from: cal.dateComponents([.year, .month], from: now)) ?? now
+                    let thisMonth = cal.date(from: cal.dateComponents([.year, .month], from: now)) ?? now
+                    let start = cal.date(byAdding: .month, value: monthOffset, to: thisMonth) ?? thisMonth
                     let end = cal.date(byAdding: DateComponents(month: 1, day: -1), to: start) ?? now
-                    let f = ISO8601DateFormatter()
-                    f.formatOptions = [.withFullDate]
+                    // Civil days, local calendar. `ISO8601DateFormatter` is UTC
+                    // by default, which shifted the window (and the month title)
+                    // a day back for every timezone east of GMT.
                     return try await calendarClient.window(
-                        f.string(from: start),
-                        f.string(from: end)
+                        InboxFormat.day.string(from: start),
+                        InboxFormat.day.string(from: end)
                     )
                 },
                 success: { .calendarLoaded($0) },

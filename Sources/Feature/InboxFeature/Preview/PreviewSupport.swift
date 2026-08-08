@@ -58,6 +58,7 @@ public enum InboxPreviewSupport {
         state.surface = .calendar
         state.calendarItems = PreviewData.calendarMonth.items
         state.calendarMonthTitle = "August 2026"
+        state.calendarFrom = PreviewData.calendarMonth.from
         state.me = PreviewData.ada
         state.partner = PreviewData.umut
         state.isLoading = false
