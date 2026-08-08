@@ -51,6 +51,16 @@
             return store(state: state)
         }
 
+        /// Walking into somebody else's household with the code they read out.
+        @MainActor
+        static func joining() -> StoreOf<HouseholdsReducer> {
+            var state = loadedState()
+            state.path = .join
+            state.joinInviteCode = "K4M2XP"
+            state.joinDisplayName = PreviewData.ada.displayName
+            return store(state: state)
+        }
+
         @MainActor
         static func accepting() -> StoreOf<HouseholdsReducer> {
             var state = loadedState()

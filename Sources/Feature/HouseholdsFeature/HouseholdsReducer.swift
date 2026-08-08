@@ -30,6 +30,10 @@ public struct HouseholdsReducer {
         public var busyInviteID: UUID?
         public var newHouseholdName = ""
         public var newDisplayName = ""
+        /// The code somebody else read out to you. Held uppercased — the server
+        /// upper-cases it too, so what you see is what it looks up.
+        public var joinInviteCode = ""
+        public var joinDisplayName = ""
         public var acceptingInvite: HouseholdInvite?
         public var acceptDisplayName = ""
         public var working = false
@@ -70,6 +74,10 @@ public struct HouseholdsReducer {
             !acceptDisplayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !working
         }
 
+        public var canSubmitJoin: Bool {
+            !joinInviteCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !working
+        }
+
         /// A row only takes an address while a seat is free and nobody is on it.
         public func canInvite(_ row: HouseholdRow) -> Bool {
             row.hasFreeSeat && row.pendingInviteEmail == nil
@@ -92,7 +100,7 @@ public struct HouseholdsReducer {
     }
 
     public enum Path: Equatable, Sendable {
-        case list, create, accept
+        case list, create, accept, join
     }
 
     /// What `/v1/me` says about the household currently open, and the name the
@@ -124,6 +132,8 @@ public struct HouseholdsReducer {
         case declineFailed(String)
         case createSucceeded(Household)
         case createFailed(String)
+        case joinSucceeded(Household)
+        case joinFailed(String)
         case leaveSucceeded(householdID: UUID, deleted: Bool, wasOpen: Bool)
         case leaveFailed(String)
         case presentToast(Toast)
@@ -141,6 +151,8 @@ public struct HouseholdsReducer {
             case inviteCodeCopied
             case createTapped
             case submitCreate
+            case joinTapped
+            case submitJoin
             case acceptTapped(UUID)
             case submitAccept
             case declineTapped(UUID)
@@ -169,6 +181,12 @@ public struct HouseholdsReducer {
         BindingReducer()
         Reduce { state, action in
             switch action {
+            // Codes are read out, not typed carefully — hold the field in the
+            // shape the server looks up so a paste reads the same as typing.
+            case .binding(\.joinInviteCode):
+                state.joinInviteCode = state.joinInviteCode.uppercased()
+                return .none
+
             case .binding:
                 return .none
 
@@ -310,6 +328,47 @@ public struct HouseholdsReducer {
                 )
 
             case let .createFailed(message):
+                state.working = false
+                return toastEffect(.init(message: message, tone: .error))
+
+            case .view(.joinTapped):
+                state.path = .join
+                state.joinInviteCode = ""
+                state.joinDisplayName = state.myDisplayName
+                return .none
+
+            case .view(.submitJoin):
+                guard state.canSubmitJoin else { return .none }
+                state.working = true
+                let code = state.joinInviteCode
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                    .uppercased()
+                let display = Self.displayName(state.joinDisplayName, fallback: state.myDisplayName)
+                return .run { [householdClient] send in
+                    do {
+                        let household = try await householdClient.join(code, display)
+                        await send(.joinSucceeded(household))
+                    } catch {
+                        await send(.joinFailed(Self.joinCopy(for: error)))
+                    }
+                }
+
+            case let .joinSucceeded(household):
+                state.working = false
+                state.path = .list
+                state.joinInviteCode = ""
+                // The client already pinned it (`ActiveHousehold`) — the place
+                // you just walked into is the place you are looking at.
+                state.activeHouseholdID = household.id
+                return .merge(
+                    .send(.delegate(.activeHouseholdChanged(household.id))),
+                    load(),
+                    toastEffect(.init(message: "you’re in \(household.name)", tone: .success))
+                )
+
+            case let .joinFailed(message):
+                // Stay on the form: a mistyped code is one character away from
+                // working, and bouncing back to the list loses the name too.
                 state.working = false
                 return toastEffect(.init(message: message, tone: .error))
 
@@ -506,6 +565,18 @@ public struct HouseholdsReducer {
         case "household_full": return "someone took the seat first"
         case "already_in_household": return "you’re already in there"
         default: return copy(for: error, fallback: "couldn’t answer that invite")
+        }
+    }
+
+    /// A code is somebody reading six characters aloud — say what went wrong in
+    /// the same voice, and never blame the person holding the phone.
+    static func joinCopy(for error: Error) -> String {
+        switch (error as? APIError)?.code {
+        case "bad_code": return "that code doesn’t open anything — check it with your partner"
+        case "household_full": return "both seats are taken here"
+        case "already_in_household": return "you’re already in that household"
+        case "missing_fields": return "a code and a name, please"
+        default: return copy(for: error, fallback: "couldn’t join that household")
         }
     }
 

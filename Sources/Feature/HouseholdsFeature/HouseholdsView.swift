@@ -51,6 +51,8 @@
                         HouseholdCreateFormView(store: store)
                     case .accept:
                         HouseholdAcceptInviteView(store: store)
+                    case .join:
+                        HouseholdJoinFormView(store: store)
                     }
                 }
                 .padding(.horizontal, HouseholdsChrome.pageHorizontal)
@@ -65,15 +67,36 @@
         }
 
         /// One persistent CTA for every step — the title and the target change,
-        /// the button does not.
+        /// the button does not. The list adds the second way in underneath;
+        /// when it leaves, the primary rides down to the edge.
         private var footer: some View {
-            EvenPrimaryButton(
-                footerTitle,
-                enabled: footerEnabled,
-                accessibilityId: "households-primary"
-            ) {
-                send(footerAction, animation: EvenMotion.page)
+            VStack(spacing: 10) {
+                EvenPrimaryButton(
+                    footerTitle,
+                    enabled: footerEnabled,
+                    accessibilityId: "households-primary"
+                ) {
+                    send(footerAction, animation: EvenMotion.page)
+                }
+
+                if store.path == .list {
+                    Button {
+                        send(.joinTapped, animation: EvenMotion.page)
+                    } label: {
+                        Text("Join with a code")
+                            .font(.system(size: 10, weight: .semibold))
+                            .tracking(1.4)
+                            .underline(true, color: EvenTokens.stone)
+                            .foregroundStyle(EvenTokens.stone)
+                            .padding(6)
+                    }
+                    .buttonStyle(.evenPlain)
+                    .frame(maxWidth: .infinity)
+                    .accessibilityIdentifier("households-join-with-code")
+                    .transition(EvenMotion.fadeUp)
+                }
             }
+            .animation(EvenMotion.page, value: store.path == .list)
             .padding(.horizontal, HouseholdsChrome.pageHorizontal)
             .padding(.top, 10)
             .padding(.bottom, 6)
@@ -84,6 +107,7 @@
             case .list: return store.households.isEmpty ? "Start a household" : "Start another household"
             case .create: return store.working ? "Starting…" : "Create household"
             case .accept: return store.working ? "Taking the seat…" : "Take the seat"
+            case .join: return store.working ? "Joining…" : "Join household"
             }
         }
 
@@ -92,6 +116,7 @@
             case .list: return !store.isLoading
             case .create: return store.canSubmitCreate
             case .accept: return store.canSubmitAccept
+            case .join: return store.canSubmitJoin
             }
         }
 
@@ -100,6 +125,7 @@
             case .list: return .createTapped
             case .create: return .submitCreate
             case .accept: return .submitAccept
+            case .join: return .submitJoin
             }
         }
 
@@ -133,6 +159,7 @@
             case .list: return "Households"
             case .create: return "New household"
             case .accept: return "Take the seat"
+            case .join: return "Join a household"
             }
         }
     }
@@ -152,6 +179,12 @@
     #Preview("Households · leaving") {
         NavigationStack {
             HouseholdsView(store: HouseholdsPreviewSupport.leaveConfirmation())
+        }
+    }
+
+    #Preview("Households · join with a code") {
+        NavigationStack {
+            HouseholdsView(store: HouseholdsPreviewSupport.joining())
         }
     }
 

@@ -412,6 +412,174 @@ final class HouseholdsFeatureTests: XCTestCase {
         XCTAssertEqual(names.value?.1, "Ada")
     }
 
+    // MARK: Joining with a code
+
+    /// A code is the other way in. Joining opens the household it belongs to —
+    /// the same switch the accept-invite flow performs — and the list is pulled
+    /// again so the new place has a row.
+    func testJoiningWithACodeOpensThatHousehold() async {
+        var state = loaded()
+        state.path = .join
+        state.joinInviteCode = "  k4m2xp  "
+        state.joinDisplayName = ""
+        state.myDisplayName = "Ada"
+
+        let sent = LockIsolated<(String, String)?>(nil)
+        let store = TestStore(initialState: state) {
+            HouseholdsReducer()
+        } withDependencies: {
+            $0.householdClient.join = { code, display in
+                sent.setValue((code, display))
+                return PreviewData.household
+            }
+            $0.householdClient.list = { PreviewData.households }
+            $0.householdClient.loadProfile = { PreviewData.me }
+            $0.toastClient.show = { _ in }
+        }
+        store.exhaustivity = .off
+
+        await store.send(.view(.submitJoin)) {
+            $0.working = true
+        }
+        await store.receive(\.joinSucceeded) {
+            $0.working = false
+            $0.path = .list
+            $0.joinInviteCode = ""
+            $0.activeHouseholdID = PreviewData.householdId
+        }
+        await store.receive(\.delegate.activeHouseholdChanged)
+        // The list is pulled again, so the household just joined has a row.
+        await store.receive(\.householdsLoaded) {
+            $0.households = IdentifiedArray(uniqueElements: PreviewData.householdRows)
+        }
+        await store.skipReceivedActions(strict: false)
+        // Trimmed + upper-cased on the way out; a blank name falls back to the
+        // one this person already answers to.
+        XCTAssertEqual(sent.value?.0, "K4M2XP")
+        XCTAssertEqual(sent.value?.1, "Ada")
+    }
+
+    /// Typing lower case is normal — the field holds what the server looks up.
+    func testTheCodeFieldHoldsItsUppercaseShape() async {
+        var state = loaded()
+        state.path = .join
+
+        let store = TestStore(initialState: state) {
+            HouseholdsReducer()
+        }
+
+        await store.send(.binding(.set(\.joinInviteCode, "k4m2xp"))) {
+            $0.joinInviteCode = "K4M2XP"
+        }
+        XCTAssertTrue(store.state.canSubmitJoin)
+    }
+
+    /// A code that opens nothing is a typo, not a failure of the person — and
+    /// the form stays put so one character can be fixed.
+    func testAWrongCodeKeepsTheFormAndSaysSoKindly() async {
+        var state = loaded()
+        state.path = .join
+        state.joinInviteCode = "XXXXXX"
+
+        let store = TestStore(initialState: state) {
+            HouseholdsReducer()
+        } withDependencies: {
+            $0.householdClient.join = { _, _ in
+                throw APIError.http(status: 404, code: "bad_code", message: "no household with that code")
+            }
+            $0.toastClient.show = { _ in }
+        }
+
+        await store.send(.view(.submitJoin)) {
+            $0.working = true
+        }
+        await store.receive(\.joinFailed) {
+            $0.working = false
+        }
+        XCTAssertEqual(store.state.path, .join)
+        XCTAssertEqual(store.state.joinInviteCode, "XXXXXX")
+        XCTAssertEqual(
+            HouseholdsReducer.joinCopy(
+                for: APIError.http(status: 404, code: "bad_code", message: "")
+            ),
+            "that code doesn’t open anything — check it with your partner"
+        )
+    }
+
+    /// A household holds two people. A third arriving with a real code is told
+    /// the seats are gone, not that the code was wrong.
+    func testAFullHouseholdRefusesTheCodeWithItsOwnCopy() async {
+        var state = loaded()
+        state.path = .join
+        state.joinInviteCode = "K4M2XP"
+
+        let store = TestStore(initialState: state) {
+            HouseholdsReducer()
+        } withDependencies: {
+            $0.householdClient.join = { _, _ in
+                throw APIError.http(status: 409, code: "household_full", message: "two people already")
+            }
+            $0.toastClient.show = { _ in }
+        }
+
+        await store.send(.view(.submitJoin)) {
+            $0.working = true
+        }
+        await store.receive(\.joinFailed) {
+            $0.working = false
+        }
+        XCTAssertEqual(store.state.path, .join)
+        XCTAssertEqual(
+            HouseholdsReducer.joinCopy(
+                for: APIError.http(status: 409, code: "household_full", message: "")
+            ),
+            "both seats are taken here"
+        )
+    }
+
+    /// Holding several households is fine; holding the *same* one twice is not.
+    func testJoiningAHouseholdYouAreAlreadyInSaysSoPlainly() async {
+        var state = loaded()
+        state.path = .join
+        state.joinInviteCode = "K4M2XP"
+
+        let store = TestStore(initialState: state) {
+            HouseholdsReducer()
+        } withDependencies: {
+            $0.householdClient.join = { _, _ in
+                throw APIError.http(status: 409, code: "already_in_household", message: "already a member")
+            }
+            $0.toastClient.show = { _ in }
+        }
+
+        await store.send(.view(.submitJoin)) {
+            $0.working = true
+        }
+        await store.receive(\.joinFailed) {
+            $0.working = false
+        }
+        XCTAssertEqual(store.state.households.count, PreviewData.householdRows.count)
+        XCTAssertEqual(
+            HouseholdsReducer.joinCopy(
+                for: APIError.http(status: 409, code: "already_in_household", message: "")
+            ),
+            "you’re already in that household"
+        )
+    }
+
+    /// The form opens on the name you already answer to, with an empty code.
+    func testOpeningTheJoinFormOffersTheNameYouAlreadyUse() async {
+        let store = TestStore(initialState: loaded()) {
+            HouseholdsReducer()
+        }
+
+        await store.send(.view(.joinTapped)) {
+            $0.path = .join
+            $0.joinInviteCode = ""
+            $0.joinDisplayName = "Ada"
+        }
+    }
+
     // MARK: Helpers
 
     private func loaded() -> HouseholdsReducer.State {
