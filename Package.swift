@@ -25,6 +25,7 @@ let package = Package(
         .library(name: "CalendarClient", targets: ["CalendarClient"]),
         .library(name: "WidgetClient", targets: ["WidgetClient"]),
         .library(name: "NotificationsClient", targets: ["NotificationsClient"]),
+        .library(name: "ResetClient", targets: ["ResetClient"]),
         .library(name: "ToastClient", targets: ["ToastClient"]),
         .library(name: "DI", targets: ["DI"]),
         .library(name: "SplashFeature", targets: ["SplashFeature"]),
@@ -35,6 +36,7 @@ let package = Package(
         .library(name: "InboxFeature", targets: ["InboxFeature"]),
         .library(name: "TodayFeature", targets: ["TodayFeature"]),
         .library(name: "ProfileFeature", targets: ["ProfileFeature"]),
+        .library(name: "ResetFeature", targets: ["ResetFeature"]),
         .library(name: "EvenApp", targets: ["EvenApp"]),
     ],
     dependencies: [
@@ -114,6 +116,8 @@ let package = Package(
             clientLive("WidgetClient"),
             client("NotificationsClient"),
             clientLive("NotificationsClient"),
+            client("ResetClient"),
+            clientLive("ResetClient"),
             .target(
                 name: "ToastClient",
                 dependencies: ["ToastUI", deps, depsMacros],
@@ -137,6 +141,7 @@ let package = Package(
                     "CalendarClientLive",
                     "WidgetClientLive",
                     "NotificationsClientLive",
+                    "ResetClientLive",
                     "ToastClientLive",
                 ],
                 path: "Sources/Core/DI"
@@ -168,6 +173,7 @@ let package = Package(
                     "ToastClient", "ToastUI", "VisualEffects",
                 ]
             ),
+            feature("ResetFeature", extra: ["ResetClient"]),
             .target(
                 name: "EvenApp",
                 dependencies: [
@@ -178,7 +184,8 @@ let package = Package(
                     "WidgetClient",
                     "SplashFeature", "LoginFeature", "OnboardingFeature",
                     "HouseholdSetupFeature", "ConnectionsFeature",
-                    "InboxFeature", "TodayFeature", "ProfileFeature",
+                    "InboxFeature", "TodayFeature", "ProfileFeature", "ResetFeature",
+                    "ResetClient",
                     tca,
                 ],
                 path: "Sources/Feature/EvenApp"
@@ -224,6 +231,11 @@ let package = Package(
                     "AuthClient", "ToastClient", "ToastUI", "HouseholdRealtimeClient", tca,
                 ],
                 path: "Tests/TodayFeatureTests"
+            ),
+            .testTarget(
+                name: "ResetFeatureTests",
+                dependencies: ["ResetFeature", "ResetClient", "EvenCore", tca],
+                path: "Tests/ResetFeatureTests"
             ),
             .testTarget(
                 name: "ProfileFeatureTests",

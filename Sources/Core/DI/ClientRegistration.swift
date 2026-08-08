@@ -5,6 +5,7 @@
 @_exported import HouseholdClientLive
 @_exported import HouseholdRealtimeClientLive
 @_exported import NotificationsClientLive
+@_exported import ResetClientLive
 @_exported import SummaryClientLive
 @_exported import TasksClientLive
 @_exported import ToastClientLive

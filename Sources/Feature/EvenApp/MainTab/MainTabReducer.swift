@@ -1,8 +1,10 @@
 import ComposableArchitecture
+import EvenCore
 import Foundation
 import HouseholdRealtimeClient
 import InboxFeature
 import ProfileFeature
+import ResetFeature
 import TodayFeature
 
 @Reducer
@@ -13,6 +15,14 @@ public struct MainTabReducer {
         public var today = TodayReducer.State()
         public var profile = ProfileReducer.State()
         public var tab: Tab = .today
+        /// The Sunday ritual, over the tabs.
+        @Presents public var reset: ResetReducer.State?
+        /// The week we last poured out — survives launches so a closed week
+        /// never asks to be closed again.
+        @Shared(.appStorage("evenResetLastPouredWeekID")) public var lastPouredWeekID = ""
+        /// "Later today" only holds until the next appear — by design.
+        public var resetDismissed = false
+
         public init() {}
 
         public enum Tab: String, CaseIterable, Equatable, Sendable {
@@ -27,6 +37,7 @@ public struct MainTabReducer {
         case inbox(InboxReducer.Action)
         case today(TodayReducer.Action)
         case profile(ProfileReducer.Action)
+        case reset(PresentationAction<ResetReducer.Action>)
         case realtime(HouseholdRealtimeEvent)
         case delegate(Delegate)
 
@@ -45,6 +56,8 @@ public struct MainTabReducer {
     private enum CancelID { case householdRealtime }
 
     @Dependency(\.householdRealtimeClient) var householdRealtimeClient
+    @Dependency(\.date.now) var now
+    @Dependency(\.calendar) var calendar
 
     public init() {}
 
@@ -55,6 +68,9 @@ public struct MainTabReducer {
         Reduce { state, action in
             switch action {
             case .view(.appear):
+                // A quiet dismissal lasts one appearance, not the day — the
+                // ritual is the whole point of Sunday.
+                state.resetDismissed = false
                 return .run { [householdRealtimeClient] send in
                     for await event in householdRealtimeClient.events() {
                         await send(.realtime(event))
@@ -75,15 +91,78 @@ public struct MainTabReducer {
                 }
                 return .send(.today(.view(.refresh)))
 
+            case let .today(.summaryLoaded(summary)):
+                presentResetIfDue(&state, summary: summary)
+                return .none
+
+            case .today(.membersLoaded):
+                // Members can land after the summary — keep the sheet's copy honest.
+                let me = state.today.me
+                let partner = state.today.partner
+                state.reset?.me = me
+                state.reset?.partner = partner
+                return .none
+
+            case let .reset(.presented(.delegate(.poured(closedWeekID, _)))):
+                state.$lastPouredWeekID.withLock { $0 = closedWeekID.uuidString }
+                // Today still shows the week that just ended; pull the new one.
+                return .send(.today(.view(.refresh)))
+
+            case .reset(.presented(.delegate(.dismissed))):
+                state.resetDismissed = true
+                state.reset = nil
+                return .none
+
             case .profile(.delegate(.signedOut)):
                 return .send(.delegate(.signedOut))
 
-            case .delegate:
+            case .delegate, .reset:
                 return .none
 
             case .inbox, .today, .profile:
                 return .none
             }
         }
+        .ifLet(\.$reset, action: \.reset) { ResetReducer() }
     }
+
+    /// Sunday, or a week that has outstayed its seven days. Never for a week we
+    /// already poured, never over a dismissal, never twice.
+    private func presentResetIfDue(_ state: inout State, summary: Summary) {
+        guard state.reset == nil, !state.resetDismissed else { return }
+        guard state.lastPouredWeekID != summary.week.id.uuidString else { return }
+        guard Self.isResetDue(
+            weekStartedOn: summary.week.startedOn, now: now, calendar: calendar
+        ) else { return }
+
+        state.reset = ResetReducer.State(
+            summary: summary,
+            me: state.today.me,
+            partner: state.today.partner
+        )
+    }
+
+    /// Due on Sunday, or as soon as the open week is seven days old — weeks that
+    /// never closed must ask on the next launch, not wait for the weekend.
+    public static func isResetDue(
+        weekStartedOn: String,
+        now: Date,
+        calendar: Calendar
+    ) -> Bool {
+        if calendar.component(.weekday, from: now) == 1 { return true }
+        guard let started = weekStartDateFormatter.date(from: weekStartedOn) else { return false }
+        let days = calendar.dateComponents(
+            [.day], from: calendar.startOfDay(for: started), to: calendar.startOfDay(for: now)
+        ).day ?? 0
+        return days >= 7
+    }
+
+    private static let weekStartDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(identifier: "UTC")
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
 }

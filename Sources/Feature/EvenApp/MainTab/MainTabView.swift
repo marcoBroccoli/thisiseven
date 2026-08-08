@@ -5,6 +5,7 @@
     import HouseholdClient
     import InboxFeature
     import ProfileFeature
+    import ResetFeature
     import SwiftUI
     import TodayFeature
 
@@ -35,6 +36,11 @@
             .tint(EvenTokens.espresso)
             .environment(\.evenAvatarLoader, avatarLoader)
             .task { await send(.appear).finish() }
+            // The Sunday ritual owns the whole screen — it is not a card that
+            // shares the page with the tabs it interrupts.
+            .fullScreenCover(item: $store.scope(state: \.reset, action: \.reset)) { resetStore in
+                ResetView(store: resetStore)
+            }
         }
 
         private var avatarLoader: EvenAvatarLoader? {

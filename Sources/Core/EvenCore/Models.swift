@@ -537,6 +537,20 @@ public struct Appreciation: Codable, Identifiable, Hashable, Sendable {
     public var toMemberId: UUID
     public var body: String?
     public var said: Bool
+
+    public init(
+        id: UUID,
+        fromMemberId: UUID,
+        toMemberId: UUID,
+        body: String?,
+        said: Bool
+    ) {
+        self.id = id
+        self.fromMemberId = fromMemberId
+        self.toMemberId = toMemberId
+        self.body = body
+        self.said = said
+    }
 }
 
 public struct Trade: Codable, Identifiable, Hashable, Sendable {
@@ -546,6 +560,22 @@ public struct Trade: Codable, Identifiable, Hashable, Sendable {
     public var fromMemberId: UUID
     public var toMemberId: UUID
     public var accepted: Bool
+
+    public init(
+        id: UUID,
+        taskId: UUID,
+        taskTitle: String,
+        fromMemberId: UUID,
+        toMemberId: UUID,
+        accepted: Bool
+    ) {
+        self.id = id
+        self.taskId = taskId
+        self.taskTitle = taskTitle
+        self.fromMemberId = fromMemberId
+        self.toMemberId = toMemberId
+        self.accepted = accepted
+    }
 }
 
 // MARK: - Endpoint payloads
@@ -635,24 +665,52 @@ public struct Money: Codable, Sendable {
     public var feed: [MoneyFeedItem]
 }
 
-public struct ResetRow: Codable, Hashable, Sendable {
+public struct ResetRow: Codable, Hashable, Sendable, Identifiable {
     public var key: String
     public var label: String
     public var mePct: Int
     public var partnerPct: Int
+
+    public var id: String { key }
+
+    public init(key: String, label: String, mePct: Int, partnerPct: Int) {
+        self.key = key
+        self.label = label
+        self.mePct = mePct
+        self.partnerPct = partnerPct
+    }
 }
 
-public struct ResetSummary: Codable, Sendable {
+public struct ResetSummary: Codable, Sendable, Equatable {
     public var week: Week
     public var rows: [ResetRow]
     public var biggestCarry: String
     public var appreciations: [Appreciation]
     public var trades: [Trade]
+
+    public init(
+        week: Week,
+        rows: [ResetRow],
+        biggestCarry: String,
+        appreciations: [Appreciation],
+        trades: [Trade]
+    ) {
+        self.week = week
+        self.rows = rows
+        self.biggestCarry = biggestCarry
+        self.appreciations = appreciations
+        self.trades = trades
+    }
 }
 
-public struct WeekCloseResponse: Codable, Sendable {
+public struct WeekCloseResponse: Codable, Sendable, Equatable {
     public var closedWeek: Week
     public var newWeek: Week
+
+    public init(closedWeek: Week, newWeek: Week) {
+        self.closedWeek = closedWeek
+        self.newWeek = newWeek
+    }
 }
 
 public struct GoogleStatus: Codable, Sendable {

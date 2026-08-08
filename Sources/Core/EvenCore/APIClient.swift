@@ -477,8 +477,16 @@ public extension EvenAPIClient {
         try await delete("v1/trades/\(id.uuidString.lowercased())")
     }
 
-    func closeWeek() async throws -> WeekCloseResponse {
-        try await post("v1/week/close")
+    /// `weekId` guards a double-tap from pouring out two weeks in a row —
+    /// the server answers 409 `week_already_closed` when it no longer matches.
+    ///
+    /// The guard is a **case-sensitive string** compare against a Postgres uuid,
+    /// so the id must go over the wire lowercased — `UUID.uuidString` is
+    /// uppercase and would 409 every single pour. Same rule as the trade routes.
+    func closeWeek(weekId: UUID?) async throws -> WeekCloseResponse {
+        struct B: Encodable { let weekId: String }
+        guard let weekId else { return try await post("v1/week/close") }
+        return try await post("v1/week/close", B(weekId: weekId.uuidString.lowercased()))
     }
 
     func googleStatus() async throws -> GoogleStatus {

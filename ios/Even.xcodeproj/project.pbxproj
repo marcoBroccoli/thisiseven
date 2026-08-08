@@ -18,6 +18,7 @@
 		4FE3A4E29E07D25B50E950FC /* DI in Frameworks */ = {isa = PBXBuildFile; productRef = 69BCD86B47C32B4A9791A21D /* DI */; };
 		527B5B3FC73C73894D73C0B1 /* LockWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = C688FC6E0628DFA9807BE19F /* LockWidgets.swift */; };
 		5C8DACC994FA11FE4F833056 /* EvenWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2D07DE49563D3086849042C /* EvenWatchApp.swift */; };
+		7DCC2CCF2A37082D2001B0C8 /* EvenResetCaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DEF6F16385C63054B51B480 /* EvenResetCaptureTests.swift */; };
 		821468CA8DC9C28DA7DFF161 /* EvenE2ETests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0AAF5AFC5B42AA346D03E33 /* EvenE2ETests.swift */; };
 		8351BB659FA3BB3CBFB26E39 /* EvenCore in Frameworks */ = {isa = PBXBuildFile; productRef = ECE4C1DBF9EB08B2BEBF418F /* EvenCore */; };
 		913AC9278E61AF9F75A83C7D /* Provider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F78212281B874F7A9927CE9 /* Provider.swift */; };
@@ -79,6 +80,7 @@
 		69BD9A26560574B627B99986 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		737DB88BD2FE01869083C344 /* thisiseven */ = {isa = PBXFileReference; lastKnownFileType = folder; name = thisiseven; path = ..; sourceTree = SOURCE_ROOT; };
 		7EB7475D8E45683EADAA0B8C /* EvenWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = EvenWidgets.entitlements; sourceTree = "<group>"; };
+		8DEF6F16385C63054B51B480 /* EvenResetCaptureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvenResetCaptureTests.swift; sourceTree = "<group>"; };
 		931341DE12ABBB762C4D3C5F /* PhysicsStressTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhysicsStressTests.swift; sourceTree = "<group>"; };
 		937BCF87495D9A6E6E8CF776 /* EvenWidgetsExtension.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = EvenWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		945D790C562599D7F4AA0CDF /* HomeWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeWidgets.swift; sourceTree = "<group>"; };
@@ -151,6 +153,7 @@
 				13C1CDC5FE2BAE5109126544 /* EvenDemoWalkTests.swift */,
 				F0AAF5AFC5B42AA346D03E33 /* EvenE2ETests.swift */,
 				BEC6F5F7799ACB4A7063D8E5 /* EvenInboxCaptureTests.swift */,
+				8DEF6F16385C63054B51B480 /* EvenResetCaptureTests.swift */,
 				931341DE12ABBB762C4D3C5F /* PhysicsStressTests.swift */,
 			);
 			path = EvenUITests;
@@ -434,6 +437,7 @@
 				19BA6F9E80E5AFB954B0A481 /* EvenDemoWalkTests.swift in Sources */,
 				821468CA8DC9C28DA7DFF161 /* EvenE2ETests.swift in Sources */,
 				A5CD8D48403E67F462D5E7CB /* EvenInboxCaptureTests.swift in Sources */,
+				7DCC2CCF2A37082D2001B0C8 /* EvenResetCaptureTests.swift in Sources */,
 				CEDE401B661D23F2C09659D5 /* PhysicsStressTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

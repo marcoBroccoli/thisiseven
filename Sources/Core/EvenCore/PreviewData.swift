@@ -303,4 +303,76 @@ public enum PreviewData {
             ),
         ]
     )
+
+    // MARK: - The Sunday reset ("the pour")
+
+    public static let appreciationId = UUID(uuidString: "EEEEEEEE-EEEE-EEEE-EEEE-EEEEEEEEEEEE")!
+    public static let tradeId = UUID(uuidString: "FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF")!
+
+    /// Umut has written his; Ada has not — the partner's stays veiled until she does.
+    public static let appreciationFromPartner = Appreciation(
+        id: appreciationId,
+        fromMemberId: umutId,
+        toMemberId: adaId,
+        body: "You kept the whole week upright while I was away. I noticed.",
+        said: false
+    )
+
+    public static let appreciationFromMe = Appreciation(
+        id: UUID(uuidString: "EEEEEEEE-EEEE-EEEE-EEEE-EEEEEEEEEEEF")!,
+        fromMemberId: adaId,
+        toMemberId: umutId,
+        body: "Thank you for the insurance call. That one was dread, not work.",
+        said: true
+    )
+
+    public static let pendingTrade = Trade(
+        id: tradeId,
+        taskId: vacuum.id,
+        taskTitle: vacuum.title,
+        fromMemberId: adaId,
+        toMemberId: umutId,
+        accepted: false
+    )
+
+    /// Rows mirror `summary` (Ada 57 / Umut 43 overall).
+    public static let resetRows = [
+        ResetRow(key: "chores", label: "Chores", mePct: 62, partnerPct: 38),
+        ResetRow(key: "admin", label: "The admin", mePct: 40, partnerPct: 60),
+        ResetRow(key: "money", label: "Money fronted", mePct: 71, partnerPct: 29),
+    ]
+
+    public static let resetSummary = ResetSummary(
+        week: week,
+        rows: resetRows,
+        biggestCarry: "Ada did the heavy lifting on chores — 62% by weight.",
+        appreciations: [appreciationFromPartner],
+        trades: [pendingTrade]
+    )
+
+    /// No partner yet — the appreciation exchange has nobody to exchange with.
+    public static let resetSummarySolo = ResetSummary(
+        week: week,
+        rows: [
+            ResetRow(key: "chores", label: "Chores", mePct: 100, partnerPct: 0),
+            ResetRow(key: "admin", label: "The admin", mePct: 100, partnerPct: 0),
+            ResetRow(key: "money", label: "Money fronted", mePct: 100, partnerPct: 0),
+        ],
+        biggestCarry: "A quiet week. Nothing carried, nothing owed.",
+        appreciations: [],
+        trades: []
+    )
+
+    public static let weekClose = WeekCloseResponse(
+        closedWeek: Week(
+            id: weekId, index: week.index, startedOn: week.startedOn,
+            closedAt: Date(timeIntervalSince1970: 1_754_600_000)
+        ),
+        newWeek: Week(
+            id: UUID(uuidString: "DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDE")!,
+            index: week.index + 1,
+            startedOn: "2026-08-10",
+            closedAt: nil
+        )
+    )
 }
