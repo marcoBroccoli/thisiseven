@@ -374,6 +374,76 @@ public struct HouseholdsReducer {
                 state.busyInviteID = nil
                 return toastEffect(.init(message: message, tone: .error))
 
+            case let .view(.leaveTapped(id)):
+                state.leavingHousehold = state.households[id: id]
+                return .none
+
+            case .view(.cancelLeave):
+                state.leavingHousehold = nil
+                return .none
+
+            case .view(.confirmLeave):
+                guard let row = state.leavingHousehold else { return .none }
+                state.leavingHousehold = nil
+                state.busyHouseholdID = row.id
+                // Whether this was the household on screen decides where the app
+                // looks next — read it before the row is gone.
+                let wasOpen = state.effectiveActiveID == row.id
+                return .run { [householdClient] send in
+                    do {
+                        let result = try await householdClient.leave(row.id)
+                        await send(.leaveSucceeded(
+                            householdID: row.id,
+                            deleted: result.householdDeleted,
+                            wasOpen: wasOpen
+                        ))
+                    } catch {
+                        await send(.leaveFailed(Self.leaveCopy(for: error)))
+                    }
+                }
+
+            case let .leaveSucceeded(householdID, deleted, wasOpen):
+                state.busyHouseholdID = nil
+                let name = state.households[id: householdID]?.name ?? "that household"
+                state.households.remove(id: householdID)
+                state.expandedHouseholdID = nil
+                if state.activeHouseholdID == householdID {
+                    state.activeHouseholdID = nil
+                }
+                let farewell = Toast(
+                    message: deleted ? "\(name) is closed" : "you’ve left \(name)"
+                )
+
+                guard wasOpen else {
+                    return toastEffect(farewell)
+                }
+                // The app was showing the household just left. Fall to another
+                // one — or, with nowhere left to stand, back to setup.
+                guard let next = state.households.last else {
+                    return .merge(
+                        .send(.delegate(.leftLastHousehold)),
+                        toastEffect(farewell)
+                    )
+                }
+                state.busyHouseholdID = next.id
+                return .merge(
+                    .run { [householdClient] send in
+                        do {
+                            _ = try await householdClient.setActive(next.id)
+                            await send(.switchSucceeded(householdID: next.id))
+                        } catch {
+                            await send(.switchFailed(Self.copy(
+                                for: error, fallback: "couldn’t open your other household"
+                            )))
+                        }
+                    },
+                    toastEffect(farewell)
+                )
+
+            case let .leaveFailed(message):
+                state.busyHouseholdID = nil
+                return .merge(load(), toastEffect(.init(message: message, tone: .error)))
+
             case .view(.backTapped):
                 state.path = .list
                 state.acceptingInvite = nil
@@ -436,6 +506,13 @@ public struct HouseholdsReducer {
         case "household_full": return "someone took the seat first"
         case "already_in_household": return "you’re already in there"
         default: return copy(for: error, fallback: "couldn’t answer that invite")
+        }
+    }
+
+    static func leaveCopy(for error: Error) -> String {
+        switch (error as? APIError)?.code {
+        case "not_in_household": return "you’ve already left that household"
+        default: return copy(for: error, fallback: "couldn’t leave that household")
         }
     }
 

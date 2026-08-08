@@ -24,6 +24,20 @@
                 .toolbar { toolbarContent }
                 .navigationBarBackButtonHidden(store.showsBack)
                 .evenPaperNavigationChrome()
+                .alert(
+                    leaveTitle,
+                    isPresented: Binding(
+                        get: { store.leavingHousehold != nil },
+                        set: { if !$0 { send(.cancelLeave) } }
+                    )
+                ) {
+                    Button("Cancel", role: .cancel) { send(.cancelLeave) }
+                    Button("Leave", role: .destructive) {
+                        send(.confirmLeave, animation: EvenMotion.reveal)
+                    }
+                } message: {
+                    Text(store.leaveConfirmationMessage)
+                }
                 .onAppear { send(.appear) }
         }
 
@@ -109,6 +123,11 @@
             }
         }
 
+        private var leaveTitle: String {
+            guard let name = store.leavingHousehold?.name else { return "Leave household?" }
+            return "Leave \(name)?"
+        }
+
         private var title: String {
             switch store.path {
             case .list: return "Households"
@@ -127,6 +146,12 @@
     #Preview("Households · loading") {
         NavigationStack {
             HouseholdsView(store: HouseholdsPreviewSupport.loading())
+        }
+    }
+
+    #Preview("Households · leaving") {
+        NavigationStack {
+            HouseholdsView(store: HouseholdsPreviewSupport.leaveConfirmation())
         }
     }
 

@@ -50,6 +50,8 @@ public struct MainTabReducer {
         @CasePathable
         public enum Delegate: Equatable {
             case signedOut
+            /// The last seat was given up — back to household setup.
+            case leftLastHousehold
         }
     }
 
@@ -124,6 +126,14 @@ public struct MainTabReducer {
 
             case .profile(.delegate(.signedOut)):
                 return .send(.delegate(.signedOut))
+
+            case .profile(.delegate(.leftLastHousehold)):
+                // Drop the socket with the tabs — its URL names a household this
+                // person no longer belongs to.
+                return .merge(
+                    .cancel(id: CancelID.householdRealtime),
+                    .send(.delegate(.leftLastHousehold))
+                )
 
             case .profile(.delegate(.activeHouseholdChanged)):
                 // Nothing crosses between households. The socket carries the id

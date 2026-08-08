@@ -16,6 +16,7 @@
         let onCopyCode: () -> Void
         let onInvite: () -> Void
         let onRevoke: () -> Void
+        let onLeave: () -> Void
 
         var body: some View {
             VStack(alignment: .leading, spacing: 0) {
@@ -133,7 +134,31 @@
                 } else {
                     HouseholdsChrome.note("Both seats taken — this household is full.")
                 }
+
+                EvenTokens.espresso.opacity(0.1)
+                    .frame(height: 1)
+
+                leaveButton
             }
+        }
+
+        /// Quiet and destructive — same shape as sign out / disconnect Google.
+        private var leaveButton: some View {
+            Button(action: onLeave) {
+                Text("Leave household")
+                    .font(.system(size: 14.5, weight: .medium, design: .serif))
+                    .foregroundStyle(EvenTokens.terracotta)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 42)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 9, style: .continuous)
+                            .stroke(EvenTokens.terracotta, lineWidth: 1)
+                    )
+                    .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+            }
+            .buttonStyle(.evenPlain)
+            .allowsHitTesting(!isBusy)
+            .accessibilityIdentifier("leave-household-\(row.name)")
         }
 
         private func pendingInviteRow(_ email: String) -> some View {

@@ -59,6 +59,20 @@ final class MainTabHouseholdSwitchTests: XCTestCase {
         await store.finish()
     }
 
+    /// Giving up the last seat leaves nothing household-scoped to show — the
+    /// socket goes with it, and the app shell has to hear about it.
+    func testLeavingTheLastHouseholdReachesTheAppShell() async {
+        let store = TestStore(initialState: MainTabReducer.State()) {
+            MainTabReducer()
+        } withDependencies: {
+            $0.toastClient.show = { _ in }
+        }
+        store.exhaustivity = .off
+
+        await store.send(.profile(.delegate(.leftLastHousehold)))
+        await store.receive(\.delegate.leftLastHousehold)
+    }
+
     /// Profile is only the messenger — the switch happens on the households
     /// screen it pushes, and the delegate has to reach the app shell.
     func testTheHouseholdsScreenBubblesTheSwitchThroughProfile() async {

@@ -95,6 +95,12 @@ public struct AppReducer {
                 state = .login(LoginReducer.State())
                 return .none
 
+            case .ready(.delegate(.leftLastHousehold)):
+                // Still signed in, just homeless — straight back to the
+                // join-or-create door, not through how-it-works.
+                state = .householdSetup(HouseholdSetupReducer.State())
+                return .none
+
             case .login, .onboarding, .householdSetup, .connections, .ready:
                 return .none
             }

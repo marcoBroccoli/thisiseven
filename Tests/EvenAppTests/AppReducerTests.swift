@@ -73,4 +73,17 @@ final class AppReducerTests: XCTestCase {
             $0 = .householdSetup(.init())
         }
     }
+
+    /// Leaving your last household leaves you signed in but homeless — the
+    /// join-or-create door, not how-it-works and not the login screen.
+    func testLeavingTheLastHouseholdRoutesBackToHouseholdSetup() async {
+        let store = TestStore(initialState: AppReducer.State.ready(.init())) {
+            AppReducer()
+        }
+        store.exhaustivity = .off
+
+        await store.send(.ready(.delegate(.leftLastHousehold))) {
+            $0 = .householdSetup(.init())
+        }
+    }
 }

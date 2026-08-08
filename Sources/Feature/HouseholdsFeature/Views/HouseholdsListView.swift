@@ -81,7 +81,8 @@
                             onToggleExpanded: { send(.toggleExpanded(row.id), animation: EvenMotion.reveal) },
                             onCopyCode: { copyCode(row.inviteCode) },
                             onInvite: { send(.submitInvite(row.id)) },
-                            onRevoke: { send(.revokeInvite(row.id), animation: EvenMotion.reveal) }
+                            onRevoke: { send(.revokeInvite(row.id), animation: EvenMotion.reveal) },
+                            onLeave: { send(.leaveTapped(row.id)) }
                         )
                     }
                 }

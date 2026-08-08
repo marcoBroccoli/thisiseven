@@ -79,6 +79,8 @@ public struct ProfileReducer {
             /// A different household is open now — every household-scoped
             /// surface (and the realtime socket) has to be pulled again.
             case activeHouseholdChanged(UUID)
+            /// No household left to show — the app goes back to setting one up.
+            case leftLastHousehold
         }
     }
 
@@ -126,6 +128,11 @@ public struct ProfileReducer {
                     countHouseholds(),
                     .send(.delegate(.activeHouseholdChanged(id)))
                 )
+
+            case .households(.presented(.delegate(.leftLastHousehold))):
+                // Nothing behind this screen to come back to.
+                state.households = nil
+                return .send(.delegate(.leftLastHousehold))
 
             case .households(.dismiss):
                 return countHouseholds()

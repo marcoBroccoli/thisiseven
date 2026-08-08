@@ -260,6 +260,120 @@ final class HouseholdsFeatureTests: XCTestCase {
         }
     }
 
+    // MARK: Leaving
+
+    /// Leaving the household on screen has to land somewhere: the app falls to
+    /// another one you hold and re-points every request at it.
+    func testLeavingTheOpenHouseholdFallsToTheOtherOne() async {
+        var state = loaded()
+        state.expandedHouseholdID = PreviewData.householdId
+
+        let left = LockIsolated<UUID?>(nil)
+        let pinned = LockIsolated<UUID?>(nil)
+        let store = TestStore(initialState: state) {
+            HouseholdsReducer()
+        } withDependencies: {
+            $0.householdClient.leave = { id in
+                left.setValue(id)
+                return LeaveHouseholdResult(ok: true, householdDeleted: false)
+            }
+            $0.householdClient.setActive = { id in
+                pinned.setValue(id)
+                return PreviewData.me
+            }
+            $0.toastClient.show = { _ in }
+        }
+
+        // Nothing happens until it is confirmed — the dialog is the guard.
+        await store.send(.view(.leaveTapped(PreviewData.householdId))) {
+            $0.leavingHousehold = PreviewData.atticRow
+        }
+        XCTAssertTrue(
+            store.state.leaveConfirmationMessage.contains("todos there are archived")
+        )
+        XCTAssertTrue(
+            store.state.leaveConfirmationMessage.contains("Gmail for this household disconnects")
+        )
+        // Two people in there — leaving does not close the place.
+        XCTAssertFalse(store.state.leaveConfirmationMessage.contains("deletes the household"))
+
+        await store.send(.view(.confirmLeave)) {
+            $0.leavingHousehold = nil
+            $0.busyHouseholdID = PreviewData.householdId
+        }
+        await store.receive(\.leaveSucceeded) {
+            $0.households.remove(id: PreviewData.householdId)
+            $0.expandedHouseholdID = nil
+            $0.activeHouseholdID = nil
+            $0.busyHouseholdID = PreviewData.seaHouseId
+        }
+        await store.receive(\.switchSucceeded) {
+            $0.busyHouseholdID = nil
+            $0.activeHouseholdID = PreviewData.seaHouseId
+        }
+        await store.receive(\.delegate.activeHouseholdChanged)
+        XCTAssertEqual(left.value, PreviewData.householdId)
+        XCTAssertEqual(pinned.value, PreviewData.seaHouseId)
+    }
+
+    /// The last seat: nowhere to fall back to, so the app has to go and set a
+    /// household up again. And an only member closing the place should be told.
+    func testLeavingTheLastHouseholdSendsTheAppBackToSetup() async {
+        var state = HouseholdsReducer.State()
+        state.isLoading = false
+        state.households = [PreviewData.seaHouseRow]
+        state.activeHouseholdID = PreviewData.seaHouseId
+
+        let store = TestStore(initialState: state) {
+            HouseholdsReducer()
+        } withDependencies: {
+            $0.householdClient.leave = { _ in
+                LeaveHouseholdResult(ok: true, householdDeleted: true)
+            }
+            $0.toastClient.show = { _ in }
+        }
+
+        await store.send(.view(.leaveTapped(PreviewData.seaHouseId))) {
+            $0.leavingHousehold = PreviewData.seaHouseRow
+        }
+        // One of two — say plainly that this closes the household.
+        XCTAssertTrue(store.state.leaveConfirmationMessage.contains("deletes the household"))
+
+        await store.send(.view(.confirmLeave)) {
+            $0.leavingHousehold = nil
+            $0.busyHouseholdID = PreviewData.seaHouseId
+        }
+        await store.receive(\.leaveSucceeded) {
+            $0.households = []
+            $0.busyHouseholdID = nil
+            $0.activeHouseholdID = nil
+        }
+        await store.receive(\.delegate.leftLastHousehold)
+    }
+
+    /// Leaving a household you were not looking at leaves the open one alone.
+    func testLeavingABackgroundHouseholdDoesNotMoveTheApp() async {
+        let store = TestStore(initialState: loaded()) {
+            HouseholdsReducer()
+        } withDependencies: {
+            $0.householdClient.leave = { _ in LeaveHouseholdResult() }
+            $0.toastClient.show = { _ in }
+        }
+
+        await store.send(.view(.leaveTapped(PreviewData.seaHouseId))) {
+            $0.leavingHousehold = PreviewData.seaHouseRow
+        }
+        await store.send(.view(.confirmLeave)) {
+            $0.leavingHousehold = nil
+            $0.busyHouseholdID = PreviewData.seaHouseId
+        }
+        await store.receive(\.leaveSucceeded) {
+            $0.households.remove(id: PreviewData.seaHouseId)
+            $0.busyHouseholdID = nil
+        }
+        XCTAssertEqual(store.state.activeHouseholdID, PreviewData.householdId)
+    }
+
     // MARK: Creating another one
 
     func testCreatingAnotherHouseholdOpensIt() async {

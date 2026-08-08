@@ -20,6 +20,15 @@
             return store(state: state)
         }
 
+        /// Giving up a seat — the confirmation, with what it costs spelled out.
+        @MainActor
+        static func leaveConfirmation() -> StoreOf<HouseholdsReducer> {
+            var state = loadedState()
+            state.expandedHouseholdID = PreviewData.atticRow.id
+            state.leavingHousehold = PreviewData.atticRow
+            return store(state: state)
+        }
+
         /// Nowhere yet — only the invite addressed to you.
         @MainActor
         static func invitesOnly() -> StoreOf<HouseholdsReducer> {
