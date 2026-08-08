@@ -264,6 +264,49 @@ public enum PreviewData {
         hasMore: nil
     )
 
+    /// The partner's view before they confirm: a shared calendar exists on the
+    /// other account, and the one-tap add applies to them.
+    public static let calendarInfoCanAdd = GoogleCalendarInfo(
+        calendarId: "even-household-cal",
+        shared: true,
+        shareUrl: "https://calendar.google.com/calendar/r?cid=ZXZlbg",
+        owner: false,
+        listed: false,
+        canAdd: true
+    )
+
+    /// After the confirm — or for the member whose account owns it.
+    public static let calendarInfoListed = GoogleCalendarInfo(
+        calendarId: "even-household-cal",
+        shared: true,
+        shareUrl: "https://calendar.google.com/calendar/r?cid=ZXZlbg",
+        owner: false,
+        listed: true,
+        canAdd: false
+    )
+
+    public static let calendarInfoOwner = GoogleCalendarInfo(
+        calendarId: "even-household-cal",
+        shared: true,
+        shareUrl: "https://calendar.google.com/calendar/r?cid=ZXZlbg",
+        owner: true,
+        listed: true,
+        canAdd: false
+    )
+
+    /// No dated todo has been approved yet, so no calendar exists to add.
+    public static let calendarInfoNotReady = GoogleCalendarInfo(
+        calendarId: "primary",
+        shared: false,
+        owner: false,
+        listed: false,
+        canAdd: false
+    )
+
+    public static let calendarAdded = GoogleCalendarAddResult(
+        calendarId: "even-household-cal", listed: true, owner: false
+    )
+
     public static let widgetSnapshot = EvenWidgetSnapshot.placeholder
 
     public static let calendarSync = CalendarSyncResult(

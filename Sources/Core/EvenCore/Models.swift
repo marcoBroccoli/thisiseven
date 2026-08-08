@@ -824,10 +824,57 @@ public struct CalendarResponse: Codable, Sendable {
     }
 }
 
-public struct GoogleCalendarInfo: Codable, Sendable {
+/// The household's shared calendar as seen by *this* member. Google gives a
+/// secondary calendar exactly one owning account, so the mirror has an owner
+/// and — for the other partner — a one-tap "add to my Google" confirm.
+public struct GoogleCalendarInfo: Codable, Sendable, Equatable {
     public var calendarId: String
     public var shared: Bool
     public var shareUrl: String?
+    /// The caller's Google account owns the calendar: nothing to add.
+    public var owner: Bool?
+    /// Already on the caller's Google Calendar list (owners always are).
+    public var listed: Bool?
+    /// Connected + a shared calendar exists + neither owner nor listed.
+    public var canAdd: Bool?
+
+    public init(
+        calendarId: String,
+        shared: Bool,
+        shareUrl: String? = nil,
+        owner: Bool? = nil,
+        listed: Bool? = nil,
+        canAdd: Bool? = nil
+    ) {
+        self.calendarId = calendarId
+        self.shared = shared
+        self.shareUrl = shareUrl
+        self.owner = owner
+        self.listed = listed
+        self.canAdd = canAdd
+    }
+
+    public var isOwner: Bool { owner ?? false }
+    public var isListed: Bool { listed ?? false }
+    /// Older servers omit the flag; never offer a confirm we cannot fulfil.
+    public var offersAdd: Bool { canAdd ?? false }
+}
+
+/// Result of the partner's confirm — the calendar is on their Google now.
+public struct GoogleCalendarAddResult: Codable, Sendable, Equatable {
+    public var calendarId: String
+    public var listed: Bool
+    public var owner: Bool?
+    /// The recorded owner had no connection left, so the caller took the
+    /// calendar over instead of subscribing to a dead one.
+    public var adopted: Bool?
+
+    public init(calendarId: String, listed: Bool, owner: Bool? = nil, adopted: Bool? = nil) {
+        self.calendarId = calendarId
+        self.listed = listed
+        self.owner = owner
+        self.adopted = adopted
+    }
 }
 
 public struct CalendarSyncResult: Codable, Sendable {

@@ -168,9 +168,61 @@ public enum ConnectionsPreviewSupport {
         }
     }
 
+    /// The partner after connecting: the household calendar already exists on
+    /// the other Google account, so the one-tap confirm applies to them.
+    public static func connectedCanAddCalendar() -> StoreOf<ConnectionsReducer> {
+        connectedWithCalendar(PreviewData.calendarInfoCanAdd)
+    }
+
+    /// The confirm mid-flight — solid busy fill, no dimmed CTA over paper.
+    public static func connectedAddingCalendar() -> StoreOf<ConnectionsReducer> {
+        var state = connectedState()
+        state.calendar = PreviewData.calendarInfoCanAdd
+        state.addingCalendar = true
+        return hungStore(state)
+    }
+
+    /// The member whose Google hosts the calendar — never offered an "add".
+    public static func connectedCalendarOwner() -> StoreOf<ConnectionsReducer> {
+        connectedWithCalendar(PreviewData.calendarInfoOwner)
+    }
+
     /// Design 04 — Settings manage surface (not on the setup path).
     public static func settings() -> StoreOf<ConnectionsReducer> {
-        connected()
+        connectedWithCalendar(PreviewData.calendarInfoOwner)
+    }
+
+    /// Settings for the partner who has not added the calendar yet.
+    public static func settingsCanAddCalendar() -> StoreOf<ConnectionsReducer> {
+        connectedWithCalendar(PreviewData.calendarInfoCanAdd)
+    }
+
+    private static func connectedState() -> ConnectionsReducer.State {
+        var state = ConnectionsReducer.State()
+        state.path = .connected
+        state.email = PreviewData.googleConnected.email
+        state.partnerConnected = true
+        return state
+    }
+
+    private static func connectedWithCalendar(
+        _ info: GoogleCalendarInfo
+    ) -> StoreOf<ConnectionsReducer> {
+        var state = connectedState()
+        state.calendar = info
+        return Store(initialState: state) {
+            ConnectionsReducer()
+        } withDependencies: { deps in
+            mockConnections(
+                &deps,
+                status: PreviewDelay.delayed(.milliseconds(50)) { PreviewData.googleConnected },
+                connect: PreviewDelay.delayed(.milliseconds(50)),
+                disconnect: PreviewDelay.delayed(.milliseconds(50)),
+                calendarInfo: { info },
+                addCalendar: PreviewDelay.delayed(.seconds(1)) { PreviewData.calendarAdded },
+                presentToasts: true
+            )
+        }
     }
 
     // MARK: - Internals
@@ -225,11 +277,19 @@ public enum ConnectionsPreviewSupport {
         status: @escaping @Sendable () async throws -> GoogleStatus,
         connect: @escaping @Sendable () async throws -> Void,
         disconnect: @escaping @Sendable () async throws -> Void,
+        calendarInfo: @escaping @Sendable () async throws -> GoogleCalendarInfo = {
+            PreviewData.calendarInfoNotReady
+        },
+        addCalendar: @escaping @Sendable () async throws -> GoogleCalendarAddResult = {
+            PreviewData.calendarAdded
+        },
         presentToasts: Bool = false
     ) {
         deps.googleClient.status = status
         deps.googleClient.connect = connect
         deps.googleClient.disconnect = disconnect
+        deps.googleClient.calendarInfo = calendarInfo
+        deps.googleClient.addSharedCalendar = addCalendar
         deps.toastClient = presentToasts ? .hosted() : .silent()
     }
 }

@@ -47,7 +47,12 @@ public struct GoogleConnectAttempt: Sendable {
             .init(name: "client_id", value: GoogleConnectConfig.iosClientID),
             .init(name: "redirect_uri", value: GoogleConnectConfig.redirectURI),
             .init(name: "response_type", value: "code"),
-            .init(name: "scope", value: "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/calendar.events openid email profile"),
+            // Full calendar scope (not calendar.events): Even creates the
+            // shared secondary calendar, grants the partner reader access and
+            // adds it to their Google list. Connections made before this bump
+            // must re-consent — the server reports `reconnect_required`
+            // rather than pretending the share worked.
+            .init(name: "scope", value: "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/calendar openid email profile"),
             .init(name: "code_challenge", value: challenge),
             .init(name: "code_challenge_method", value: "S256"),
             .init(name: "state", value: state),

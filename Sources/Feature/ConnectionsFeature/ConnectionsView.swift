@@ -80,7 +80,7 @@
             case .scopes:
                 ConnectionsScopesView(store: store)
             case .connected:
-                ConnectionsConnectedView(partnerConnected: store.partnerConnected)
+                ConnectionsConnectedView(store: store)
             }
         }
     }

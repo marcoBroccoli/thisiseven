@@ -21,6 +21,17 @@ public struct GoogleClient: Sendable {
     public var disconnect: @Sendable () async throws -> Void = {
         throw GoogleClientError.unimplemented
     }
+
+    /// The household's shared calendar plus the caller's standing on it
+    /// (owner / listed / can add).
+    public var calendarInfo: @Sendable () async throws -> GoogleCalendarInfo = {
+        throw GoogleClientError.unimplemented
+    }
+
+    /// One-tap confirm: put the shared calendar on the caller's Google.
+    public var addSharedCalendar: @Sendable () async throws -> GoogleCalendarAddResult = {
+        throw GoogleClientError.unimplemented
+    }
 }
 
 public enum GoogleClientError: Error, Sendable {
@@ -35,7 +46,9 @@ extension GoogleClient: TestDependencyKey {
         status: { PreviewData.googleDisconnected },
         startSync: { GoogleSyncStart(started: false) },
         connect: {},
-        disconnect: {}
+        disconnect: {},
+        calendarInfo: { PreviewData.calendarInfoCanAdd },
+        addSharedCalendar: { PreviewData.calendarAdded }
     )
 }
 

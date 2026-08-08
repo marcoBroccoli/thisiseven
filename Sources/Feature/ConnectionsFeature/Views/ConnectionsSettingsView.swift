@@ -16,6 +16,16 @@
             VStack(alignment: .leading, spacing: 12) {
                 googleCard
 
+                // Same shared-calendar states as setup: the partner's one-tap
+                // confirm lives here too, so it stays reachable after setup.
+                ConnectionsCalendarCallout(
+                    info: store.calendar,
+                    adding: store.addingCalendar,
+                    maxWidth: .infinity
+                ) {
+                    send(.addCalendarTapped)
+                }
+
                 ConnectionsSetupChrome.italicNote(
                     "Disconnecting stops new drafts. Approved tasks and past events stay.",
                     size: 12.5
@@ -111,6 +121,11 @@
 
     #Preview("Connections · settings") {
         ConnectionsSettingsView(store: ConnectionsPreviewSupport.settings())
+            .evenPaperBackground()
+    }
+
+    #Preview("Connections · settings · can add calendar") {
+        ConnectionsSettingsView(store: ConnectionsPreviewSupport.settingsCanAddCalendar())
             .evenPaperBackground()
     }
 

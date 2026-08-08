@@ -1,6 +1,7 @@
 #if os(iOS)
     import ComposableArchitecture
     import Design
+    import EvenCore
     import SwiftUI
 
     struct ConnectionsBenefitRow: View {
@@ -195,7 +196,29 @@
         }
     }
 
+    /// The shared calendar, from this member's side. Google gives a secondary
+    /// calendar one owner: the other partner is offered a one-tap confirm that
+    /// puts it on their own Google (read-only — edits belong in Even).
     struct ConnectionsCalendarCallout: View {
+        /// Nil until `calendar-info` answers (or when the caller has no
+        /// connection of their own) — then the copy stays neutral.
+        var info: GoogleCalendarInfo?
+        var adding: Bool = false
+        /// Setup screens keep the narrow storytelling column; the settings
+        /// card sits in a full-width stack next to the Google card.
+        var maxWidth: CGFloat = 280
+        var add: (() -> Void)?
+
+        private var state: State {
+            guard let info else { return .unknown }
+            if info.isOwner { return .owner }
+            if info.isListed { return .listed }
+            if info.offersAdd { return .canAdd }
+            return .unknown
+        }
+
+        private enum State { case owner, listed, canAdd, unknown }
+
         var body: some View {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: "calendar")
@@ -204,17 +227,25 @@
                     .padding(.top, 2)
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("“Even” calendar subscribed")
+                    // The confirm's title is a full sentence — let it wrap
+                    // instead of truncating to "Add Even calendar to my Goo…".
+                    Text(title)
                         .font(.system(size: 14.5, weight: .medium, design: .serif))
                         .foregroundStyle(EvenTokens.espresso)
-                    Text("Both of you now see the same bills, renewals and visits beside your own plans.")
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(bodyText)
                         .font(.system(size: 11))
                         .foregroundStyle(EvenTokens.stone)
                         .fixedSize(horizontal: false, vertical: true)
+
+                    if state == .canAdd, let add {
+                        addButton(add)
+                            .padding(.top, 10)
+                    }
                 }
             }
             .padding(14)
-            .frame(maxWidth: 280, alignment: .leading)
+            .frame(maxWidth: maxWidth, alignment: .leading)
             .overlay(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .strokeBorder(
@@ -222,6 +253,60 @@
                     )
                     .foregroundStyle(EvenTokens.espresso.opacity(0.22))
             )
+            .animation(EvenMotion.reveal, value: state)
+            .accessibilityIdentifier("connections-calendar-callout")
+        }
+
+        /// Solid fill even while busy — a dimmed CTA over paper grain goes
+        /// muddy, so the working state swaps label + hit testing instead.
+        private func addButton(_ action: @escaping () -> Void) -> some View {
+            Button {
+                guard !adding else { return }
+                action()
+            } label: {
+                HStack(spacing: 8) {
+                    if adding {
+                        ProgressView()
+                            .controlSize(.small)
+                            .tint(EvenTokens.paperRaised)
+                    }
+                    Text(adding ? "Adding…" : "Add to my Google")
+                        .font(.system(size: 13.5, weight: .medium, design: .serif))
+                        .contentTransition(.numericText())
+                }
+                .foregroundStyle(EvenTokens.paperRaised)
+                .frame(maxWidth: .infinity)
+                .frame(height: 40)
+                .background(adding ? EvenTokens.stone : EvenTokens.espresso)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            }
+            .buttonStyle(.evenPlain)
+            .allowsHitTesting(!adding)
+            .animation(EvenMotion.ctaSwap, value: adding)
+            .accessibilityIdentifier("Add Even calendar to my Google")
+        }
+
+        private var title: String {
+            switch state {
+            case .owner: "“Even” calendar — on your Google"
+            case .listed: "“Even” calendar added"
+            case .canAdd: "Add Even calendar to my Google"
+            case .unknown: "“Even” calendar"
+            }
+        }
+
+        private var bodyText: String {
+            switch state {
+            case .owner:
+                "It lives on your Google account. Your partner adds it from their own Connections screen."
+            case .listed:
+                "Both of you now see the same bills, renewals and visits beside your own plans."
+            case .canAdd:
+                "One tap puts the household calendar in your Google. It’s a read-only mirror — edits stay in Even."
+            case .unknown:
+                "Approve a dated todo and Even creates the shared calendar; you can add it to Google then."
+            }
         }
     }
 

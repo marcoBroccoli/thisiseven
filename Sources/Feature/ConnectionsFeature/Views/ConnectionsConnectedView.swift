@@ -3,8 +3,11 @@
     import Design
     import SwiftUI
 
+    @ViewAction(for: ConnectionsReducer.self)
     struct ConnectionsConnectedView: View {
-        let partnerConnected: Bool
+        @Bindable var store: StoreOf<ConnectionsReducer>
+
+        private var partnerConnected: Bool { store.partnerConnected }
 
         var body: some View {
             ConnectionsSetupChrome.stepScreen {
@@ -18,6 +21,9 @@
                             .font(.system(size: 26, weight: .medium, design: .serif))
                             .multilineTextAlignment(.center)
                             .foregroundStyle(EvenTokens.espresso)
+                            // The calendar card can grow (confirm CTA) — the
+                            // headline must keep both its lines, not truncate.
+                            .fixedSize(horizontal: false, vertical: true)
                             .padding(.top, 20)
 
                         ConnectionsSetupChrome.italicNote(
@@ -28,8 +34,13 @@
                         .frame(maxWidth: 250)
                         .padding(.top, 12)
 
-                        ConnectionsCalendarCallout()
-                            .padding(.top, 22)
+                        ConnectionsCalendarCallout(
+                            info: store.calendar,
+                            adding: store.addingCalendar
+                        ) {
+                            send(.addCalendarTapped)
+                        }
+                        .padding(.top, 22)
 
                         ConnectionsPartnerNote(partnerConnected: partnerConnected)
                             .padding(.top, 14)
@@ -49,5 +60,17 @@
 
     #Preview("Connections · connected · partner not connected") {
         ConnectionsView(store: ConnectionsPreviewSupport.connectedPartnerMissing())
+    }
+
+    #Preview("Connections · connected · can add calendar") {
+        ConnectionsView(store: ConnectionsPreviewSupport.connectedCanAddCalendar())
+    }
+
+    #Preview("Connections · connected · adding calendar") {
+        ConnectionsView(store: ConnectionsPreviewSupport.connectedAddingCalendar())
+    }
+
+    #Preview("Connections · connected · calendar owner") {
+        ConnectionsView(store: ConnectionsPreviewSupport.connectedCalendarOwner())
     }
 #endif

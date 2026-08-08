@@ -20,6 +20,13 @@ public struct ConnectionsReducer {
         public var isCheckingStatus = false
         public var gmailEnabled = true
         public var calendarEnabled = true
+        /// The household's shared calendar and where the caller stands on it:
+        /// owner, already listed, or offered the one-tap add. Nil until the
+        /// caller has their own connection (the endpoint needs one).
+        public var calendar: GoogleCalendarInfo?
+        /// The add confirm is in flight — the card shows its own busy state
+        /// rather than blocking the shell footer.
+        public var addingCalendar = false
         public init() {}
 
         public var showsBack: Bool {
@@ -127,6 +134,8 @@ public struct ConnectionsReducer {
         case connectSucceeded(email: String?, partnerConnected: Bool)
         case connectCancelled
         case disconnectSucceeded
+        case calendarInfoLoaded(GoogleCalendarInfo)
+        case calendarAdded(GoogleCalendarAddResult)
         /// Error (or other) toast — `ToastClient` → feature `.evenToastHost()`.
         case presentToast(Toast)
         case delegate(Delegate)
@@ -138,6 +147,8 @@ public struct ConnectionsReducer {
             case secondaryTapped
             case backTapped
             case disconnectTapped
+            /// "Add Even calendar to my Google" — the partner's confirm.
+            case addCalendarTapped
         }
 
         @CasePathable
@@ -185,7 +196,11 @@ public struct ConnectionsReducer {
                 // partner who joined by invite code lands on `.why` with their
                 // own connect flow, never on someone else's "connected".
                 state.path = connected ? .connected : .why
-                return .none
+                guard connected else {
+                    state.calendar = nil
+                    return .none
+                }
+                return loadCalendarInfo()
 
             case .view(.primaryTapped):
                 switch state.path {
@@ -221,7 +236,40 @@ public struct ConnectionsReducer {
                 state.email = email
                 state.partnerConnected = partnerConnected
                 state.path = .scopes
-                return toastEffect(.init(message: "Google connected", tone: .success))
+                return .merge(
+                    toastEffect(.init(message: "Google connected", tone: .success)),
+                    loadCalendarInfo()
+                )
+
+            case let .calendarInfoLoaded(info):
+                state.calendar = info
+                return .none
+
+            case .view(.addCalendarTapped):
+                // Only offer what the server says it can fulfil — a stale
+                // build must never claim a share it cannot perform.
+                guard state.calendar?.offersAdd == true, !state.addingCalendar else { return .none }
+                state.addingCalendar = true
+                return .run { [googleClient] send in
+                    do {
+                        let result = try await googleClient.addSharedCalendar()
+                        await send(.calendarAdded(result))
+                    } catch {
+                        await send(.presentToast(.calendarAddFailure(error)))
+                    }
+                }
+
+            case let .calendarAdded(result):
+                state.addingCalendar = false
+                state.calendar = GoogleCalendarInfo(
+                    calendarId: result.calendarId,
+                    shared: true,
+                    shareUrl: state.calendar?.shareUrl,
+                    owner: result.owner ?? false,
+                    listed: result.listed,
+                    canAdd: false
+                )
+                return toastEffect(.init(message: "On your Google Calendar", tone: .success))
 
             case .connectCancelled:
                 state.working = false
@@ -261,6 +309,7 @@ public struct ConnectionsReducer {
                 state.email = nil
                 state.gmailEnabled = true
                 state.calendarEnabled = true
+                state.calendar = nil
                 state.path = .why
                 return toastEffect(.init(message: "Google disconnected"))
 
@@ -268,11 +317,23 @@ public struct ConnectionsReducer {
                 if toast.tone == .error {
                     state.working = false
                     state.isCheckingStatus = false
+                    state.addingCalendar = false
                 }
                 return toastEffect(toast)
 
             case .delegate:
                 return .none
+            }
+        }
+    }
+
+    /// Reads the shared calendar's state for this member. A failure here is
+    /// quiet on purpose: the screen still works, the confirm simply stays
+    /// hidden until we know it applies.
+    private func loadCalendarInfo() -> Effect<Action> {
+        .run { [googleClient] send in
+            if let info = try? await googleClient.calendarInfo() {
+                await send(.calendarInfoLoaded(info))
             }
         }
     }
@@ -310,6 +371,16 @@ extension Toast {
             from: error,
             offline: "Couldn’t reach Google",
             fallback: "Google connection failed"
+        )
+    }
+
+    /// A share that did not happen must never read as success — the copy sends
+    /// the user back to Google rather than claiming the calendar is theirs.
+    static func calendarAddFailure(_ error: Error) -> Toast {
+        .failure(
+            from: error,
+            offline: "Couldn’t reach Google",
+            fallback: "Couldn’t add the calendar — reconnect Google and try again"
         )
     }
 }

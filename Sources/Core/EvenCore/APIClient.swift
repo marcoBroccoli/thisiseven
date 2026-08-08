@@ -514,4 +514,10 @@ public extension EvenAPIClient {
     func calendarInfo() async throws -> GoogleCalendarInfo {
         try await get("v1/google/calendar-info")
     }
+
+    /// The partner's one-tap confirm: reader access on the owner's account,
+    /// then the calendar is inserted into the caller's own Google list.
+    func addSharedCalendar() async throws -> GoogleCalendarAddResult {
+        try await post("v1/google/calendar/add")
+    }
 }

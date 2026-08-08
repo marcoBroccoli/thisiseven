@@ -35,6 +35,14 @@ extension GoogleClient: DependencyKey {
         disconnect: {
             let api = await MainActor.run { SharedSession.store.api }
             try await api.googleDisconnect()
+        },
+        calendarInfo: {
+            let api = await MainActor.run { SharedSession.store.api }
+            return try await api.calendarInfo()
+        },
+        addSharedCalendar: {
+            let api = await MainActor.run { SharedSession.store.api }
+            return try await api.addSharedCalendar()
         }
     )
 }

@@ -42,6 +42,7 @@ final class ConnectionsFeatureTests: XCTestCase {
             ConnectionsReducer()
         } withDependencies: {
             $0.googleClient.status = { PreviewData.googleConnected }
+            $0.googleClient.calendarInfo = { PreviewData.calendarInfoCanAdd }
         }
 
         await store.send(.view(.appear)) {
@@ -51,6 +52,111 @@ final class ConnectionsFeatureTests: XCTestCase {
             $0.isCheckingStatus = false
             $0.email = PreviewData.googleConnected.email
             $0.path = .connected
+        }
+        await store.receive(\.calendarInfoLoaded) {
+            $0.calendar = PreviewData.calendarInfoCanAdd
+        }
+    }
+
+    /// The partner's confirm: reader ACL + CalendarList happen server-side;
+    /// the app only has to stop offering the add once it lands.
+    func testAddSharedCalendarMarksItListed() async {
+        var state = ConnectionsReducer.State()
+        state.path = .connected
+        state.email = PreviewData.googleConnected.email
+        state.calendar = PreviewData.calendarInfoCanAdd
+
+        let store = TestStore(initialState: state) {
+            ConnectionsReducer()
+        } withDependencies: {
+            $0.googleClient.addSharedCalendar = { PreviewData.calendarAdded }
+            $0.toastClient.show = { _ in }
+        }
+
+        await store.send(.view(.addCalendarTapped)) {
+            $0.addingCalendar = true
+        }
+        await store.receive(\.calendarAdded) {
+            $0.addingCalendar = false
+            $0.calendar = GoogleCalendarInfo(
+                calendarId: PreviewData.calendarAdded.calendarId,
+                shared: true,
+                shareUrl: PreviewData.calendarInfoCanAdd.shareUrl,
+                owner: false,
+                listed: true,
+                canAdd: false
+            )
+        }
+        XCTAssertFalse(store.state.calendar?.offersAdd ?? true, "the confirm must not be offered twice")
+    }
+
+    /// A share that Google refused (stale scope, offline) must land as an
+    /// error toast — never as a calendar the member does not actually have.
+    func testAddSharedCalendarFailureKeepsOffer() async {
+        var state = ConnectionsReducer.State()
+        state.path = .connected
+        state.calendar = PreviewData.calendarInfoCanAdd
+
+        let store = TestStore(initialState: state) {
+            ConnectionsReducer()
+        } withDependencies: {
+            $0.googleClient.addSharedCalendar = { throw URLError(.notConnectedToInternet) }
+            $0.toastClient.show = { _ in }
+        }
+
+        await store.send(.view(.addCalendarTapped)) {
+            $0.addingCalendar = true
+        }
+        await store.receive(\.presentToast) {
+            $0.addingCalendar = false
+        }
+        XCTAssertTrue(store.state.calendar?.offersAdd ?? false, "a failed add keeps the confirm available")
+        XCTAssertFalse(store.state.calendar?.isListed ?? true, "a failed add must not claim success")
+    }
+
+    /// The member whose Google hosts the calendar is never shown the confirm,
+    /// and tapping it (stale UI) does nothing.
+    func testOwnerIsNeverOfferedTheAdd() async {
+        var state = ConnectionsReducer.State()
+        state.path = .connected
+        state.calendar = PreviewData.calendarInfoOwner
+
+        let store = TestStore(initialState: state) {
+            ConnectionsReducer()
+        } withDependencies: {
+            $0.googleClient.addSharedCalendar = {
+                XCTFail("the owner must never call calendar/add")
+                return PreviewData.calendarAdded
+            }
+        }
+
+        await store.send(.view(.addCalendarTapped))
+        XCTAssertFalse(store.state.addingCalendar)
+    }
+
+    /// Disconnecting drops the calendar standing with the connection — the
+    /// next member to connect gets their own answer from the server.
+    func testDisconnectClearsCalendarState() async {
+        var state = ConnectionsReducer.State()
+        state.path = .connected
+        state.email = PreviewData.googleConnected.email
+        state.calendar = PreviewData.calendarInfoListed
+
+        let store = TestStore(initialState: state) {
+            ConnectionsReducer()
+        } withDependencies: {
+            $0.googleClient.disconnect = {}
+            $0.toastClient.show = { _ in }
+        }
+
+        await store.send(.view(.disconnectTapped)) {
+            $0.working = true
+        }
+        await store.receive(\.disconnectSucceeded) {
+            $0.working = false
+            $0.email = nil
+            $0.calendar = nil
+            $0.path = .why
         }
     }
 
@@ -107,6 +213,7 @@ final class ConnectionsFeatureTests: XCTestCase {
         } withDependencies: {
             $0.googleClient.connect = {}
             $0.googleClient.status = { PreviewData.googleConnected }
+            $0.googleClient.calendarInfo = { PreviewData.calendarInfoNotReady }
             $0.toastClient.show = { _ in }
         }
 
@@ -117,6 +224,10 @@ final class ConnectionsFeatureTests: XCTestCase {
             $0.working = false
             $0.email = PreviewData.googleConnected.email
             $0.path = .scopes
+        }
+        // Connecting also asks where this member stands on the shared calendar.
+        await store.receive(\.calendarInfoLoaded) {
+            $0.calendar = PreviewData.calendarInfoNotReady
         }
     }
 
