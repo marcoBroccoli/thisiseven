@@ -27,17 +27,22 @@ func (a *API) Reset(w http.ResponseWriter, r *http.Request) {
 	m := membership(r)
 	ctx := r.Context()
 
-	// Completion weight by section for the open week.
+	// Completion weight by section for the open week. Archived tasks are
+	// excluded on both branches for the same reason the beam excludes them
+	// (see Summary): a deleted todo takes its weight with it.
 	var choreMe, choreP, adminMe, adminP int64
 	rows, err := a.DB.Query(ctx, `
 		with weighted_completions as (
 			select c.task_id, c.member_id, c.weight
-			from completions c where c.week_id = $1
+			from completions c
+			join tasks task on task.id = c.task_id
+			where c.week_id = $1 and task.archived_at is null
 			union all
 			select rc.task_id, rc.member_id, rc.weight
 			from recurring_completions rc
 			join tasks task on task.id = rc.task_id
-			where task.household_id = $2 and rc.occurrence_on >= $3 and rc.occurrence_on <= $4
+			where task.household_id = $2 and task.archived_at is null
+				and rc.occurrence_on >= $3 and rc.occurrence_on <= $4
 		)
 		select t.section, c.member_id, coalesce(sum(c.weight), 0)
 		from weighted_completions c join tasks t on t.id = c.task_id

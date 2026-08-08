@@ -17,15 +17,21 @@ func (a *API) Summary(w http.ResponseWriter, r *http.Request) {
 	}
 	pebbles := []pebble{}
 	myWeight, partnerWeight := 0, 0
+	// Deleting a task takes its pebbles off the beam. DELETE archives rather
+	// than removes, so both branches must exclude archived tasks — otherwise a
+	// completed-then-deleted todo keeps weight in its owner's pan forever.
 	rows, err := a.DB.Query(ctx, `
 		select member_id, weight from (
 			select c.member_id, c.weight, c.completed_at
-			from completions c where c.week_id = $1
+			from completions c
+			join tasks t on t.id = c.task_id
+			where c.week_id = $1 and t.archived_at is null
 			union all
 			select rc.member_id, rc.weight, rc.completed_at
 			from recurring_completions rc
 			join tasks t on t.id = rc.task_id
-			where t.household_id = $2 and rc.occurrence_on >= $3 and rc.occurrence_on <= $4
+			where t.household_id = $2 and t.archived_at is null
+				and rc.occurrence_on >= $3 and rc.occurrence_on <= $4
 		) completions_this_week
 		order by completed_at`, m.WeekID, m.HouseholdID, m.WeekStart, today())
 	if err != nil {
