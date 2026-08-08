@@ -1,11 +1,8 @@
 package api
 
-// Integration suite: runs only when EVEN_TESTDB is set, against the compose
-// Postgres (127.0.0.1:5433 from the host, db:5432 inside the network).
-// The evend container has already applied migrations by the time this runs.
-//
-//   EVEN_TESTDB=postgres://even:PW@127.0.0.1:5433/even?sslmode=disable \
-//   EVEN_GOTRUE_JWT_SECRET=… go test ./internal/api
+// Integration suite: runs only when EVEN_TESTDB is set, and ONLY against a
+// database named even_test — never the live one. See testdb_test.go for the
+// guard and for how to bring the test database up.
 
 import (
 	"bytes"
@@ -98,10 +95,7 @@ func mintToken(t *testing.T, secret []byte, sub string) string {
 }
 
 func TestFullFlow(t *testing.T) {
-	dbURL := os.Getenv("EVEN_TESTDB")
-	if dbURL == "" {
-		t.Skip("EVEN_TESTDB not set")
-	}
+	dbURL := testDBURL(t)
 	secret := []byte(os.Getenv("EVEN_GOTRUE_JWT_SECRET"))
 	if len(secret) == 0 {
 		t.Fatal("EVEN_GOTRUE_JWT_SECRET required")

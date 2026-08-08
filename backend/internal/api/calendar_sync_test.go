@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 	"time"
 
@@ -15,10 +14,7 @@ import (
 )
 
 func TestCalendarSyncImportsAndSurfacesExternalChanges(t *testing.T) {
-	dbURL := os.Getenv("EVEN_TESTDB")
-	if dbURL == "" {
-		t.Skip("EVEN_TESTDB not set")
-	}
+	dbURL := testDBURL(t)
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, dbURL)
 	if err != nil {

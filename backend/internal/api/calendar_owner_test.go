@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -23,10 +22,7 @@ import (
 
 func testPool(t *testing.T) *pgxpool.Pool {
 	t.Helper()
-	dbURL := os.Getenv("EVEN_TESTDB")
-	if dbURL == "" {
-		t.Skip("EVEN_TESTDB not set")
-	}
+	dbURL := testDBURL(t)
 	pool, err := pgxpool.New(context.Background(), dbURL)
 	if err != nil {
 		t.Fatal(err)

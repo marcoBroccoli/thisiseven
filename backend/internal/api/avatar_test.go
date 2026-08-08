@@ -78,10 +78,7 @@ func TestProcessAvatarRejectsGarbage(t *testing.T) {
 }
 
 func TestAvatarUploadServeDelete(t *testing.T) {
-	dbURL := os.Getenv("EVEN_TESTDB")
-	if dbURL == "" {
-		t.Skip("EVEN_TESTDB not set")
-	}
+	dbURL := testDBURL(t)
 	secret := []byte(os.Getenv("EVEN_GOTRUE_JWT_SECRET"))
 	if len(secret) == 0 {
 		t.Fatal("EVEN_GOTRUE_JWT_SECRET required")

@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -47,10 +46,7 @@ func agendaRequest(m *Membership, query string) *http.Request {
 }
 
 func TestCalendarAgenda(t *testing.T) {
-	dbURL := os.Getenv("EVEN_TESTDB")
-	if dbURL == "" {
-		t.Skip("EVEN_TESTDB not set")
-	}
+	dbURL := testDBURL(t)
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, dbURL)
 	if err != nil {
@@ -160,10 +156,7 @@ func TestCalendarAgenda(t *testing.T) {
 }
 
 func TestSharedCalendarCreation(t *testing.T) {
-	dbURL := os.Getenv("EVEN_TESTDB")
-	if dbURL == "" {
-		t.Skip("EVEN_TESTDB not set")
-	}
+	dbURL := testDBURL(t)
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, dbURL)
 	if err != nil {
@@ -256,10 +249,7 @@ func TestSharedCalendarCreation(t *testing.T) {
 }
 
 func TestUpdateTaskClearsMappedCalendarEvent(t *testing.T) {
-	dbURL := os.Getenv("EVEN_TESTDB")
-	if dbURL == "" {
-		t.Skip("EVEN_TESTDB not set")
-	}
+	dbURL := testDBURL(t)
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, dbURL)
 	if err != nil {
@@ -327,10 +317,7 @@ func TestUpdateTaskClearsMappedCalendarEvent(t *testing.T) {
 }
 
 func TestResolveTaskCalendarActions(t *testing.T) {
-	dbURL := os.Getenv("EVEN_TESTDB")
-	if dbURL == "" {
-		t.Skip("EVEN_TESTDB not set")
-	}
+	dbURL := testDBURL(t)
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, dbURL)
 	if err != nil {
@@ -440,10 +427,7 @@ func TestResolveTaskCalendarActions(t *testing.T) {
 // household's. A partner who has never connected Google must still get their
 // dated todos onto the shared calendar, borrowing the connected member's token.
 func TestSharedCalendarWithOneMemberConnected(t *testing.T) {
-	dbURL := os.Getenv("EVEN_TESTDB")
-	if dbURL == "" {
-		t.Skip("EVEN_TESTDB not set")
-	}
+	dbURL := testDBURL(t)
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, dbURL)
 	if err != nil {
