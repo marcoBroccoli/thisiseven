@@ -52,7 +52,12 @@ func (a *API) householdJSON(ctx context.Context, householdID, meID string) (Hous
 func (a *API) Me(w http.ResponseWriter, r *http.Request) {
 	userID := httpx.UserID(r)
 	out := map[string]any{"user_id": userID, "member": nil, "household": nil, "week": nil}
-	m, err := a.loadMembership(r.Context(), userID)
+	want := activeHouseholdID(r)
+	m, err := a.loadMembershipIn(r.Context(), userID, want)
+	if errors.Is(err, pgx.ErrNoRows) && want != "" {
+		httpx.Error(w, http.StatusForbidden, "not_in_household", "you are not a member of that household")
+		return
+	}
 	if errors.Is(err, pgx.ErrNoRows) {
 		httpx.JSON(w, http.StatusOK, out)
 		return
@@ -92,11 +97,9 @@ func (a *API) CreateHousehold(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusBadRequest, "missing_fields", "name and display_name are required")
 		return
 	}
+	// Since multi-household, having one already is no reason to refuse: a user
+	// may run their own place and be the partner in another.
 	userID := httpx.UserID(r)
-	if _, err := a.loadMembership(r.Context(), userID); err == nil {
-		httpx.Error(w, http.StatusConflict, "already_in_household", "you already belong to a household")
-		return
-	}
 
 	var householdID string
 	err := pgx.BeginFunc(r.Context(), a.DB, func(tx pgx.Tx) error {
@@ -131,7 +134,7 @@ func (a *API) CreateHousehold(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusInternalServerError, "internal", "could not create household")
 		return
 	}
-	m, _ := a.loadMembership(r.Context(), userID)
+	m, _ := a.loadMembershipIn(r.Context(), userID, householdID)
 	h, err := a.householdJSON(r.Context(), householdID, m.MemberID)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "internal", "lookup failed")
@@ -155,11 +158,8 @@ func (a *API) JoinHousehold(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusBadRequest, "missing_fields", "invite_code and display_name are required")
 		return
 	}
+	// Belonging to another household is fine now; belonging to *this* one is not.
 	userID := httpx.UserID(r)
-	if _, err := a.loadMembership(r.Context(), userID); err == nil {
-		httpx.Error(w, http.StatusConflict, "already_in_household", "you already belong to a household")
-		return
-	}
 
 	var householdID string
 	err := pgx.BeginFunc(r.Context(), a.DB, func(tx pgx.Tx) error {
@@ -171,18 +171,7 @@ func (a *API) JoinHousehold(w http.ResponseWriter, r *http.Request) {
 		if err := lockHousehold(r.Context(), tx, householdID); err != nil {
 			return err
 		}
-		var count int
-		if err := tx.QueryRow(r.Context(),
-			`select count(*) from members where household_id = $1`, householdID).Scan(&count); err != nil {
-			return err
-		}
-		if count >= 2 {
-			return errHouseholdFull
-		}
-		_, err = tx.Exec(r.Context(), `
-			insert into members (household_id, user_id, display_name, color)
-			values ($1, $2, $3, $4)`, householdID, userID, in.DisplayName, defaultJoinerColor)
-		return err
+		return seatMember(r.Context(), tx, householdID, userID, in.DisplayName, defaultJoinerColor)
 	})
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
@@ -191,11 +180,14 @@ func (a *API) JoinHousehold(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, errHouseholdFull):
 		httpx.Error(w, http.StatusConflict, "household_full", "this household already has two people")
 		return
+	case errors.Is(err, errAlreadyMember):
+		httpx.Error(w, http.StatusConflict, "already_in_household", "you already belong to this household")
+		return
 	case err != nil:
 		httpx.Error(w, http.StatusInternalServerError, "internal", "could not join household")
 		return
 	}
-	m, _ := a.loadMembership(r.Context(), userID)
+	m, _ := a.loadMembershipIn(r.Context(), userID, householdID)
 	h, err := a.householdJSON(r.Context(), householdID, m.MemberID)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "internal", "lookup failed")
@@ -204,7 +196,59 @@ func (a *API) JoinHousehold(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, http.StatusOK, h)
 }
 
-var errHouseholdFull = errors.New("household full")
+var (
+	errHouseholdFull = errors.New("household full")
+	errAlreadyMember = errors.New("already a member of this household")
+)
+
+// seatMember takes the household's second seat (invite code or email invite).
+// Caller holds the household lock. `want` is the colour the flow would like;
+// if the sitting member already wears it the newcomer gets the other half of
+// the pair, so a household never reads as one person twice.
+func seatMember(ctx context.Context, tx pgx.Tx, householdID, userID, displayName, want string) error {
+	rows, err := tx.Query(ctx,
+		`select user_id, color from members where household_id = $1`, householdID)
+	if err != nil {
+		return err
+	}
+	taken := map[string]bool{}
+	count := 0
+	mine := false
+	for rows.Next() {
+		var uid, color string
+		if err := rows.Scan(&uid, &color); err != nil {
+			rows.Close()
+			return err
+		}
+		count++
+		taken[canonicalizeMemberColor(color)] = true
+		if uid == userID {
+			mine = true
+		}
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if mine {
+		return errAlreadyMember
+	}
+	if count >= 2 {
+		return errHouseholdFull
+	}
+	color := want
+	if taken[color] {
+		if color == defaultCreatorColor {
+			color = defaultJoinerColor
+		} else {
+			color = defaultCreatorColor
+		}
+	}
+	_, err = tx.Exec(ctx, `
+		insert into members (household_id, user_id, display_name, color)
+		values ($1, $2, $3, $4)`, householdID, userID, displayName, color)
+	return err
+}
 
 // PATCH /v1/me {display_name?, color?} — update the caller's member row.
 // color is #RRGGBB (legacy "clay"/"teal" accepted and normalized).

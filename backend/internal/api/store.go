@@ -1,11 +1,13 @@
 package api
 
 import (
-	"sync"
 	"context"
 	"crypto/rand"
 	"errors"
 	"net/http"
+	"regexp"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -55,15 +57,52 @@ func membership(r *http.Request) *Membership {
 	return m
 }
 
-// loadMembership resolves user → member/household/open week. Returns
-// pgx.ErrNoRows when the user has no membership yet.
+// activeHouseholdID reads the household the client is currently looking at:
+// header `X-Household-Id`, or `?household_id=` for WebSocket upgrades that
+// cannot set headers. Empty means "pick for me" — build-12 clients send
+// nothing and must keep working.
+func activeHouseholdID(r *http.Request) string {
+	id := strings.TrimSpace(r.Header.Get("X-Household-Id"))
+	if id == "" {
+		id = strings.TrimSpace(r.URL.Query().Get("household_id"))
+	}
+	if id == "" || !uuidRE.MatchString(id) {
+		return ""
+	}
+	return strings.ToLower(id)
+}
+
+var uuidRE = regexp.MustCompile(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+
+// loadMembership resolves user → member/household/open week for the caller's
+// *default* household. A user may belong to several: with no explicit choice
+// the most recently joined one wins. Returns pgx.ErrNoRows when the user has
+// no membership at all.
 func (a *API) loadMembership(ctx context.Context, userID string) (*Membership, error) {
+	return a.loadMembershipIn(ctx, userID, "")
+}
+
+// loadMembershipIn resolves the caller inside a specific household. An empty
+// householdID falls back to the default (most recent) membership.
+// pgx.ErrNoRows means "not a member (t)here".
+func (a *API) loadMembershipIn(ctx context.Context, userID, householdID string) (*Membership, error) {
 	m := &Membership{UserID: userID}
-	err := a.DB.QueryRow(ctx, `
-		select m.id, m.display_name, m.color, h.id, h.name, h.invite_code
-		from members m join households h on h.id = m.household_id
-		where m.user_id = $1`, userID).
-		Scan(&m.MemberID, &m.DisplayName, &m.Color, &m.HouseholdID, &m.Household, &m.InviteCode)
+	const cols = `m.id, m.display_name, m.color, h.id, h.name, h.invite_code`
+	var err error
+	if householdID != "" {
+		err = a.DB.QueryRow(ctx, `
+			select `+cols+`
+			from members m join households h on h.id = m.household_id
+			where m.user_id = $1 and m.household_id = $2`, userID, householdID).
+			Scan(&m.MemberID, &m.DisplayName, &m.Color, &m.HouseholdID, &m.Household, &m.InviteCode)
+	} else {
+		err = a.DB.QueryRow(ctx, `
+			select `+cols+`
+			from members m join households h on h.id = m.household_id
+			where m.user_id = $1
+			order by m.created_at desc, m.id desc limit 1`, userID).
+			Scan(&m.MemberID, &m.DisplayName, &m.Color, &m.HouseholdID, &m.Household, &m.InviteCode)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -82,9 +121,16 @@ func (a *API) loadMembership(ctx context.Context, userID string) (*Membership, e
 }
 
 // RequireMember gates /v1 data routes: the caller must belong to a household.
+// With `X-Household-Id` the caller picks which one — being no member there is a
+// 403, not a "go onboard" 409.
 func (a *API) RequireMember(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		m, err := a.loadMembership(r.Context(), httpx.UserID(r))
+		want := activeHouseholdID(r)
+		m, err := a.loadMembershipIn(r.Context(), httpx.UserID(r), want)
+		if errors.Is(err, pgx.ErrNoRows) && want != "" {
+			httpx.Error(w, http.StatusForbidden, "not_in_household", "you are not a member of that household")
+			return
+		}
 		if errors.Is(err, pgx.ErrNoRows) {
 			httpx.Error(w, http.StatusConflict, "no_household", "join or create a household first")
 			return

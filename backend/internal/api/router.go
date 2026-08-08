@@ -49,8 +49,15 @@ func Router(a *API, verifier httpx.AccessVerifier, gotrueURL string) http.Handle
 		r.Use(httpx.MaxBytes(64 << 10))
 		r.Use(httpx.PerUserLimit(rate.Every(200*time.Millisecond), 30))
 		r.Get("/v1/me", a.Me)
+		r.Get("/v1/households", a.ListHouseholds)
 		r.Post("/v1/households", a.CreateHousehold)
 		r.Post("/v1/households/join", a.JoinHousehold)
+		// Household-addressed (path id), not active-household-addressed: a
+		// person may hold several, and an invitee holds none yet.
+		r.Post("/v1/households/{id}/invite", a.InviteToHousehold)
+		r.Delete("/v1/households/{id}/invite", a.RevokeHouseholdInvite)
+		r.Post("/v1/invites/{id}/accept", a.AcceptInvite)
+		r.Post("/v1/invites/{id}/decline", a.DeclineInvite)
 	})
 
 	// Data: authenticated + household membership.

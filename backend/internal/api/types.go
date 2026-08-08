@@ -40,6 +40,32 @@ type HouseholdJSON struct {
 	Members    []MemberJSON `json:"members"`
 }
 
+// HouseholdListItemJSON is one row of GET /v1/households — enough to draw the
+// switcher without a fetch per household.
+type HouseholdListItemJSON struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	MemberCount int    `json:"member_count"`
+	// IsOwner: the caller is the household's first member (its creator).
+	IsOwner    bool   `json:"is_owner"`
+	MyMemberID string `json:"my_member_id"`
+	InviteCode string `json:"invite_code"`
+	// PendingInviteEmail is the address of the outstanding email invite, if any.
+	PendingInviteEmail *string `json:"pending_invite_email,omitempty"`
+}
+
+// InviteJSON is an email invite waiting for the caller (GET /v1/households) or
+// the receipt of one just written (POST …/invite).
+type InviteJSON struct {
+	ID            string `json:"id"`
+	HouseholdID   string `json:"household_id"`
+	HouseholdName string `json:"household_name"`
+	InvitedByName string `json:"invited_by_name"`
+	Email         string `json:"email"`
+	Status        string `json:"status"`
+	CreatedAt     string `json:"created_at"`
+}
+
 type WeekJSON struct {
 	ID        string  `json:"id"`
 	Index     int     `json:"index"`

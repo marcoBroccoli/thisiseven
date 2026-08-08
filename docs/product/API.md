@@ -10,6 +10,17 @@ Errors: `{"error": {"code": "string", "message": "human text"}}` with 4xx/5xx.
 - WebSocket upgrade (`GET /v1/ws/household`): same Bearer header **or**
   `?access_token=<gotrue access token>` (for clients that cannot set upgrade headers).
 
+### Active household on `/v1/*`
+A person may belong to **several households** (a household still holds at most
+two people). Every household-scoped route resolves one of them:
+- `X-Household-Id: <uuid>` — the household the client is looking at. **or**
+  `?household_id=<uuid>` for the WebSocket upgrade, which cannot set headers.
+- Header omitted → the caller's **most recently joined** household. Clients
+  that never send it (build 12 and earlier) behave exactly as before.
+- Header naming a household the caller is not in → `403 not_in_household`
+  (never someone else's data, and never a silent fallback).
+- No membership anywhere → the usual `409 no_household` on data routes.
+
 ## Auth (proxied to GoTrue, standard Supabase auth API)
 - `POST /auth/token?grant_type=id_token` `{provider:"apple", id_token, nonce}`
 - `POST /auth/token?grant_type=password` `{email, password}` (debug accounts)
@@ -24,6 +35,10 @@ member      {id, display_name, color: "#RRGGBB", is_me, has_avatar}
             // legacy "clay"/"teal" still accepted on write; responses normalize to hex
             // has_avatar — photo on house server; fetch via GET /v1/members/{id}/avatar
 household   {id, name, invite_code, members: [member]}
+household_row {id, name, member_count, is_owner, my_member_id, invite_code,
+             pending_invite_email?}                       // GET /v1/households
+invite      {id, household_id, household_name, invited_by_name, email, status,
+             created_at}    // status: "pending"|"accepted"|"declined"|"revoked"
 week        {id, index, started_on, closed_at?}          // index: 1,2,3…
 task        {id, title, section: "chore"|"admin", owner_member_id, weight: 1|2|3,
              recurrence: "none"|"daily"|"every_2_days"|"weekly", due_on?,
@@ -46,7 +61,8 @@ trade       {id, task_id, task_title, from_member_id, to_member_id, accepted}
 ## Endpoints
 - `GET  /healthz` → `{ok:true}` (no auth)
 - `GET  /v1/me` → `{user_id, member?, household?, week?}` — member/household
-  null until onboarded; drives app routing.
+  null until onboarded; drives app routing. Honours `X-Household-Id`
+  (`403 not_in_household` when the caller is no member there).
 - `PATCH /v1/me` `{display_name?, color?}` → member — update the caller's
   profile (membership required). At least one field required. `display_name`
   trimmed, 1–40 chars. `color` is `#RRGGBB` (any sRGB); legacy `clay`|`teal`
@@ -59,10 +75,40 @@ trade       {id, task_id, task_title, from_member_id, to_member_id, accepted}
 - `GET /v1/members/{id}/avatar` → `image/jpeg` — same-household only.
   `404 no_avatar` when unset. `ETag` from `avatar_updated_at`;
   `Cache-Control: private, max-age=3600`. Supports `If-None-Match`.
+- `GET  /v1/households` → `{households: [household_row], invites: [invite]}` —
+  everything the switcher needs. Membership **not** required: a new user with an
+  invite has to see it before they belong anywhere.
+  - `is_owner` — the caller is the household's **first** member (its creator).
+  - `member_count` — 1 or 2 · `my_member_id` — the caller's member row *there*.
+  - `pending_invite_email` — the address of the outstanding email invite, absent
+    when the seat is free or taken.
+  - `invites` — invites addressed to the caller's GoTrue email
+    (case-insensitive), minus households they already sit in.
 - `POST /v1/households` `{name, display_name}` → household (creator =
-  `#A6552F` terracotta; opens week 1)
+  `#A6552F` terracotta; opens week 1). Allowed **even when the caller already
+  has households** — one person, several places.
 - `POST /v1/households/join` `{invite_code, display_name}` → household
-  (joiner = `#37756D` pine; 409 `household_full` on 3rd member)
+  (joiner = `#37756D` pine; 409 `household_full` on 3rd member;
+  409 `already_in_household` when the caller already sits in *that* household)
+- `POST /v1/households/{id}/invite` `{email}` → invite (201) — record the free
+  seat's invite. **evend sends no mail**: the address is stored, and the invite
+  surfaces in `GET /v1/households` for whoever signs in with it.
+  Either member may invite (a household is a pair; whoever is inside owns the
+  free seat). Email is lowercased/trimmed. `400 invalid_email` ·
+  `403 not_in_household` · `409 household_full` (already two people) ·
+  `409 invite_pending` (one seat, one live invite) ·
+  `422 self_invite` (your own auth email).
+- `DELETE /v1/households/{id}/invite` → `{ok:true}` — revoke the outstanding
+  invite and free the seat for another address. `404 no_invite` when none is
+  out; `403 not_in_household`.
+- `POST /v1/invites/{id}/accept` `{display_name}` → household — take the seat:
+  creates the member row (colour = the free half of the terracotta/pine pair)
+  and marks the invite accepted. `404 no_invite` when the invite is not pending
+  or is addressed to another email (an invite you were not sent does not exist)
+  · `409 household_full` when the seat was taken meanwhile ·
+  `409 already_in_household`.
+- `POST /v1/invites/{id}/decline` → `{ok:true}` — the seat stays free and the
+  household may invite someone else. Same `404 no_invite` rule.
 - `GET  /v1/summary` → `{week, pebbles: [{member_id, weight}...ordered oldest→newest],
   percent_me, percent_partner, caption, sections: [{key:"chore"|"admin", label, tasks:[task]}],
   pending_draft_count}`  // caption per design logic
@@ -273,6 +319,19 @@ VATTENFALL · TODAY           one-off from a Gmail draft
   assigned to either member.
 - Solo household (partner not joined): percent_partner = 0, money endpoints
   usable, trades/appreciations 409 `no_partner`.
+- **A household is a pair; a person is not.** Two members per household stays a
+  hard cap — the split, the beam and the trade all assume two sides — but one
+  user may hold several households, with one member row (and therefore one
+  Gmail connection, one colour, one name) per household. Nothing is shared
+  across them: tasks, drafts, money and the realtime channel are all scoped to
+  the resolved household.
+- **Invites are records, not mail.** evend has no SMTP. `…/invite` writes the
+  address; the invitee discovers it by signing in and reading
+  `GET /v1/households`. Matching is on the GoTrue email, case-insensitive, so
+  an invite typed with different capitalisation still finds its person. One
+  live invite per household — there is only ever one empty seat — while
+  accepted / declined / revoked invites stay as history. The `invite_code`
+  door is unchanged and both may be open at once.
 - Google Calendar is read only through the dedicated household calendar, never
   from a member's primary calendar. That calendar belongs to the **household**,
   not to whoever connected first: it is created once, kept on the household
