@@ -1,0 +1,13 @@
+# Secrets. Only .env.example belongs in the repo.
+.env
+
+# Frontend install + local Playwright output.
+web/node_modules/
+web/test-results/
+web/playwright-report/
+web/.vite/
+
+# NOTE: server/internal/web/dist is deliberately NOT ignored.
+# go:embed fails on a missing/empty directory, so the built bundle is committed
+# and `go build ./...` works on a fresh checkout with no Node installed.
+# Re-generate it with: cd web && npm run build

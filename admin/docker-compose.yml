@@ -1,0 +1,57 @@
+# Even admin console — a separate compose project from `evend` on purpose.
+#
+#   cd admin && cp .env.example .env   # fill it in from ~/.env
+#   docker compose up -d --build
+#
+# It joins evend's existing network as an external network, so it reaches
+# Postgres at db:5432 and evend at evend:8080 by service name without evend's
+# compose file having to know this service exists. Bringing the console down (or
+# it crashing) cannot touch the API the household depends on.
+name: even-admin
+
+services:
+  admin:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      # Localhost only — Caddy terminates for the LAN and the Cloudflare tunnel
+      # for admin.thisiseven.app. Never bind this to 0.0.0.0.
+      #
+      # NOTE: host port 3025 is currently taken by the `glance` container on
+      # this machine. ADMIN_HOST_PORT defaults to 3026 for that reason; set it
+      # back to 3025 once glance moves. The container always listens on 3025.
+      - "127.0.0.1:${ADMIN_HOST_PORT:-3026}:3025"
+    environment:
+      ADMIN_ADDR: ":3025"
+      ADMIN_DATABASE_URL: postgres://even:${EVEN_DB_PASSWORD}@db:5432/even?sslmode=disable
+      ADMIN_EVEND_BASE_URL: http://evend:8080
+      ADMIN_SESSION_HOURS: "${ADMIN_SESSION_HOURS:-12}"
+      # true behind Caddy/Cloudflare (https). Set false ONLY for a plain-http
+      # even-admin.home smoke test, never on the public domain.
+      ADMIN_COOKIE_SECURE: "${ADMIN_COOKIE_SECURE:-true}"
+      ADMIN_TOTP_ISSUER: "${ADMIN_TOTP_ISSUER:-Even Admin}"
+      # First boot only. Remove both from .env once you have signed in and
+      # enrolled TOTP — Bootstrap refuses to run again anyway, but there is no
+      # reason to leave a password on disk.
+      ADMIN_BOOTSTRAP_EMAIL: "${ADMIN_BOOTSTRAP_EMAIL:-}"
+      ADMIN_BOOTSTRAP_PASSWORD: "${ADMIN_BOOTSTRAP_PASSWORD:-}"
+    networks:
+      - evend
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      # distroless has no shell and no curl; the binary answering its own
+      # /healthz is the only probe available, so compose relies on the port
+      # being accepted instead. Uptime Kuma does the real check over HTTP.
+      disable: true
+
+networks:
+  evend:
+    external: true
+    # Created by backend/docker-compose.yml (project name `evend`).
+    name: evend_default

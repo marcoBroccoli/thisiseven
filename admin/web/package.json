@@ -1,0 +1,29 @@
+{
+  "name": "even-admin-web",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Even operations console — SPA. Built into the Go binary; never served from a CDN.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "qrcode": "^1.5.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.26.2"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.47.2",
+    "@types/qrcode": "^1.5.5",
+    "@types/react": "^18.3.10",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "typescript": "^5.6.2",
+    "vite": "^5.4.8"
+  }
+}
