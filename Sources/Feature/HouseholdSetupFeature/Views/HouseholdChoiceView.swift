@@ -15,6 +15,27 @@
                     subtitle: "An Even household holds exactly two people."
                 )
 
+                // A seat already kept for you beats both doors below — evend
+                // sends no mail, so this screen is where the invite surfaces.
+                if !store.invites.isEmpty {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("A SEAT IS WAITING")
+                            .font(.system(size: 10, weight: .semibold))
+                            .tracking(1.8)
+                            .foregroundStyle(EvenTokens.terracotta)
+
+                        ForEach(store.invites) { invite in
+                            HouseholdInviteInvitationRow(
+                                invite: invite,
+                                onAccept: { send(.acceptInviteTapped(invite.id), animation: EvenMotion.page) },
+                                onDecline: { send(.declineInviteTapped(invite.id), animation: EvenMotion.reveal) }
+                            )
+                        }
+                    }
+                    .padding(.top, 26)
+                    .transition(EvenMotion.fadeUp)
+                }
+
                 VStack(spacing: 12) {
                     PathChoiceButton(
                         title: "Start a new household",

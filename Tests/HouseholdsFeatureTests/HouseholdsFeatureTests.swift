@@ -1,0 +1,312 @@
+import ComposableArchitecture
+import EvenCore
+import HouseholdClient
+@testable import HouseholdsFeature
+import ToastClient
+import ToastUI
+import XCTest
+
+/// One person, several households — and only ever two people in each.
+@MainActor
+final class HouseholdsFeatureTests: XCTestCase {
+    // MARK: Loading
+
+    /// `/v1/me` is resolved with the same header every other request carries —
+    /// so whichever household it answers for is the one the checkmark belongs
+    /// on, no client-side guessing.
+    func testTheOpenHouseholdComesFromTheServersOwnAnswer() async {
+        let store = TestStore(initialState: HouseholdsReducer.State()) {
+            HouseholdsReducer()
+        } withDependencies: {
+            $0.householdClient.list = { PreviewData.households }
+            $0.householdClient.loadProfile = { PreviewData.me }
+            $0.toastClient.show = { _ in }
+        }
+
+        await store.send(.view(.appear))
+        await store.receive(\.householdsLoaded) {
+            $0.isLoading = false
+            $0.households = IdentifiedArray(uniqueElements: PreviewData.householdRows)
+            $0.invites = [PreviewData.inviteForMe]
+            $0.activeHouseholdID = PreviewData.householdId
+            $0.myDisplayName = PreviewData.ada.displayName
+        }
+        XCTAssertTrue(store.state.isActive(PreviewData.atticRow))
+        XCTAssertFalse(store.state.isActive(PreviewData.seaHouseRow))
+    }
+
+    /// Nothing pinned yet (a fresh install, build 12 behaviour) — the server
+    /// falls back to the most recently joined household, which is the last row
+    /// `GET /v1/households` returns. The checkmark has to agree.
+    func testWithNothingPinnedTheMostRecentlyJoinedHouseholdReadsAsOpen() async {
+        let store = TestStore(initialState: HouseholdsReducer.State()) {
+            HouseholdsReducer()
+        } withDependencies: {
+            $0.householdClient.list = { PreviewData.households }
+            $0.householdClient.loadProfile = { MeResponse(userId: PreviewData.adaId) }
+            $0.toastClient.show = { _ in }
+        }
+
+        await store.send(.view(.appear))
+        await store.receive(\.householdsLoaded) {
+            $0.isLoading = false
+            $0.households = IdentifiedArray(uniqueElements: PreviewData.householdRows)
+            $0.invites = [PreviewData.inviteForMe]
+        }
+        XCTAssertTrue(store.state.isActive(PreviewData.seaHouseRow))
+        XCTAssertFalse(store.state.isActive(PreviewData.atticRow))
+    }
+
+    // MARK: Switching
+
+    func testSwitchingHouseholdsRepointsEveryRequestAndTellsTheApp() async {
+        let store = TestStore(initialState: loaded()) {
+            HouseholdsReducer()
+        } withDependencies: {
+            $0.householdClient.setActive = { _ in PreviewData.me }
+            $0.toastClient.show = { _ in }
+        }
+
+        await store.send(.view(.selectHousehold(PreviewData.seaHouseId))) {
+            $0.busyHouseholdID = PreviewData.seaHouseId
+        }
+        await store.receive(\.switchSucceeded) {
+            $0.busyHouseholdID = nil
+            $0.expandedHouseholdID = nil
+            $0.activeHouseholdID = PreviewData.seaHouseId
+        }
+        await store.receive(\.delegate.activeHouseholdChanged)
+    }
+
+    /// Tapping the household you are already in is not a switch.
+    func testTappingTheActiveHouseholdDoesNothing() async {
+        let store = TestStore(initialState: loaded()) {
+            HouseholdsReducer()
+        }
+
+        await store.send(.view(.selectHousehold(PreviewData.householdId)))
+    }
+
+    // MARK: Inviting
+
+    func testInvitingAnAddressHoldsTheFreeSeat() async {
+        var state = loaded()
+        state.expandedHouseholdID = PreviewData.householdId
+        state.inviteEmail = " Mira@Example.com "
+        state.households[id: PreviewData.householdId]?.memberCount = 1
+
+        let sent = LockIsolated<String?>(nil)
+        let store = TestStore(initialState: state) {
+            HouseholdsReducer()
+        } withDependencies: {
+            $0.householdClient.invite = { householdId, email in
+                sent.setValue(email)
+                return HouseholdInvite(
+                    id: UUID(0),
+                    householdId: householdId,
+                    householdName: "The Attic",
+                    invitedByName: "Ada",
+                    email: email
+                )
+            }
+            $0.toastClient.show = { _ in }
+        }
+
+        await store.send(.view(.submitInvite(PreviewData.householdId))) {
+            $0.busyHouseholdID = PreviewData.householdId
+        }
+        await store.receive(\.inviteSucceeded) {
+            $0.busyHouseholdID = nil
+            $0.inviteEmail = ""
+            $0.households[id: PreviewData.householdId]?.pendingInviteEmail = "mira@example.com"
+        }
+        // Trimmed and lowercased before it leaves — matching is case-insensitive
+        // on the server, and this keeps the row honest.
+        XCTAssertEqual(sent.value, "mira@example.com")
+    }
+
+    /// One seat, one live invite — the server says so, and the copy has to say
+    /// something a person can act on.
+    func testASecondInviteIsRefusedWithCopyYouCanActOn() async {
+        var state = loaded()
+        state.inviteEmail = "mira@example.com"
+
+        let store = TestStore(initialState: state) {
+            HouseholdsReducer()
+        } withDependencies: {
+            $0.householdClient.invite = { _, _ in
+                throw APIError.http(status: 409, code: "invite_pending", message: "invite pending")
+            }
+            $0.toastClient.show = { _ in }
+        }
+
+        await store.send(.view(.submitInvite(PreviewData.householdId))) {
+            $0.busyHouseholdID = PreviewData.householdId
+        }
+        await store.receive(\.inviteFailed) {
+            $0.busyHouseholdID = nil
+        }
+        XCTAssertEqual(
+            HouseholdsReducer.inviteCopy(
+                for: APIError.http(status: 422, code: "self_invite", message: "")
+            ),
+            "that’s your own address"
+        )
+    }
+
+    func testWithdrawingAnInviteFreesTheSeat() async {
+        var state = loaded()
+        state.households[id: PreviewData.seaHouseId]?.pendingInviteEmail = "mira@example.com"
+
+        let store = TestStore(initialState: state) {
+            HouseholdsReducer()
+        } withDependencies: {
+            $0.householdClient.revokeInvite = { _ in }
+            $0.toastClient.show = { _ in }
+        }
+
+        await store.send(.view(.revokeInvite(PreviewData.seaHouseId))) {
+            $0.busyHouseholdID = PreviewData.seaHouseId
+        }
+        await store.receive(\.revokeSucceeded) {
+            $0.busyHouseholdID = nil
+            $0.households[id: PreviewData.seaHouseId]?.pendingInviteEmail = nil
+        }
+    }
+
+    // MARK: Invites addressed to me
+
+    func testAcceptingAnInviteTakesTheSeatAndOpensThatHousehold() async {
+        var state = loaded()
+        state.path = .accept
+        state.acceptingInvite = PreviewData.inviteForMe
+        state.acceptDisplayName = "Ada"
+
+        let store = TestStore(initialState: state) {
+            HouseholdsReducer()
+        } withDependencies: {
+            $0.householdClient.acceptInvite = { _, _ in PreviewData.household }
+            $0.householdClient.list = { PreviewData.households }
+            $0.householdClient.loadProfile = { PreviewData.me }
+            $0.toastClient.show = { _ in }
+        }
+        store.exhaustivity = .off
+
+        await store.send(.view(.submitAccept)) {
+            $0.working = true
+        }
+        await store.receive(\.acceptSucceeded) {
+            $0.working = false
+            $0.path = .list
+            $0.acceptingInvite = nil
+            $0.invites = []
+            $0.activeHouseholdID = PreviewData.householdId
+        }
+        await store.receive(\.delegate.activeHouseholdChanged)
+        await store.skipReceivedActions(strict: false)
+    }
+
+    /// The seat can go while you are deciding. Say so, and re-read the list
+    /// instead of leaving a dead card on screen.
+    func testAnInviteThatIsGoneSendsYouBackWithAnHonestLine() async {
+        var state = loaded()
+        state.path = .accept
+        state.acceptingInvite = PreviewData.inviteForMe
+        state.acceptDisplayName = "Ada"
+
+        let store = TestStore(initialState: state) {
+            HouseholdsReducer()
+        } withDependencies: {
+            $0.householdClient.acceptInvite = { _, _ in
+                throw APIError.http(status: 404, code: "no_invite", message: "no invite")
+            }
+            $0.householdClient.list = { HouseholdsResponse(households: PreviewData.householdRows) }
+            $0.householdClient.loadProfile = { PreviewData.me }
+            $0.toastClient.show = { _ in }
+        }
+        store.exhaustivity = .off
+
+        await store.send(.view(.submitAccept)) {
+            $0.working = true
+        }
+        await store.receive(\.acceptFailed) {
+            $0.working = false
+            $0.path = .list
+            $0.acceptingInvite = nil
+        }
+        await store.skipReceivedActions(strict: false)
+        XCTAssertEqual(
+            HouseholdsReducer.acceptCopy(
+                for: APIError.http(status: 404, code: "no_invite", message: "")
+            ),
+            "that invite is no longer open"
+        )
+    }
+
+    func testDecliningDropsTheCard() async {
+        let store = TestStore(initialState: loaded()) {
+            HouseholdsReducer()
+        } withDependencies: {
+            $0.householdClient.declineInvite = { _ in }
+            $0.toastClient.show = { _ in }
+        }
+
+        await store.send(.view(.declineTapped(PreviewData.inviteId))) {
+            $0.busyInviteID = PreviewData.inviteId
+        }
+        await store.receive(\.declineSucceeded) {
+            $0.busyInviteID = nil
+            $0.invites = []
+        }
+    }
+
+    // MARK: Creating another one
+
+    func testCreatingAnotherHouseholdOpensIt() async {
+        var state = loaded()
+        state.path = .create
+        state.newHouseholdName = "  The Cabin  "
+        state.newDisplayName = ""
+        state.myDisplayName = "Ada"
+
+        let names = LockIsolated<(String, String)?>(nil)
+        let store = TestStore(initialState: state) {
+            HouseholdsReducer()
+        } withDependencies: {
+            $0.householdClient.create = { name, display in
+                names.setValue((name, display))
+                return PreviewData.household
+            }
+            $0.householdClient.list = { PreviewData.households }
+            $0.householdClient.loadProfile = { PreviewData.me }
+            $0.toastClient.show = { _ in }
+        }
+        store.exhaustivity = .off
+
+        await store.send(.view(.submitCreate)) {
+            $0.working = true
+        }
+        await store.receive(\.createSucceeded) {
+            $0.working = false
+            $0.path = .list
+            $0.activeHouseholdID = PreviewData.householdId
+        }
+        await store.receive(\.delegate.activeHouseholdChanged)
+        await store.skipReceivedActions(strict: false)
+        // Blank display name falls back to the name you already answer to.
+        XCTAssertEqual(names.value?.0, "The Cabin")
+        XCTAssertEqual(names.value?.1, "Ada")
+    }
+
+    // MARK: Helpers
+
+    private func loaded() -> HouseholdsReducer.State {
+        var state = HouseholdsReducer.State()
+        state.isLoading = false
+        state.households = IdentifiedArray(uniqueElements: PreviewData.householdRows)
+        state.invites = [PreviewData.inviteForMe]
+        state.myDisplayName = "Ada"
+        state.activeHouseholdID = PreviewData.householdId
+        return state
+    }
+}

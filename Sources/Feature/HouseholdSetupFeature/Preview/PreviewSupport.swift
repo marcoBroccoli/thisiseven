@@ -42,6 +42,26 @@ public enum HouseholdSetupPreviewSupport {
         }
     }
 
+    /// The newcomer's case: a seat is already being held for this address.
+    public static func choiceWithInvite() -> StoreOf<HouseholdSetupReducer> {
+        var state = HouseholdSetupReducer.State()
+        state.invites = [PreviewData.inviteForMe]
+        return Store(initialState: state) {
+            HouseholdSetupReducer()
+        }
+    }
+
+    public static func acceptInvite() -> StoreOf<HouseholdSetupReducer> {
+        var state = HouseholdSetupReducer.State()
+        state.path = .acceptInvite
+        state.invites = [PreviewData.inviteForMe]
+        state.acceptingInvite = PreviewData.inviteForMe
+        state.displayName = PreviewData.ada.displayName
+        return Store(initialState: state) {
+            HouseholdSetupReducer()
+        }
+    }
+
     public static func waiting() -> StoreOf<HouseholdSetupReducer> {
         var state = HouseholdSetupReducer.State()
         state.path = .waiting

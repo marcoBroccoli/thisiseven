@@ -92,6 +92,112 @@ public struct Household: Codable, Hashable, Sendable {
     }
 }
 
+/// One line of the household switcher (`GET /v1/households`). A person may hold
+/// several of these; only two people fit in each.
+public struct HouseholdRow: Codable, Identifiable, Hashable, Sendable {
+    public let id: UUID
+    public var name: String
+    public var memberCount: Int
+    /// The caller created this household.
+    public var isOwner: Bool
+    /// The caller's member row *there* — one per household, never shared.
+    public var myMemberId: UUID
+    public var inviteCode: String
+    /// The address of the outstanding email invite; absent when the free seat
+    /// has nobody waiting, or when both seats are taken.
+    public var pendingInviteEmail: String?
+
+    public init(
+        id: UUID,
+        name: String,
+        memberCount: Int,
+        isOwner: Bool,
+        myMemberId: UUID,
+        inviteCode: String,
+        pendingInviteEmail: String? = nil
+    ) {
+        self.id = id
+        self.name = name
+        self.memberCount = memberCount
+        self.isOwner = isOwner
+        self.myMemberId = myMemberId
+        self.inviteCode = inviteCode
+        self.pendingInviteEmail = pendingInviteEmail
+    }
+
+    /// "1 of 2" / "2 of 2" — a household is a pair, always.
+    public var seatsLine: String {
+        "\(memberCount) of 2"
+    }
+
+    public var hasFreeSeat: Bool {
+        memberCount < 2
+    }
+}
+
+public enum InviteStatus: String, Codable, Sendable {
+    case pending, accepted, declined, revoked
+
+    public init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        self = InviteStatus(rawValue: raw) ?? .pending
+    }
+}
+
+/// An invite is a record, not mail — evend sends nothing. Whoever signs in with
+/// the matching address finds it waiting in `GET /v1/households`.
+public struct HouseholdInvite: Codable, Identifiable, Hashable, Sendable {
+    public let id: UUID
+    public var householdId: UUID
+    public var householdName: String
+    public var invitedByName: String
+    public var email: String
+    public var status: InviteStatus
+    public var createdAt: Date?
+
+    public init(
+        id: UUID,
+        householdId: UUID,
+        householdName: String,
+        invitedByName: String,
+        email: String,
+        status: InviteStatus = .pending,
+        createdAt: Date? = nil
+    ) {
+        self.id = id
+        self.householdId = householdId
+        self.householdName = householdName
+        self.invitedByName = invitedByName
+        self.email = email
+        self.status = status
+        self.createdAt = createdAt
+    }
+}
+
+/// The answer to giving up your seat. `householdDeleted` when you were the last
+/// one in — an empty household is not kept.
+public struct LeaveHouseholdResult: Codable, Hashable, Sendable {
+    public var ok: Bool
+    public var householdDeleted: Bool
+
+    public init(ok: Bool = true, householdDeleted: Bool = false) {
+        self.ok = ok
+        self.householdDeleted = householdDeleted
+    }
+}
+
+/// Everything the switcher needs — membership not required, because a brand new
+/// user has to see their invite before they belong anywhere.
+public struct HouseholdsResponse: Codable, Hashable, Sendable {
+    public var households: [HouseholdRow]
+    public var invites: [HouseholdInvite]
+
+    public init(households: [HouseholdRow] = [], invites: [HouseholdInvite] = []) {
+        self.households = households
+        self.invites = invites
+    }
+}
+
 public struct Week: Codable, Hashable, Sendable {
     public let id: UUID
     public var index: Int

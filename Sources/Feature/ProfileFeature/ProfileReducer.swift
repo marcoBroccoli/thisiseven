@@ -4,6 +4,7 @@ import ConnectionsFeature
 import EvenCore
 import Foundation
 import HouseholdClient
+import HouseholdsFeature
 import ToastClient
 import ToastUI
 
@@ -23,6 +24,12 @@ public struct ProfileReducer {
         public var connections = ConnectionsReducer.State()
         /// Local JPEG preview while upload is in flight / just picked.
         public var localAvatarJPEG: Data?
+        /// Your places — pushed from the household card.
+        @Presents public var households: HouseholdsReducer.State?
+        /// How many households the caller holds — the card only offers the
+        /// switcher subtitle once there is something to switch between.
+        public var householdCount = 1
+        public var pendingInviteCount = 0
 
         public init() {}
 
@@ -35,8 +42,11 @@ public struct ProfileReducer {
         case view(View)
         case binding(BindingAction<State>)
         case connections(ConnectionsReducer.Action)
+        case households(PresentationAction<HouseholdsReducer.Action>)
         case profileLoaded(MeResponse)
         case profileLoadFailed
+        /// Quiet count for the household card's subtitle / badge.
+        case householdsCounted(households: Int, invites: Int)
         case saveSucceeded(Member)
         case saveFailed(previousName: String, previousColor: MemberColor)
         case avatarUploadSucceeded(Member)
@@ -55,6 +65,7 @@ public struct ProfileReducer {
             case pickAvatarJPEG(Data)
             case removeAvatar
             case inviteCopied
+            case householdsTapped
             case signOutTapped
             case confirmSignOut
             case cancelSignOut
@@ -65,6 +76,9 @@ public struct ProfileReducer {
         public enum Delegate: Equatable {
             /// Session cleared — App should return to Login.
             case signedOut
+            /// A different household is open now — every household-scoped
+            /// surface (and the realtime socket) has to be pulled again.
+            case activeHouseholdChanged(UUID)
         }
     }
 
@@ -88,8 +102,33 @@ public struct ProfileReducer {
                 }
                 return .merge(
                     .send(.connections(.view(.appear))),
-                    loadProfile()
+                    loadProfile(),
+                    countHouseholds()
                 )
+
+            case let .householdsCounted(households, invites):
+                state.householdCount = households
+                state.pendingInviteCount = invites
+                return .none
+
+            case .view(.householdsTapped):
+                var households = HouseholdsReducer.State()
+                // The name you already answer to is the default when you take a
+                // seat somewhere new.
+                households.myDisplayName = state.me?.displayName ?? ""
+                state.households = households
+                return .none
+
+            case let .households(.presented(.delegate(.activeHouseholdChanged(id)))):
+                // The card behind the push is about a different house now.
+                return .merge(
+                    loadProfile(),
+                    countHouseholds(),
+                    .send(.delegate(.activeHouseholdChanged(id)))
+                )
+
+            case .households(.dismiss):
+                return countHouseholds()
 
             case let .profileLoaded(me):
                 state.isLoading = false
@@ -218,9 +257,21 @@ public struct ProfileReducer {
             case .view(.connectGoogleTapped):
                 return .send(.connections(.view(.primaryTapped)))
 
-            case .connections, .presentToast:
+            case .connections, .presentToast, .households:
                 return .none
             }
+        }
+        .ifLet(\.$households, action: \.households) { HouseholdsReducer() }
+    }
+
+    /// Quiet — a failure just leaves the card's subtitle as it was.
+    private func countHouseholds() -> Effect<Action> {
+        .run { [householdClient] send in
+            guard let response = try? await householdClient.list() else { return }
+            await send(.householdsCounted(
+                households: response.households.count,
+                invites: response.invites.filter { $0.status == .pending }.count
+            ))
         }
     }
 

@@ -118,6 +118,8 @@ public final class SessionStore: @unchecked Sendable {
     public func signOut() async {
         if let session { await auth.signOut(accessToken: session.accessToken) }
         storage.clear()
+        // The next person to sign in on this phone is not in your households.
+        ActiveHousehold.clear()
         session = nil
         me = nil
         phase = .signedOut
@@ -126,13 +128,59 @@ public final class SessionStore: @unchecked Sendable {
     // MARK: Household onboarding
 
     public func createHousehold(name: String, displayName: String) async throws {
-        _ = try await api.createHousehold(name: name, displayName: displayName)
+        let household = try await api.createHousehold(name: name, displayName: displayName)
+        // A place you just made is the place you are looking at.
+        ActiveHousehold.set(household.id)
         await refreshIdentity()
     }
 
     public func joinHousehold(inviteCode: String, displayName: String) async throws {
-        _ = try await api.joinHousehold(inviteCode: inviteCode, displayName: displayName)
+        let household = try await api.joinHousehold(inviteCode: inviteCode, displayName: displayName)
+        ActiveHousehold.set(household.id)
         await refreshIdentity()
+    }
+
+    // MARK: Several households
+
+    public func households() async throws -> HouseholdsResponse {
+        try await api.households()
+    }
+
+    public func invite(householdId: UUID, email: String) async throws -> HouseholdInvite {
+        try await api.inviteToHousehold(id: householdId, email: email)
+    }
+
+    public func revokeInvite(householdId: UUID) async throws {
+        try await api.revokeHouseholdInvite(id: householdId)
+    }
+
+    public func acceptInvite(id: UUID, displayName: String) async throws -> Household {
+        let household = try await api.acceptInvite(id: id, displayName: displayName)
+        ActiveHousehold.set(household.id)
+        await refreshIdentity()
+        return household
+    }
+
+    public func declineInvite(id: UUID) async throws {
+        try await api.declineInvite(id: id)
+    }
+
+    /// Leaving the household you were looking at unpins it immediately — a
+    /// header naming a household you are no longer in answers 403, never data.
+    public func leaveHousehold(id: UUID) async throws -> LeaveHouseholdResult {
+        let result = try await api.leaveHousehold(id: id)
+        if ActiveHousehold.id == id.uuidString.lowercased() {
+            ActiveHousehold.clear()
+        }
+        await refreshIdentity()
+        return result
+    }
+
+    /// Switch which household every later request speaks about, then re-read
+    /// `/v1/me` through it.
+    public func setActiveHousehold(_ id: UUID) async throws -> MeResponse {
+        ActiveHousehold.set(id)
+        return try await loadProfile()
     }
 
     /// Fresh `/v1/me` for Profile (also refreshes in-memory identity).

@@ -1,5 +1,6 @@
 #if os(iOS)
     import Design
+    import EvenCore
     import SwiftUI
 
     struct PathChoiceButton: View {
@@ -39,6 +40,63 @@
             }
             .buttonStyle(.evenPlain)
             .accessibilityIdentifier(accessibilityId)
+        }
+    }
+
+    /// A household kept a seat for this address. Invites are records, not mail —
+    /// this row is how the invitee finds out.
+    struct HouseholdInviteInvitationRow: View {
+        let invite: HouseholdInvite
+        let onAccept: () -> Void
+        let onDecline: () -> Void
+
+        var body: some View {
+            VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(invite.householdName)
+                        .font(.system(size: 19, weight: .medium, design: .serif))
+                        .foregroundStyle(EvenTokens.espresso)
+                    Text("\(invite.invitedByName) kept a seat for you")
+                        .font(.system(size: 13, design: .serif))
+                        .italic()
+                        .foregroundStyle(EvenTokens.stone)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                HStack(spacing: 10) {
+                    Button(action: onAccept) {
+                        Text("Take it")
+                            .font(.system(size: 14.5, weight: .medium, design: .serif))
+                            .foregroundStyle(EvenTokens.paperRaised)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 42)
+                            .background(EvenTokens.espresso, in: Capsule())
+                            .contentShape(Capsule())
+                    }
+                    .buttonStyle(.evenPlain)
+                    .accessibilityIdentifier("accept-invite-\(invite.householdName)")
+
+                    Button(action: onDecline) {
+                        Text("No thanks")
+                            .font(.system(size: 14.5, weight: .medium, design: .serif))
+                            .foregroundStyle(EvenTokens.espresso)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 42)
+                            .overlay(Capsule().stroke(EvenTokens.espresso.opacity(0.35), lineWidth: 1))
+                            .contentShape(Capsule())
+                    }
+                    .buttonStyle(.evenPlain)
+                    .accessibilityIdentifier("decline-invite-\(invite.householdName)")
+                }
+            }
+            .padding(18)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(EvenTokens.paperCard)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(EvenTokens.terracotta.opacity(0.55), lineWidth: 1.5)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
     }
 

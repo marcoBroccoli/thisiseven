@@ -281,6 +281,60 @@
         }
     }
 
+    /// The door to every other place you belong to. A household holds two
+    /// people — a person may hold several households.
+    struct ProfileHouseholdsLinkRow: View {
+        var householdCount: Int
+        var pendingInviteCount: Int
+        var action: () -> Void
+
+        var body: some View {
+            Button(action: action) {
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Your households")
+                            .font(.system(size: 15.5, weight: .medium, design: .serif))
+                            .foregroundStyle(EvenTokens.espresso)
+                        Text(subtitle)
+                            .font(.system(size: 12.5, design: .serif))
+                            .italic()
+                            .foregroundStyle(EvenTokens.stone)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    if pendingInviteCount > 0 {
+                        Text("\(pendingInviteCount)")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(EvenTokens.paperCard)
+                            .frame(width: 22, height: 22)
+                            .background(EvenTokens.terracotta, in: Circle())
+                            .accessibilityLabel("\(pendingInviteCount) invites waiting")
+                    }
+
+                    Image(systemName: "chevron.forward")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(EvenTokens.espresso.opacity(0.4))
+                }
+                .padding(16)
+                .contentShape(RoundedRectangle(cornerRadius: ProfileLayout.cardRadius, style: .continuous))
+            }
+            .buttonStyle(.evenPlain)
+            .profileCardChrome()
+            .accessibilityIdentifier("Your households")
+        }
+
+        private var subtitle: String {
+            if pendingInviteCount > 0 {
+                return pendingInviteCount == 1
+                    ? "One invite is waiting for you"
+                    : "\(pendingInviteCount) invites are waiting for you"
+            }
+            return householdCount <= 1
+                ? "Switch places, or start another one"
+                : "\(householdCount) places — switch or invite"
+        }
+    }
+
     struct ProfileConnectGoogleCard: View {
         var working: Bool
         var onConnect: () -> Void

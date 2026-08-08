@@ -62,13 +62,16 @@ public final class EvenAPIClient: @unchecked Sendable {
     public let environment: APIEnvironment
     private let session: URLSession
     private let tokenProvider: () async throws -> String?
+    private let activeHouseholdProvider: @Sendable () -> String?
 
     public init(environment: APIEnvironment = .current,
                 session: URLSession = .shared,
+                activeHouseholdProvider: @escaping @Sendable () -> String? = { ActiveHousehold.id },
                 tokenProvider: @escaping () async throws -> String?)
     {
         self.environment = environment
         self.session = session
+        self.activeHouseholdProvider = activeHouseholdProvider
         self.tokenProvider = tokenProvider
     }
 
@@ -232,6 +235,12 @@ public final class EvenAPIClient: @unchecked Sendable {
         if let token = try await tokenProvider() {
             req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
+        // Which of the caller's households this request is about. Omitted while
+        // unset — the server then answers for the most recently joined one,
+        // exactly as build 12 and earlier behaved.
+        if let householdID = activeHouseholdProvider() {
+            req.setValue(householdID, forHTTPHeaderField: "X-Household-Id")
+        }
 
         do {
             let (data, response) = try await session.data(for: req)
@@ -284,6 +293,41 @@ public extension EvenAPIClient {
     func joinHousehold(inviteCode: String, displayName: String) async throws -> Household {
         struct B: Encodable { let inviteCode: String; let displayName: String }
         return try await post("v1/households/join", B(inviteCode: inviteCode, displayName: displayName))
+    }
+
+    /// Every household the caller sits in, plus invites waiting on their email.
+    /// Works before any membership — a new user has to see the invite first.
+    func households() async throws -> HouseholdsResponse {
+        try await get("v1/households")
+    }
+
+    /// Records the free seat's address. evend sends no mail; the invitee finds
+    /// it by signing in.
+    func inviteToHousehold(id: UUID, email: String) async throws -> HouseholdInvite {
+        struct B: Encodable { let email: String }
+        return try await post("v1/households/\(id.uuidString.lowercased())/invite", B(email: email))
+    }
+
+    func revokeHouseholdInvite(id: UUID) async throws {
+        struct OK: Decodable {}
+        let _: OK = try await deleteReturning("v1/households/\(id.uuidString.lowercased())/invite")
+    }
+
+    func acceptInvite(id: UUID, displayName: String) async throws -> Household {
+        struct B: Encodable { let displayName: String }
+        return try await post("v1/invites/\(id.uuidString.lowercased())/accept", B(displayName: displayName))
+    }
+
+    /// Give up your seat: your open todos there are archived, your Gmail for
+    /// that household disconnects, the shared history stays. The household is
+    /// deleted when you were the last one in it.
+    func leaveHousehold(id: UUID) async throws -> LeaveHouseholdResult {
+        try await post("v1/households/\(id.uuidString.lowercased())/leave")
+    }
+
+    func declineInvite(id: UUID) async throws {
+        struct OK: Decodable {}
+        let _: OK = try await post("v1/invites/\(id.uuidString.lowercased())/decline")
     }
 
     func summary() async throws -> Summary {

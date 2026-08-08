@@ -3,6 +3,7 @@
     import ConnectionsFeature
     import Design
     import EvenCore
+    import HouseholdsFeature
     import SwiftUI
     import UIKit
     import VisualEffects
@@ -37,6 +38,11 @@
                     }
                 }
                 .evenPaperNavigationChrome()
+                .navigationDestination(
+                    item: $store.scope(state: \.households, action: \.households)
+                ) { householdsStore in
+                    HouseholdsView(store: householdsStore)
+                }
                 .alert(
                     "Sign out?",
                     isPresented: Binding(
@@ -81,6 +87,13 @@
                         inviteCode: store.inviteCode,
                         onCopyInvite: copyInvite
                     )
+
+                    ProfileHouseholdsLinkRow(
+                        householdCount: store.householdCount,
+                        pendingInviteCount: store.pendingInviteCount
+                    ) {
+                        send(.householdsTapped)
+                    }
                 }
 
                 VStack(alignment: .leading, spacing: 10) {

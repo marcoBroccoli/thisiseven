@@ -94,6 +94,12 @@ private actor HouseholdRealtimeSession {
         } else if components.scheme == "https" {
             components.scheme = "wss"
         }
+        // An upgrade cannot carry `X-Household-Id`, so the active household
+        // rides the query string instead (`docs/product/API.md`). Unset → the
+        // server picks the most recently joined one, as before.
+        if let householdID = ActiveHousehold.id {
+            components.queryItems = [URLQueryItem(name: "household_id", value: householdID)]
+        }
 
         guard let url = components.url else {
             throw URLError(.badURL)

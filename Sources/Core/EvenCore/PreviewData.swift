@@ -26,6 +26,48 @@ public enum PreviewData {
         id: weekId, index: 12, startedOn: "2026-08-03", closedAt: nil
     )
 
+    // MARK: Several households, one person
+
+    public static let seaHouseId = UUID(uuidString: "EEEEEEEE-EEEE-EEEE-EEEE-EEEEEEEEEEEE")!
+    public static let inviteId = UUID(uuidString: "FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF")!
+
+    /// The Attic — both seats taken, and the one Ada started.
+    public static let atticRow = HouseholdRow(
+        id: householdId,
+        name: "The Attic",
+        memberCount: 2,
+        isOwner: true,
+        myMemberId: adaId,
+        inviteCode: "EVEN-7K2M"
+    )
+
+    /// A second place with an empty seat and an address waiting on it.
+    public static let seaHouseRow = HouseholdRow(
+        id: seaHouseId,
+        name: "Sea House",
+        memberCount: 1,
+        isOwner: false,
+        myMemberId: umutId,
+        inviteCode: "EVEN-4Q9P",
+        pendingInviteEmail: "mira@example.com"
+    )
+
+    public static let householdRows: [HouseholdRow] = [atticRow, seaHouseRow]
+
+    public static let inviteForMe = HouseholdInvite(
+        id: inviteId,
+        householdId: UUID(uuidString: "12121212-1212-1212-1212-121212121212")!,
+        householdName: "The Cabin",
+        invitedByName: "Umut",
+        email: "ada@example.com",
+        status: .pending
+    )
+
+    public static let households = HouseholdsResponse(
+        households: householdRows,
+        invites: [inviteForMe]
+    )
+
     public static let me = MeResponse(
         userId: adaId, member: ada, household: household, week: week
     )

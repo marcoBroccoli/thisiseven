@@ -14,6 +14,7 @@ final class ProfileFeatureTests: XCTestCase {
             ProfileReducer()
         } withDependencies: {
             $0.householdClient.loadProfile = { PreviewData.me }
+            $0.householdClient.list = { PreviewData.households }
             $0.googleClient.status = { PreviewData.googleDisconnected }
             $0.toastClient = .silent()
         }

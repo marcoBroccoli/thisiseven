@@ -21,6 +21,7 @@
                     // Paper on the stack *content* (Onboarding / Inbox pattern).
                     .evenPaperNavigationChrome()
             }
+            .onAppear { send(.appear) }
         }
 
         @ToolbarContentBuilder
@@ -84,6 +85,8 @@
                 HouseholdJoinView(store: store)
             case .waiting:
                 HouseholdWaitingView(store: store)
+            case .acceptInvite:
+                HouseholdAcceptSeatView(store: store)
             }
         }
 

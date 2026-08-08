@@ -71,12 +71,7 @@ public struct MainTabReducer {
                 // A quiet dismissal lasts one appearance, not the day — the
                 // ritual is the whole point of Sunday.
                 state.resetDismissed = false
-                return .run { [householdRealtimeClient] send in
-                    for await event in householdRealtimeClient.events() {
-                        await send(.realtime(event))
-                    }
-                }
-                .cancellable(id: CancelID.householdRealtime, cancelInFlight: true)
+                return connectRealtime()
 
             case let .view(.selectTab(tab)):
                 state.tab = tab
@@ -130,6 +125,19 @@ public struct MainTabReducer {
             case .profile(.delegate(.signedOut)):
                 return .send(.delegate(.signedOut))
 
+            case .profile(.delegate(.activeHouseholdChanged)):
+                // Nothing crosses between households. The socket carries the id
+                // in its URL, so it has to be dialled again — and every tab is
+                // showing another house's week until it refetches.
+                state.reset = nil
+                state.today = TodayReducer.State()
+                state.inbox = InboxReducer.State()
+                return .merge(
+                    connectRealtime(),
+                    .send(.today(.view(.appear))),
+                    .send(.inbox(.view(.appear)))
+                )
+
             case .delegate, .reset:
                 return .none
 
@@ -138,6 +146,17 @@ public struct MainTabReducer {
             }
         }
         .ifLet(\.$reset, action: \.reset) { ResetReducer() }
+    }
+
+    /// The household bus. `cancelInFlight` matters on a switch: the live socket
+    /// is pinned to the old `?household_id=` and must be dropped, not doubled.
+    private func connectRealtime() -> Effect<Action> {
+        .run { [householdRealtimeClient] send in
+            for await event in householdRealtimeClient.events() {
+                await send(.realtime(event))
+            }
+        }
+        .cancellable(id: CancelID.householdRealtime, cancelInFlight: true)
     }
 
     /// Sunday, or a week that has outstayed its seven days. Never for a week we

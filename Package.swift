@@ -32,6 +32,7 @@ let package = Package(
         .library(name: "LoginFeature", targets: ["LoginFeature"]),
         .library(name: "OnboardingFeature", targets: ["OnboardingFeature"]),
         .library(name: "HouseholdSetupFeature", targets: ["HouseholdSetupFeature"]),
+        .library(name: "HouseholdsFeature", targets: ["HouseholdsFeature"]),
         .library(name: "ConnectionsFeature", targets: ["ConnectionsFeature"]),
         .library(name: "InboxFeature", targets: ["InboxFeature"]),
         .library(name: "TodayFeature", targets: ["TodayFeature"]),
@@ -150,6 +151,10 @@ let package = Package(
             feature("LoginFeature", extra: ["AuthClient"]),
             feature("OnboardingFeature"),
             feature("HouseholdSetupFeature", extra: ["HouseholdClient"]),
+            feature(
+                "HouseholdsFeature",
+                extra: ["HouseholdClient", "ToastClient", "ToastUI", "VisualEffects"]
+            ),
             feature("ConnectionsFeature", extra: ["GoogleClient", "NotificationsClient", "ToastClient", "ToastUI"]),
             feature(
                 "InboxFeature",
@@ -170,6 +175,7 @@ let package = Package(
                 "ProfileFeature",
                 extra: [
                     "AuthClient", "HouseholdClient", "ConnectionsFeature",
+                    "HouseholdsFeature",
                     "GoogleClient", "NotificationsClient",
                     "ToastClient", "ToastUI", "VisualEffects",
                 ]
@@ -184,7 +190,7 @@ let package = Package(
                     "DraftsClient", "TasksClient", "SummaryClient", "CalendarClient",
                     "WidgetClient",
                     "SplashFeature", "LoginFeature", "OnboardingFeature",
-                    "HouseholdSetupFeature", "ConnectionsFeature",
+                    "HouseholdSetupFeature", "HouseholdsFeature", "ConnectionsFeature",
                     "InboxFeature", "TodayFeature", "ProfileFeature", "ResetFeature",
                     "ResetClient",
                     tca,
@@ -196,7 +202,9 @@ let package = Package(
                 name: "EvenAppTests",
                 dependencies: [
                     "EvenApp", "AuthClient", "EvenCore", "InboxFeature", "ConnectionsFeature",
-                    "DraftsClient", tca,
+                    "HouseholdsFeature", "HouseholdClient", "ProfileFeature", "TodayFeature",
+                    "HouseholdRealtimeClient", "SummaryClient", "GoogleClient", "WidgetClient",
+                    "DraftsClient", "ToastClient", tca,
                 ],
                 path: "Tests/EvenAppTests"
             ),
@@ -214,6 +222,13 @@ let package = Package(
                 name: "HouseholdSetupFeatureTests",
                 dependencies: ["HouseholdSetupFeature", "HouseholdClient", "EvenCore", tca],
                 path: "Tests/HouseholdSetupFeatureTests"
+            ),
+            .testTarget(
+                name: "HouseholdsFeatureTests",
+                dependencies: [
+                    "HouseholdsFeature", "HouseholdClient", "EvenCore", "ToastClient", "ToastUI", tca,
+                ],
+                path: "Tests/HouseholdsFeatureTests"
             ),
             .testTarget(
                 name: "ConnectionsFeatureTests",
