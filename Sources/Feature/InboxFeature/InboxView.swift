@@ -41,6 +41,7 @@
                         )
                     }
                 }
+                .padding(.top, 20)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .toolbar {
                     ToolbarItem(placement: .principal) {
