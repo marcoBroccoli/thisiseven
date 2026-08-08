@@ -73,19 +73,19 @@ func TestCalendarAgenda(t *testing.T) {
 	}
 	// Gmail suggestions stay in review and never appear on the schedule.
 	mustExec(`insert into drafts (household_id, from_label, subject, urgency, title, owner_member_id,
-		amount_cents, due_on, reminder, created_by, category)
-		values ($1,'VATTENFALL','s',2,'Pay the energy bill',$2, 11240, $3, '3_days', $2, 'bills')`,
+		amount_cents, due_on, reminder, created_by, source_member_id, category)
+		values ($1,'VATTENFALL','s',2,'Pay the energy bill',$2, 11240, $3, '3_days', $2, $2, 'bills')`,
 		hh, member, in)
 	mustExec(`insert into drafts (household_id, from_label, subject, urgency, title, owner_member_id,
-		due_on, reminder, created_by)
-		values ($1,'X','s',1,'Too far out',$2, $3, '1_day', $2)`, hh, member, out)
+		due_on, reminder, created_by, source_member_id)
+		values ($1,'X','s',1,'Too far out',$2, $3, '1_day', $2, $2)`, hh, member, out)
 	mustExec(`insert into drafts (household_id, from_label, subject, urgency, title, owner_member_id,
-		due_on, reminder, created_by, status)
-		values ($1,'X','s',1,'Dismissed thing',$2, $3, '1_day', $2, 'dismissed')`, hh, member, in)
+		due_on, reminder, created_by, source_member_id, status)
+		values ($1,'X','s',1,'Dismissed thing',$2, $3, '1_day', $2, $2, 'dismissed')`, hh, member, in)
 	// Isolation: the other household's pending draft must not leak.
 	mustExec(`insert into drafts (household_id, from_label, subject, urgency, title, owner_member_id,
-		due_on, reminder, created_by)
-		values ($1,'X','s',1,'Foreign draft',$2, $3, '1_day', $2)`, otherHH, otherMember, in)
+		due_on, reminder, created_by, source_member_id)
+		values ($1,'X','s',1,'Foreign draft',$2, $3, '1_day', $2, $2)`, otherHH, otherMember, in)
 
 	// Tasks: open in-range, done in-range (open-week completion), archived, undated.
 	var tOpen, tDone string
@@ -205,8 +205,8 @@ func TestSharedCalendarCreation(t *testing.T) {
 	a := &API{DB: pool, Google: google.New("cid", "sec", "", fake.URL, fake.URL)}
 
 	hh, member, _ := seedCalHousehold(t, pool, "Cal Test")
-	if _, err := pool.Exec(ctx, `insert into google_accounts (household_id, email, refresh_token, client_kind, connected_by)
-		values ($1,'t@example.com','rt','desktop',$2)`, hh, member); err != nil {
+	if _, err := pool.Exec(ctx, `insert into google_accounts (household_id, member_id, email, refresh_token, client_kind, connected_by)
+		values ($1,$2,'t@example.com','rt','desktop',$2)`, hh, member); err != nil {
 		t.Fatal(err)
 	}
 	var taskID string
@@ -223,7 +223,7 @@ func TestSharedCalendarCreation(t *testing.T) {
 	}
 
 	var calID string
-	if err := pool.QueryRow(ctx, `select calendar_id from google_accounts where household_id = $1`, hh).Scan(&calID); err != nil {
+	if err := pool.QueryRow(ctx, `select calendar_id from households where id = $1`, hh).Scan(&calID); err != nil {
 		t.Fatal(err)
 	}
 	if calID != "even-cal-123" {
@@ -287,8 +287,11 @@ func TestUpdateTaskClearsMappedCalendarEvent(t *testing.T) {
 	a := &API{DB: pool, Google: google.New("cid", "secret", "", fake.URL, fake.URL)}
 	hh, member, week := seedCalHousehold(t, pool, "Clear calendar test")
 	if _, err := pool.Exec(ctx, `
-		insert into google_accounts (household_id, email, refresh_token, client_kind, connected_by, calendar_id)
-		values ($1, 't@example.com', 'rt', 'desktop', $2, 'even-cal')`, hh, member); err != nil {
+		insert into google_accounts (household_id, member_id, email, refresh_token, client_kind, connected_by)
+		values ($1, $2, 't@example.com', 'rt', 'desktop', $2)`, hh, member); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `update households set calendar_id = 'even-cal' where id = $1`, hh); err != nil {
 		t.Fatal(err)
 	}
 	var taskID string
@@ -366,8 +369,11 @@ func TestResolveTaskCalendarActions(t *testing.T) {
 	a := &API{DB: pool, Google: google.New("cid", "secret", "", fake.URL, fake.URL)}
 	hh, member, week := seedCalHousehold(t, pool, "Resolve calendar test")
 	if _, err := pool.Exec(ctx, `
-		insert into google_accounts (household_id, email, refresh_token, client_kind, connected_by, calendar_id)
-		values ($1, 't@example.com', 'rt', 'desktop', $2, 'even-cal')`, hh, member); err != nil {
+		insert into google_accounts (household_id, member_id, email, refresh_token, client_kind, connected_by)
+		values ($1, $2, 't@example.com', 'rt', 'desktop', $2)`, hh, member); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `update households set calendar_id = 'even-cal' where id = $1`, hh); err != nil {
 		t.Fatal(err)
 	}
 	var changedID, deletedID, retryID string
@@ -426,5 +432,111 @@ func TestResolveTaskCalendarActions(t *testing.T) {
 	}
 	if restores.Load() != 1 || retries.Load() != 1 {
 		t.Fatalf("Google calls restores=%d retries=%d", restores.Load(), retries.Load())
+	}
+}
+
+// TestSharedCalendarWithOneMemberConnected pins the product line between the
+// two integrations: the Gmail inbox is per member, but the Calendar is the
+// household's. A partner who has never connected Google must still get their
+// dated todos onto the shared calendar, borrowing the connected member's token.
+func TestSharedCalendarWithOneMemberConnected(t *testing.T) {
+	dbURL := os.Getenv("EVEN_TESTDB")
+	if dbURL == "" {
+		t.Skip("EVEN_TESTDB not set")
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, dbURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+
+	var createdCalendars atomic.Int32
+	var lastEventCal atomic.Value
+	mux := http.NewServeMux()
+	mux.HandleFunc("/token", func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{"access_token": "at", "expires_in": 3600})
+	})
+	mux.HandleFunc("/calendar/v3/calendars", func(w http.ResponseWriter, r *http.Request) {
+		createdCalendars.Add(1)
+		_ = json.NewEncoder(w).Encode(map[string]string{"id": "shared-cal"})
+	})
+	var events atomic.Int32
+	mux.HandleFunc("/calendar/v3/calendars/", func(w http.ResponseWriter, r *http.Request) {
+		parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/calendar/v3/calendars/"), "/")
+		lastEventCal.Store(parts[0])
+		id := fmt.Sprintf("shared-evt%d", events.Add(1))
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"id": id, "htmlLink": "https://calendar.google.com/event?eid=" + id})
+	})
+	fake := httptest.NewServer(mux)
+	defer fake.Close()
+
+	a := &API{DB: pool, Google: google.New("cid", "sec", "", fake.URL, fake.URL)}
+	hh, connected, _ := seedCalHousehold(t, pool, "Shared Cal Test")
+
+	// The partner joins later and never connects a mailbox of their own.
+	unconnected := newUUID()
+	if _, err := pool.Exec(ctx, `insert into members (id, household_id, user_id, display_name, color)
+		values ($1,$2,$3,'Partner','pine')`, unconnected, hh, newUUID()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `insert into google_accounts (household_id, member_id, email, refresh_token, client_kind, connected_by)
+		values ($1,$2,'connected@example.com','rt','desktop',$2)`, hh, connected); err != nil {
+		t.Fatal(err)
+	}
+
+	var taskID string
+	due := time.Now().In(Amsterdam).AddDate(0, 0, 3)
+	if err := pool.QueryRow(ctx, `insert into tasks (household_id, title, section, owner_member_id, weight, recurrence, due_on)
+		values ($1,'Bin day','admin',$2,1,'none',$3) returning id`,
+		hh, unconnected, due.Format("2006-01-02")).Scan(&taskID); err != nil {
+		t.Fatal(err)
+	}
+
+	partner := &Membership{MemberID: unconnected, HouseholdID: hh, Household: "Shared Cal Test",
+		PartnerID: connected}
+	if msg := a.publishTaskToCalendar(ctx, partner, taskID, "Bin day", "", nil, &due, "1_day"); msg != "" {
+		t.Fatalf("unconnected partner could not publish to the shared calendar: %s", msg)
+	}
+	if got := lastEventCal.Load(); got != "shared-cal" {
+		t.Fatalf("event written to %v, want shared-cal", got)
+	}
+
+	// The shared calendar id belongs to the household, not to the connected
+	// member's google_accounts row.
+	var calID string
+	if err := pool.QueryRow(ctx, `select calendar_id from households where id = $1`, hh).Scan(&calID); err != nil {
+		t.Fatal(err)
+	}
+	if calID != "shared-cal" {
+		t.Fatalf("household calendar_id = %q, want shared-cal", calID)
+	}
+
+	// The connected member reuses the same calendar — it is created once.
+	var secondTask string
+	if err := pool.QueryRow(ctx, `insert into tasks (household_id, title, section, owner_member_id, weight, recurrence, due_on)
+		values ($1,'Pay rent','admin',$2,1,'none',$3) returning id`,
+		hh, connected, due.Format("2006-01-02")).Scan(&secondTask); err != nil {
+		t.Fatal(err)
+	}
+	owner := &Membership{MemberID: connected, HouseholdID: hh, Household: "Shared Cal Test",
+		PartnerID: unconnected}
+	if msg := a.publishTaskToCalendar(ctx, owner, secondTask, "Pay rent", "", nil, &due, "1_day"); msg != "" {
+		t.Fatalf("connected member publish failed: %s", msg)
+	}
+	if n := createdCalendars.Load(); n != 1 {
+		t.Fatalf("shared calendar created %d times, want 1", n)
+	}
+
+	// Neither member's inbox leaks through the Google status endpoint.
+	if !a.partnerConnected(ctx, partner) {
+		t.Fatal("partner_connected should be true for the member whose partner connected")
+	}
+	if a.partnerConnected(ctx, owner) {
+		t.Fatal("partner_connected should be false when the partner has no mailbox")
+	}
+	if _, err := a.googleAccountForMember(ctx, unconnected); err == nil {
+		t.Fatal("the unconnected member must have no google account of their own")
 	}
 }

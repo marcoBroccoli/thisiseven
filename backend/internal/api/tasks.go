@@ -524,8 +524,8 @@ func (a *API) ResolveTaskCalendar(w http.ResponseWriter, r *http.Request) {
 		if !a.googleReady(w) {
 			return
 		}
-		if _, err := a.googleAccount(r.Context(), m.HouseholdID); errors.Is(err, pgx.ErrNoRows) {
-			httpx.Error(w, http.StatusConflict, "not_connected", "connect the household Google account first")
+		if _, err := a.householdCalendarAccount(r.Context(), m); errors.Is(err, pgx.ErrNoRows) {
+			httpx.Error(w, http.StatusConflict, "not_connected", "connect a Google account first")
 			return
 		} else if err != nil {
 			httpx.Error(w, http.StatusInternalServerError, "internal", "could not load the Google connection")

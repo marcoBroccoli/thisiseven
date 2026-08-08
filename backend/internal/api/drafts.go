@@ -52,10 +52,14 @@ const draftCols = `id, from_label, subject, summary, urgency, title,
 	gmail_message_id, source_from, source_preview, category, needs_reply,
 	suggested_reply, reply_text, reply_status`
 
+// fetchDraft is scoped to the caller's own mailbox. Every draft mutation
+// (update / approve / dismiss) reads through here or repeats the same filter,
+// so a partner's draft is simply not found.
 func (a *API) fetchDraft(ctx context.Context, m *Membership, id string) (DraftJSON, error) {
 	return scanDraft(a.DB.QueryRow(ctx, `
 		select `+draftCols+` from drafts
-		where id = $1 and household_id = $2`, id, m.HouseholdID))
+		where id = $1 and household_id = $2 and source_member_id = $3`,
+		id, m.HouseholdID, m.MemberID))
 }
 
 // GET /v1/drafts?status=pending
@@ -69,10 +73,12 @@ func (a *API) ListDrafts(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusBadRequest, "bad_status", "unknown status filter")
 		return
 	}
+	// Each member connects their own Gmail; the inbox is theirs alone. Only
+	// the shared Calendar and Today cross the member boundary.
 	rows, err := a.DB.Query(r.Context(), `
 		select `+draftCols+` from drafts
-		where household_id = $1 and status = $2
-		order by urgency desc, created_at desc`, m.HouseholdID, status)
+		where household_id = $1 and source_member_id = $2 and status = $3
+		order by urgency desc, created_at desc`, m.HouseholdID, m.MemberID, status)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "internal", "list failed")
 		return
@@ -207,8 +213,8 @@ func (a *API) CreateDraft(w http.ResponseWriter, r *http.Request) {
 	err := a.DB.QueryRow(r.Context(), `
 		insert into drafts (household_id, from_label, subject, summary, urgency,
 			title, owner_member_id, amount_cents, due_on, reminder, created_by, category,
-			reply_text, reply_status)
-		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) returning id`,
+			reply_text, reply_status, source_member_id)
+		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $11) returning id`,
 		m.HouseholdID, strings.TrimSpace(*in.FromLabel), strings.TrimSpace(*in.Subject),
 		in.Summary, *in.Urgency, title, owner, in.AmountCents, dueOn, reminder,
 		m.MemberID, category, replyText, replyStatus).Scan(&id)
@@ -264,9 +270,9 @@ func (a *API) UpdateDraft(w http.ResponseWriter, r *http.Request) {
 			reminder = coalesce($5, reminder),
 			reply_text = case when $6::text is not null then nullif(trim($6), '') else reply_text end,
 			reply_status = coalesce($7, reply_status)
-		where id = $8 and household_id = $9 and status = 'pending'`,
+		where id = $8 and household_id = $9 and source_member_id = $10 and status = 'pending'`,
 		in.Title, in.OwnerMemberID, in.AmountCents, dueOn, in.Reminder,
-		in.ReplyText, in.ReplyStatus, id, m.HouseholdID)
+		in.ReplyText, in.ReplyStatus, id, m.HouseholdID, m.MemberID)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "internal", "could not update draft")
 		return
@@ -297,8 +303,9 @@ func (a *API) ApproveDraft(w http.ResponseWriter, r *http.Request) {
 		err := tx.QueryRow(r.Context(), `
 			select title, owner_member_id, from_label, due_on, amount_cents, reminder
 			from drafts
-			where id = $1 and household_id = $2 and status = 'pending' for update`,
-			id, m.HouseholdID).Scan(&title, &owner, &fromLabel, &dueOn, &evAmount, &evReminder)
+			where id = $1 and household_id = $2 and source_member_id = $3
+			and status = 'pending' for update`,
+			id, m.HouseholdID, m.MemberID).Scan(&title, &owner, &fromLabel, &dueOn, &evAmount, &evReminder)
 		if err != nil {
 			return err
 		}
@@ -347,7 +354,8 @@ func (a *API) DismissDraft(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	tag, err := a.DB.Exec(r.Context(), `
 		update drafts set status = 'dismissed', resolved_at = now()
-		where id = $1 and household_id = $2 and status = 'pending'`, id, m.HouseholdID)
+		where id = $1 and household_id = $2 and source_member_id = $3
+		and status = 'pending'`, id, m.HouseholdID, m.MemberID)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "internal", "could not dismiss draft")
 		return

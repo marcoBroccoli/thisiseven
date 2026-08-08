@@ -58,8 +58,11 @@ func TestCalendarSyncImportsAndSurfacesExternalChanges(t *testing.T) {
 	a := &API{DB: pool, Google: google.New("cid", "secret", "", fake.URL, fake.URL)}
 	hh, member, week := seedCalHousehold(t, pool, "Calendar Reconciliation")
 	if _, err := pool.Exec(ctx, `
-		insert into google_accounts (household_id, email, refresh_token, client_kind, connected_by, calendar_id)
-		values ($1, 'house@example.com', 'refresh', 'desktop', $2, 'even-cal')`, hh, member); err != nil {
+		insert into google_accounts (household_id, member_id, email, refresh_token, client_kind, connected_by)
+		values ($1, $2, 'house@example.com', 'refresh', 'desktop', $2)`, hh, member); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `update households set calendar_id = 'even-cal' where id = $1`, hh); err != nil {
 		t.Fatal(err)
 	}
 	var changedID, deletedID, recurringID string
@@ -127,7 +130,7 @@ func TestCalendarSyncImportsAndSurfacesExternalChanges(t *testing.T) {
 		t.Fatalf("recurring master state = %q, %v", state, err)
 	}
 	var syncedAt *time.Time
-	if err := pool.QueryRow(ctx, `select calendar_last_sync_at from google_accounts where household_id = $1`, hh).Scan(&syncedAt); err != nil || syncedAt == nil {
+	if err := pool.QueryRow(ctx, `select calendar_last_sync_at from households where id = $1`, hh).Scan(&syncedAt); err != nil || syncedAt == nil {
 		t.Fatalf("calendar sync timestamp = %v, %v", syncedAt, err)
 	}
 }

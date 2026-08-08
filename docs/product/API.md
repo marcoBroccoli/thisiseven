@@ -66,6 +66,8 @@ trade       {id, task_id, task_title, from_member_id, to_member_id, accepted}
 - `GET  /v1/summary` → `{week, pebbles: [{member_id, weight}...ordered oldest→newest],
   percent_me, percent_partner, caption, sections: [{key:"chore"|"admin", label, tasks:[task]}],
   pending_draft_count}`  // caption per design logic
+  `pending_draft_count` counts only the caller's own pending drafts — the
+  Inbox badge must not reveal what is sitting in the partner's mail.
 - `GET  /v1/ws/household` → WebSocket upgrade (auth + household membership).
   Long-lived household channel. Server → client JSON text frames:
 
@@ -156,15 +158,39 @@ VATTENFALL · TODAY           one-off from a Gmail draft
   unchanged, last_synced_at}` — reconciles only the dedicated shared Google
   Calendar; imports direct events, applies external title/date edits, and marks
   remote deletions for review without archiving local todos
-- `GET  /v1/drafts?status=pending` → `[draft]`
+- `POST /v1/google/connect` `{code, redirect_uri, code_verifier?}` → google
+  status — connects **the calling member's own** Gmail. A second member
+  connecting does not replace the first; each has their own mailbox.
+- `GET  /v1/google/status` → `{connected, partner_connected,
+  email?, last_sync_at?, last_sync_count?, calendar_last_sync_at?,
+  sync_running?, scanned?, classified?, created?, has_more?}` — `connected`
+  and every counter describe the **caller's** connection.
+  `partner_connected` is a bare boolean: the partner's address is never
+  disclosed. `calendar_last_sync_at` is the household's shared calendar.
+- `POST /v1/google/disconnect` → `{connected: false, partner_connected}` —
+  drops only the caller's mailbox. Drafts it already produced stay in their
+  inbox; they simply stop refreshing. The shared calendar survives.
+- `POST /v1/google/sync` → `202 {started: true}` — scans the caller's mailbox.
+  409 `not_connected` when the caller has not connected, 409 `sync_running`
+  while their own scan is in flight (the partner's scan never blocks it).
+- `GET  /v1/google/calendar-info` → `{calendar_id, shared, share_url?}` — the
+  household's shared calendar, readable by either member as soon as **one** of
+  them is connected.
+- `GET  /v1/drafts?status=pending` → `[draft]` — **only the caller's own**
+  drafts: those from their Gmail, plus the ones they created by hand.
 - `POST /v1/drafts` `{from_label, subject, summary?, urgency, title?, owner_member_id?,
-  amount_cents?, due_on?, reminder?}` (title defaults to subject)
+  amount_cents?, due_on?, reminder?}` (title defaults to subject). The draft's
+  source is the caller; `owner_member_id` still assigns the resulting todo to
+  either member.
 - `PATCH /v1/drafts/{id}` `{title?, owner_member_id?, amount_cents?, due_on?, reminder?,
   reply_text?, reply_status?}` — reply text remains editable; the app opens a
   Gmail compose draft and never sends email through the API.
 - `POST /v1/drafts/{id}/approve` → `{draft, task}` — tx: draft approved +
   admin task (weight 2, owner/due from draft, meta from label+due)
 - `POST /v1/drafts/{id}/dismiss` → draft
+- Every `/v1/drafts/{id}` route is scoped to the caller's own inbox: a
+  partner's draft is `404 not_found`, never 403 — its existence is not theirs
+  to learn.
 - `GET  /v1/money` → `{balance_cents, debtor_member_id?, creditor_member_id?,
   feed: [{kind:"expense"|"settlement", ...expense|settlement}]}` — balance ≥ 0;
   null members when even. feed newest-first, current cycle + last settlement.
@@ -193,10 +219,20 @@ VATTENFALL · TODAY           one-off from a Gmail draft
 - All queries household-scoped by the authenticated member; cross-household
   access is 404, never 403. Inside a household, 403 means the resource exists
   and is visible but is not the caller's to change (`not_owner` on tasks).
+- **The inbox is per member; Today and the Calendar are shared.** Each member
+  connects their own Gmail, and every draft carries the member whose mailbox
+  (or hand) produced it. Drafts, the Inbox badge, sync jobs, and the
+  already-scanned ledger are all filtered by that member — a partner sees
+  their own not-connected state and their own mail, never yours. Approval is
+  where the two worlds meet: the todo it creates lands on Today and may be
+  assigned to either member.
 - Solo household (partner not joined): percent_partner = 0, money endpoints
   usable, trades/appreciations 409 `no_partner`.
 - Google Calendar is read only through the dedicated household calendar, never
-  from a member's primary calendar. A direct Calendar deletion is represented
+  from a member's primary calendar. That calendar belongs to the **household**,
+  not to whoever connected first: it is created once, kept on the household
+  record, and written with whichever member's token is available — so it keeps
+  working when only one partner has connected, and survives them disconnecting. A direct Calendar deletion is represented
   as `external_deleted` until the household restores its local todo to Calendar
   or archives it. Calendar title/date edits are copied into the todo and remain
   `external_changed` until acknowledged.

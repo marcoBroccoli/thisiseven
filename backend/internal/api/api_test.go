@@ -243,7 +243,8 @@ func TestFullFlow(t *testing.T) {
 		t.Fatalf("solo pebble should read 100, got %v", sum["percent_me"])
 	}
 
-	// Drafts.
+	// Drafts. Each member has their own inbox: a draft belongs to the mailbox
+	// (or the person) it came from, and the partner never sees or touches it.
 	code, draft := umut.do("POST", "/v1/drafts", map[string]any{
 		"from_label": "Vattenfall", "subject": "July energy bill",
 		"urgency": 2, "amount_cents": 11240, "due_on": "2026-07-25",
@@ -251,7 +252,36 @@ func TestFullFlow(t *testing.T) {
 	mustStatus(t, code, 201, "draft", draft)
 	draftID := draft["id"].(string)
 
-	code, body = ada.do("PATCH", "/v1/drafts/"+draftID, map[string]any{
+	code, drafts := ada.doList("GET", "/v1/drafts?status=pending", nil)
+	mustStatus(t, code, 200, "partner drafts pending", drafts)
+	if len(drafts) != 0 {
+		t.Fatalf("partner must not see the other inbox, got %d drafts", len(drafts))
+	}
+	code, drafts = umut.doList("GET", "/v1/drafts?status=pending", nil)
+	mustStatus(t, code, 200, "own drafts pending", drafts)
+	if len(drafts) != 1 || drafts[0]["id"] != draftID {
+		t.Fatalf("own inbox should hold exactly the new draft: %v", drafts)
+	}
+	// The badge on Today counts only your own inbox.
+	code, sum = ada.do("GET", "/v1/summary", nil)
+	mustStatus(t, code, 200, "summary partner badge", sum)
+	if sum["pending_draft_count"] != float64(0) {
+		t.Fatalf("partner badge should be 0, got %v", sum["pending_draft_count"])
+	}
+	code, sum = umut.do("GET", "/v1/summary", nil)
+	mustStatus(t, code, 200, "summary own badge", sum)
+	if sum["pending_draft_count"] != float64(1) {
+		t.Fatalf("own badge should be 1, got %v", sum["pending_draft_count"])
+	}
+	// Reading is not the only boundary: edit / approve / dismiss are gone too.
+	code, body = ada.do("PATCH", "/v1/drafts/"+draftID, map[string]any{"title": "Hijacked"})
+	mustStatus(t, code, 404, "partner patch", body)
+	code, body = ada.do("POST", "/v1/drafts/"+draftID+"/approve", nil)
+	mustStatus(t, code, 404, "partner approve", body)
+	code, body = ada.do("POST", "/v1/drafts/"+draftID+"/dismiss", nil)
+	mustStatus(t, code, 404, "partner dismiss", body)
+
+	code, body = umut.do("PATCH", "/v1/drafts/"+draftID, map[string]any{
 		"title": "Pay Vattenfall — July", "reminder": "1_day",
 		"reply_text": "Thanks, we'll confirm shortly.", "reply_status": "opened_in_gmail"})
 	mustStatus(t, code, 200, "draft patch", body)
@@ -262,13 +292,26 @@ func TestFullFlow(t *testing.T) {
 		t.Fatalf("draft reply fields: %v / %v", body["reply_text"], body["reply_status"])
 	}
 
-	code, appr := ada.do("POST", "/v1/drafts/"+draftID+"/approve", nil)
+	code, appr := umut.do("POST", "/v1/drafts/"+draftID+"/approve", nil)
 	mustStatus(t, code, 200, "approve", appr)
 	newTask := appr["task"].(map[string]any)
 	if newTask["section"] != "admin" || newTask["owner_member_id"] != umutID {
 		t.Fatalf("approved task wrong: %v", newTask)
 	}
-	code, drafts := ada.doList("GET", "/v1/drafts?status=pending", nil)
+
+	// Handing the resulting todo to the partner is still allowed — Today is a
+	// shared surface even though the inbox is not.
+	code, draft = umut.do("POST", "/v1/drafts", map[string]any{
+		"from_label": "Tandarts", "subject": "Checkup reminder",
+		"urgency": 1, "owner_member_id": adaID})
+	mustStatus(t, code, 201, "draft for partner", draft)
+	code, appr = umut.do("POST", "/v1/drafts/"+draft["id"].(string)+"/approve", nil)
+	mustStatus(t, code, 200, "approve for partner", appr)
+	if appr["task"].(map[string]any)["owner_member_id"] != adaID {
+		t.Fatalf("approve should be able to assign the partner: %v", appr["task"])
+	}
+
+	code, drafts = umut.doList("GET", "/v1/drafts?status=pending", nil)
 	mustStatus(t, code, 200, "drafts pending", drafts)
 	if len(drafts) != 0 {
 		t.Fatalf("pending should be empty, got %d", len(drafts))

@@ -120,8 +120,8 @@ func TestLiveSyncBatches(t *testing.T) {
 	if _, err := pool.Exec(ctx, `insert into weeks (household_id, week_index, started_on) values ($1,1,current_date)`, hh); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := pool.Exec(ctx, `insert into google_accounts (household_id, email, refresh_token, client_kind, connected_by)
-		values ($1,'t@example.com','rt','desktop',$2)`, hh, member); err != nil {
+	if _, err := pool.Exec(ctx, `insert into google_accounts (household_id, member_id, email, refresh_token, client_kind, connected_by)
+		values ($1,$2,'t@example.com','rt','desktop',$2)`, hh, member); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
@@ -137,10 +137,10 @@ func TestLiveSyncBatches(t *testing.T) {
 		return n
 	}
 
-	if !app.claimSync(hh) {
+	if !app.claimSync(member) {
 		t.Fatal("claim failed")
 	}
-	if app.claimSync(hh) {
+	if app.claimSync(member) {
 		t.Fatal("second claim should be refused while running")
 	}
 	done := make(chan struct{})
@@ -148,7 +148,7 @@ func TestLiveSyncBatches(t *testing.T) {
 		defer close(done)
 		syncCtx, cancel := context.WithTimeout(ctx, time.Minute)
 		defer cancel()
-		app.runSync(syncCtx, hh)
+		app.runSync(syncCtx, member)
 	}()
 
 	// Release batch 1 (10 emails, 5 actionable) and watch the inbox fill
@@ -161,7 +161,7 @@ func TestLiveSyncBatches(t *testing.T) {
 	if n := draftCount(); n != 5 {
 		t.Fatalf("after batch 1: drafts = %d, want 5", n)
 	}
-	if job := app.jobSnapshot(hh); !job.Running || job.Classified != 10 || job.Created != 5 || !job.HasMore {
+	if job := app.jobSnapshot(member); !job.Running || job.Classified != 10 || job.Created != 5 || !job.HasMore {
 		t.Fatalf("mid-run job = %+v", job)
 	}
 
@@ -174,7 +174,7 @@ func TestLiveSyncBatches(t *testing.T) {
 		t.Fatal("sync did not finish")
 	}
 
-	job := app.jobSnapshot(hh)
+	job := app.jobSnapshot(member)
 	if job.Running || job.Err != "" {
 		t.Fatalf("final job = %+v", job)
 	}
@@ -208,14 +208,14 @@ func TestLiveSyncBatches(t *testing.T) {
 	}
 
 	// A second run takes the remaining 5 and clears has_more.
-	if !app.claimSync(hh) {
+	if !app.claimSync(member) {
 		t.Fatal("re-claim after finish failed")
 	}
 	go func() { gate <- struct{}{} }()
 	syncCtx, cancel := context.WithTimeout(ctx, time.Minute)
 	defer cancel()
-	app.runSync(syncCtx, hh)
-	job = app.jobSnapshot(hh)
+	app.runSync(syncCtx, member)
+	job = app.jobSnapshot(member)
 	if job.Running || job.HasMore || job.Scanned != 5 {
 		t.Fatalf("second run job = %+v", job)
 	}

@@ -64,24 +64,30 @@ func (a *API) SyncCalendar(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) syncCalendar(ctx context.Context, m *Membership) (CalendarSyncJSON, error) {
-	g, err := a.googleAccount(ctx, m.HouseholdID)
+	// The shared calendar belongs to the household; whichever member is
+	// connected supplies the token, so a solo connection still reconciles.
+	g, err := a.householdCalendarAccount(ctx, m)
 	if err != nil {
 		return CalendarSyncJSON{}, err
 	}
-	if g.CalendarID == "" || g.CalendarID == "primary" {
+	calID, _, err := a.householdCalendar(ctx, m.HouseholdID)
+	if err != nil {
+		return CalendarSyncJSON{}, err
+	}
+	if calID == "" || calID == "primary" {
 		return CalendarSyncJSON{}, errSharedCalendarNotReady
 	}
-	token, err := a.Google.AccessToken(ctx, m.HouseholdID, g.RefreshToken, g.ClientKind)
+	token, err := a.Google.AccessToken(ctx, g.MemberID, g.RefreshToken, g.ClientKind)
 	if errors.Is(err, google.ErrInvalidGrant) {
-		_, _ = a.DB.Exec(ctx, `delete from google_accounts where household_id = $1`, m.HouseholdID)
-		a.Google.Forget(m.HouseholdID)
+		_, _ = a.DB.Exec(ctx, `delete from google_accounts where member_id = $1`, g.MemberID)
+		a.Google.Forget(g.MemberID)
 	}
 	if err != nil {
 		return CalendarSyncJSON{}, err
 	}
 
 	now := time.Now().UTC()
-	events, err := a.Google.ListEvents(ctx, token, g.CalendarID,
+	events, err := a.Google.ListEvents(ctx, token, calID,
 		now.AddDate(0, -6, 0), now.AddDate(1, 6, 0))
 	if err != nil {
 		return CalendarSyncJSON{}, err
@@ -91,7 +97,7 @@ func (a *API) syncCalendar(ctx context.Context, m *Membership) (CalendarSyncJSON
 	if err != nil {
 		return CalendarSyncJSON{}, err
 	}
-	out := CalendarSyncJSON{CalendarID: g.CalendarID}
+	out := CalendarSyncJSON{CalendarID: calID}
 	for _, event := range events {
 		if event.ID == "" {
 			continue
@@ -201,7 +207,7 @@ func (a *API) syncCalendar(ctx context.Context, m *Membership) (CalendarSyncJSON
 	}
 
 	if _, err := a.DB.Exec(ctx, `
-		update google_accounts set calendar_last_sync_at = $1 where household_id = $2`,
+		update households set calendar_last_sync_at = $1 where id = $2`,
 		now, m.HouseholdID); err != nil {
 		return CalendarSyncJSON{}, err
 	}

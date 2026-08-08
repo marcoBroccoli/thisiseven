@@ -101,10 +101,12 @@ func (a *API) Summary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The inbox is private, so the badge counts only the caller's own drafts.
 	var pendingDrafts int
 	if err := a.DB.QueryRow(ctx, `
 		select count(*) from drafts
-		where household_id = $1 and status = 'pending'`, m.HouseholdID).Scan(&pendingDrafts); err != nil {
+		where household_id = $1 and source_member_id = $2 and status = 'pending'`,
+		m.HouseholdID, m.MemberID).Scan(&pendingDrafts); err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "internal", "summary failed")
 		return
 	}
