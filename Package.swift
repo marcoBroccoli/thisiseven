@@ -155,6 +155,7 @@ let package = Package(
                 "InboxFeature",
                 extra: [
                     "DraftsClient", "CalendarClient", "NotificationsClient", "AuthClient",
+                    "GoogleClient",
                     sheetUI_iOS, "ToastClient", "ToastUI", "VisualEffects",
                 ]
             ),
@@ -193,7 +194,10 @@ let package = Package(
             .testTarget(name: "EvenCoreTests", dependencies: ["EvenCore"], path: "Tests/EvenCoreTests"),
             .testTarget(
                 name: "EvenAppTests",
-                dependencies: ["EvenApp", "AuthClient", "EvenCore", tca],
+                dependencies: [
+                    "EvenApp", "AuthClient", "EvenCore", "InboxFeature", "ConnectionsFeature",
+                    "DraftsClient", tca,
+                ],
                 path: "Tests/EvenAppTests"
             ),
             .testTarget(
@@ -220,7 +224,7 @@ let package = Package(
                 name: "InboxFeatureTests",
                 dependencies: [
                     "InboxFeature", "EvenCore", "DraftsClient", "CalendarClient", "AuthClient",
-                    "ToastClient", "ToastUI", tca,
+                    "GoogleClient", "ToastClient", "ToastUI", tca,
                 ],
                 path: "Tests/InboxFeatureTests"
             ),

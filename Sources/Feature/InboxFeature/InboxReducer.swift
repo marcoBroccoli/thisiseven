@@ -1,9 +1,11 @@
 import AuthClient
 import CalendarClient
 import ComposableArchitecture
+import Design
 import DraftsClient
 import EvenCore
 import Foundation
+import GoogleClient
 import ToastClient
 import ToastUI
 
@@ -30,12 +32,28 @@ public struct InboxReducer {
         public var selectedCalendarDay: String?
         public var me: Member?
         public var partner: Member?
+        /// Whether *this* member has their own Gmail connected. `nil` until the
+        /// first status read lands, so the inbox never flashes "connect Google"
+        /// at someone who is connected.
+        public var googleConnected: Bool?
+        /// A fetch is in flight — the control says so and drafts reload between
+        /// polls, so mail arrives batch by batch instead of in one jump.
+        public var isSyncing = false
+        /// Messages the running scan has taken this pass (status `scanned`).
+        public var syncScanned = 0
         @Presents public var review: ReviewReducer.State?
         public init() {}
 
-        /// Unattended inbox items for the main-tab badge.
+        /// Without a mailbox there is nothing to approve: the drafts surface
+        /// gives way to the connect invitation entirely.
+        public var showsConnectGoogle: Bool {
+            googleConnected == false
+        }
+
+        /// Unattended inbox items for the main-tab badge. A tab showing the
+        /// connect invitation has nothing to attend to — never badge it.
         public var pendingBadgeCount: Int {
-            drafts.count
+            showsConnectGoogle ? 0 : drafts.count
         }
 
         public enum Surface: Equatable, Sendable {
@@ -64,8 +82,19 @@ public struct InboxReducer {
         case approved(UUID)
         case dismissed(UUID)
         case calendarLoaded(CalendarResponse)
+        /// The caller's own Google standing, plus whether a scan is already
+        /// running (the background poller may have started one).
+        case googleStatusLoaded(connected: Bool, syncing: Bool)
+        /// Quiet on purpose — an unreadable status keeps the last known one.
+        case googleStatusFailed
+        case syncProgressed(scanned: Int)
+        case syncFinished(created: Int)
+        /// Connected / disconnected elsewhere (Profile → Connections). A
+        /// disconnect flushes the mailbox server-side, so the list empties too.
+        case googleConnectionChanged(Bool)
         /// Toast — `ToastClient` → feature `.evenToastHost()`.
         case presentToast(Toast)
+        case delegate(Delegate)
 
         @CasePathable
         public enum View: Equatable, Sendable {
@@ -80,13 +109,26 @@ public struct InboxReducer {
             case selectCalendarLayout(State.CalendarLayout)
             case stepCalendarMonth(Int)
             case selectCalendarDay(String?)
+            /// Manual "check Gmail now" — starts a scan and follows it.
+            case fetchTapped
+            /// No mailbox yet: hand the ask to the one Connections flow.
+            case connectGoogleTapped
+        }
+
+        @CasePathable
+        public enum Delegate: Equatable {
+            /// The app owns the OAuth flow (Profile → Connections); the inbox
+            /// only asks for it. Nothing about Google is re-implemented here.
+            case connectGoogleRequested
         }
     }
 
     @Dependency(\.draftsClient) var draftsClient
     @Dependency(\.calendarClient) var calendarClient
     @Dependency(\.authClient) var authClient
+    @Dependency(\.googleClient) var googleClient
     @Dependency(\.toastClient) var toastClient
+    @Dependency(\.continuousClock) var clock
     @Dependency(\.context) var context
 
     public init() {}
@@ -101,6 +143,7 @@ public struct InboxReducer {
                 }
                 return .merge(
                     loadDrafts(),
+                    loadGoogleStatus(),
                     .run { [authClient] send in
                         let members = await authClient.householdMembers()
                         await send(.membersLoaded(members.me, members.partner))
@@ -193,7 +236,10 @@ public struct InboxReducer {
                     // keep the list and let `.refreshable` own the spinner.
                     let empty = state.drafts.isEmpty
                     if empty { state.isLoading = true }
-                    return loadDrafts(surviveStoreTaskCancellation: empty)
+                    return .merge(
+                        loadDrafts(surviveStoreTaskCancellation: empty),
+                        loadGoogleStatus()
+                    )
                 case .calendar:
                     let empty = state.calendarItems.isEmpty
                     if empty { state.isCalendarLoading = true }
@@ -234,10 +280,60 @@ public struct InboxReducer {
                 state.calendarMonthTitle = monthTitle(from: response.from)
                 return .none
 
+            case let .googleStatusLoaded(connected, syncing):
+                state.googleConnected = connected
+                guard connected else {
+                    // Server truth: a disconnected mailbox has no drafts left.
+                    // Never keep a cached copy on screen behind the invitation.
+                    return flushLocalInbox(&state)
+                }
+                // The background poller may already be scanning — adopt that
+                // job rather than showing an idle control over a live sync.
+                guard syncing, !state.isSyncing else { return .none }
+                state.isSyncing = true
+                state.syncScanned = 0
+                return followSync()
+
+            case .googleStatusFailed:
+                return .none
+
+            case let .googleConnectionChanged(connected):
+                state.googleConnected = connected
+                state.isSyncing = false
+                guard connected else { return flushLocalInbox(&state) }
+                state.isLoading = state.drafts.isEmpty
+                return loadDrafts()
+
+            case .view(.fetchTapped):
+                guard state.googleConnected == true, !state.isSyncing else { return .none }
+                state.isSyncing = true
+                state.syncScanned = 0
+                return startSync()
+
+            case .view(.connectGoogleTapped):
+                return .send(.delegate(.connectGoogleRequested))
+
+            case let .syncProgressed(scanned):
+                state.syncScanned = scanned
+                // Drafts land in the database batch by batch — read them as
+                // they appear rather than waiting for the whole scan.
+                return loadDrafts()
+
+            case let .syncFinished(created):
+                state.isSyncing = false
+                return .merge(
+                    loadDrafts(),
+                    toastEffect(Toast(message: InboxSyncCopy.finished(created)))
+                )
+
+            case .delegate:
+                return .none
+
             case let .presentToast(toast):
                 if toast.tone == .error {
                     state.isLoading = false
                     state.isCalendarLoading = false
+                    state.isSyncing = false
                 }
                 return toastEffect(toast)
             }
@@ -247,7 +343,86 @@ public struct InboxReducer {
         }
     }
 
-    private enum CancelID { case drafts, calendar }
+    private enum CancelID { case drafts, calendar, googleStatus, sync }
+
+    /// How a running scan is followed: a poll every couple of seconds, capped
+    /// well inside the server's own four-minute job timeout.
+    private enum SyncPoll {
+        static let interval: Duration = .seconds(2)
+        static let maxPolls = 90
+    }
+
+    /// The caller's Google standing is one bit the inbox needs — fetch or
+    /// invite. It reads it itself on appear / refresh rather than borrowing
+    /// Profile's Connections state: no shared singleton, no cross-tab coupling.
+    private func loadGoogleStatus() -> Effect<Action> {
+        .run { [googleClient] send in
+            do {
+                let status = try await googleClient.status()
+                await send(
+                    .googleStatusLoaded(connected: status.connected, syncing: status.isSyncing),
+                    animation: EvenMotion.reveal
+                )
+            } catch {
+                // Quiet: a status we could not read must not toast over the
+                // list, and the inbox keeps whatever it last knew.
+                await send(.googleStatusFailed)
+            }
+        }
+        .cancellable(id: CancelID.googleStatus, cancelInFlight: true)
+    }
+
+    /// Empties the on-device list to match a mailbox that is gone. The server
+    /// deleted those drafts on disconnect; showing them would be a lie.
+    private func flushLocalInbox(_ state: inout State) -> Effect<Action> {
+        state.drafts = []
+        state.isSyncing = false
+        state.isLoading = false
+        state.syncScanned = 0
+        return .merge(.cancel(id: CancelID.sync), .cancel(id: CancelID.drafts))
+    }
+
+    private func startSync() -> Effect<Action> {
+        .run { [googleClient, clock] send in
+            _ = try await googleClient.startSync()
+            try await Self.follow(googleClient: googleClient, clock: clock, send: send)
+        } catch: { error, send in
+            guard !(error is CancellationError) else { return }
+            await send(.presentToast(.inboxFailure(error, .fetch)))
+        }
+        .cancellable(id: CancelID.sync, cancelInFlight: true)
+    }
+
+    /// Joins a scan that is already running (started by the poller, or by this
+    /// member on another device) without starting a second one.
+    private func followSync() -> Effect<Action> {
+        .run { [googleClient, clock] send in
+            try await Self.follow(googleClient: googleClient, clock: clock, send: send)
+        } catch: { error, send in
+            guard !(error is CancellationError) else { return }
+            await send(.presentToast(.inboxFailure(error, .fetch)))
+        }
+        .cancellable(id: CancelID.sync, cancelInFlight: true)
+    }
+
+    /// Polls the scan job, telling the inbox what has been taken so far. Each
+    /// report reloads the drafts list, so the mail pours in rather than
+    /// arriving all at once when the job ends.
+    private static func follow(
+        googleClient: GoogleClient,
+        clock: any Clock<Duration>,
+        send: Send<Action>
+    ) async throws {
+        var created = 0
+        for _ in 0 ..< SyncPoll.maxPolls {
+            try await clock.sleep(for: SyncPoll.interval)
+            let status = try await googleClient.status()
+            created = status.created ?? created
+            await send(.syncProgressed(scanned: status.scanned ?? 0), animation: EvenMotion.reveal)
+            if !status.isSyncing { break }
+        }
+        await send(.syncFinished(created: created), animation: EvenMotion.reveal)
+    }
 
     /// - Parameter surviveStoreTaskCancellation: Empty pull-to-refresh swaps in a
     ///   skeleton; SwiftUI then cancels the refreshable task. That cancels the
@@ -352,9 +527,20 @@ public struct InboxReducer {
     }
 }
 
+/// What a finished fetch says. Calm, countable, never triumphant.
+public enum InboxSyncCopy {
+    public static func finished(_ created: Int) -> String {
+        switch created {
+        case ...0: "Gmail checked — nothing new."
+        case 1: "1 new draft from Gmail."
+        default: "\(created) new drafts from Gmail."
+        }
+    }
+}
+
 extension Toast {
     enum InboxFailure {
-        case load, approve, dismiss, calendar
+        case load, approve, dismiss, calendar, fetch
 
         var fallback: String {
             switch self {
@@ -362,6 +548,7 @@ extension Toast {
             case .approve: "Couldn’t approve draft"
             case .dismiss: "Couldn’t dismiss draft"
             case .calendar: "Couldn’t load calendar"
+            case .fetch: "Couldn’t check Gmail"
             }
         }
     }

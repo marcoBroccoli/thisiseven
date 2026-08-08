@@ -53,9 +53,11 @@
     struct InboxDraftsSurface: View {
         let drafts: IdentifiedArrayOf<Draft>
         let isLoading: Bool
+        let isSyncing: Bool
         let onSelectDraft: (UUID) -> Void
         let onApprove: (UUID) -> Void
         let onDismiss: (UUID) -> Void
+        let onFetch: () -> Void
         let onRefresh: () async -> Void
 
         private var showSkeleton: Bool {
@@ -65,8 +67,12 @@
         var body: some View {
             List {
                 InboxDraftsHeader(
-                    isEmpty: !showSkeleton && drafts.isEmpty,
-                    showsSwipeLegend: showSkeleton || !drafts.isEmpty
+                    subtitle: InboxCopy.draftsSubtitle(
+                        isEmpty: !showSkeleton && drafts.isEmpty,
+                        isSyncing: isSyncing
+                    ),
+                    showsSwipeLegend: showSkeleton || !drafts.isEmpty,
+                    fetch: .init(isSyncing: isSyncing, action: onFetch)
                 )
                 .inboxPaperListRow()
                 .padding(.bottom, 14)
@@ -118,34 +124,200 @@
     }
 
     struct InboxDraftsHeader: View {
-        let isEmpty: Bool
+        /// One line under the title — the page's whole running commentary.
+        let subtitle: String
         let showsSwipeLegend: Bool
+        /// Nil where there is no mailbox to check (the connect state).
+        var fetch: Fetch?
+
+        struct Fetch {
+            let isSyncing: Bool
+            let action: () -> Void
+        }
 
         var body: some View {
             VStack(alignment: .leading, spacing: 0) {
-                Text("GMAIL DISCOVERY")
-                    .font(.system(size: 10, weight: .semibold))
-                    .tracking(1.4)
-                    .foregroundStyle(EvenTokens.stone)
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    Text("GMAIL DISCOVERY")
+                        .font(.system(size: 10, weight: .semibold))
+                        .tracking(1.4)
+                        .foregroundStyle(EvenTokens.stone)
+                    Spacer(minLength: 0)
+                    if let fetch {
+                        // Quiet chip, tied to the eyebrow that names the source
+                        // — the page's own words, not a shouting CTA.
+                        InboxFetchButton(isSyncing: fetch.isSyncing, action: fetch.action)
+                    }
+                }
                 Text("Approval Inbox")
                     .font(.system(size: 26, weight: .medium, design: .serif))
                     .foregroundStyle(EvenTokens.espresso)
                     .padding(.top, 4)
-                Text(isEmpty
-                    ? "Inbox zero. Rare — enjoy it."
-                    : "Tap a draft to fix the owner, title or date before it goes.")
+                Text(subtitle)
                     .font(.system(size: 12.5, design: .serif))
                     .italic()
                     .foregroundStyle(EvenTokens.stone)
                     .padding(.top, 4)
                     .fixedSize(horizontal: false, vertical: true)
                     .contentTransition(.opacity)
-                    .animation(EvenMotion.reveal, value: isEmpty)
+                    .animation(EvenMotion.reveal, value: subtitle)
                 if showsSwipeLegend {
                     InboxSwipeLegend()
                         .padding(.top, 10)
                 }
             }
+        }
+    }
+
+    /// "Check Gmail now". Composer chip chrome (the same vocabulary as the
+    /// calendar layout chips), with the glyph swapping to a spinner in place.
+    struct InboxFetchButton: View {
+        let isSyncing: Bool
+        let action: () -> Void
+
+        private var title: String {
+            isSyncing ? "FETCHING" : "FETCH"
+        }
+
+        var body: some View {
+            Button {
+                guard !isSyncing else { return }
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                action()
+            } label: {
+                HStack(spacing: 6) {
+                    glyph
+                    Text(title)
+                        .font(.system(size: 10, weight: .semibold))
+                        .tracking(1.1)
+                        .contentTransition(.numericText())
+                        .animation(EvenMotion.ctaSwap, value: title)
+                }
+                .foregroundStyle(EvenTokens.espresso)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
+                .overlay(
+                    Capsule().stroke(EvenTokens.espresso.opacity(0.16), lineWidth: 1.5)
+                )
+                .clipShape(Capsule())
+                .contentShape(Capsule())
+            }
+            .buttonStyle(.evenPlain)
+            .allowsHitTesting(!isSyncing)
+            .accessibilityIdentifier("inbox-fetch")
+            .accessibilityLabel(isSyncing ? "Fetching from Gmail" : "Fetch from Gmail")
+            .accessibilityHint("Checks your Gmail for new household mail.")
+        }
+
+        /// Fixed slot so the swap can't shift the label sideways.
+        private var glyph: some View {
+            ZStack {
+                if isSyncing {
+                    ProgressView()
+                        .controlSize(.mini)
+                        .transition(EvenMotion.blurFade)
+                } else {
+                    Image(systemName: "arrow.down")
+                        .font(.system(size: 9, weight: .bold))
+                        .transition(EvenMotion.blurFade)
+                }
+            }
+            .frame(width: 12, height: 12)
+            .animation(EvenMotion.ctaSwap, value: isSyncing)
+        }
+    }
+
+    // MARK: - Connect state
+
+    /// No mailbox, no drafts: the inbox explains itself and hands the ask to
+    /// the one Connections flow instead of showing an empty list.
+    struct InboxConnectGoogleSurface: View {
+        let onConnect: () -> Void
+        let onRefresh: () async -> Void
+
+        var body: some View {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    InboxDraftsHeader(
+                        subtitle: "Nothing to approve until Gmail is connected.",
+                        showsSwipeLegend: false
+                    )
+                    InboxConnectGoogleCard(onConnect: onConnect)
+                        .padding(.top, 28)
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 40)
+            }
+            .evenScrollOnPaper()
+            .refreshable { await onRefresh() }
+        }
+    }
+
+    struct InboxConnectGoogleCard: View {
+        let onConnect: () -> Void
+
+        var body: some View {
+            VStack(spacing: 12) {
+                Image(systemName: "envelope")
+                    .font(.system(size: 26))
+                    .foregroundStyle(EvenTokens.stone)
+                    .padding(.bottom, 2)
+                Text("Connect Gmail to fill this inbox.")
+                    .font(.system(size: 18, design: .serif))
+                    .italic()
+                    .foregroundStyle(EvenTokens.espresso)
+                    .multilineTextAlignment(.center)
+                Text("""
+                Even reads the household mail — bills, appointments, renewals — \
+                and leaves it here as drafts. Nothing reaches Calendar until you approve it.
+                """)
+                    .font(.system(size: 12.5, design: .serif))
+                    .foregroundStyle(EvenTokens.stone)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                InboxConnectGoogleButton(action: onConnect)
+                    .padding(.top, 6)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 26)
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(EvenTokens.paperCard)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(EvenTokens.espresso.opacity(0.14), lineWidth: 1.5)
+            )
+        }
+    }
+
+    /// Same chrome as the Connections CTA (paper card + espresso hairline +
+    /// the official G) — the OAuth itself stays in ConnectionsFeature.
+    struct InboxConnectGoogleButton: View {
+        let action: () -> Void
+
+        var body: some View {
+            Button(action: action) {
+                HStack(spacing: 10) {
+                    EvenGoogleGMark()
+                        .frame(width: 18, height: 18)
+                    Text("Connect Google")
+                        .font(.system(size: 15.5, weight: .semibold))
+                }
+                .foregroundStyle(EvenTokens.espresso)
+                .frame(maxWidth: .infinity)
+                .frame(height: 52)
+                .background(EvenTokens.paperRaised)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(EvenTokens.espresso.opacity(0.16), lineWidth: 1.5)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+            .buttonStyle(.evenPlain)
+            .accessibilityIdentifier("inbox-connect-google")
         }
     }
 
@@ -588,6 +760,13 @@
     // MARK: - Copy helpers
 
     enum InboxCopy {
+        static func draftsSubtitle(isEmpty: Bool, isSyncing: Bool) -> String {
+            if isSyncing { return "Reading your Gmail — drafts land as they’re found." }
+            return isEmpty
+                ? "Inbox zero. Rare — enjoy it."
+                : "Tap a draft to fix the owner, title or date before it goes."
+        }
+
         static func urgencyLabel(_ urgency: Int) -> String {
             switch urgency {
             case ...1: "LOW"

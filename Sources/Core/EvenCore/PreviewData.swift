@@ -234,6 +234,21 @@ public enum PreviewData {
         hasMore: false
     )
 
+    /// A scan in flight — the inbox's fetch control follows these counters.
+    public static let googleSyncing = GoogleStatus(
+        connected: true,
+        partnerConnected: false,
+        email: "ada@example.com",
+        lastSyncAt: Date(timeIntervalSince1970: 1_720_000_000),
+        lastSyncCount: 6,
+        calendarLastSyncAt: nil,
+        syncRunning: true,
+        scanned: 12,
+        classified: 10,
+        created: 3,
+        hasMore: true
+    )
+
     public static let googleDisconnected = GoogleStatus(
         connected: false,
         partnerConnected: false,

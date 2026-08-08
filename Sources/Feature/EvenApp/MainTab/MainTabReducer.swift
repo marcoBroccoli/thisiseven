@@ -113,6 +113,20 @@ public struct MainTabReducer {
                 state.reset = nil
                 return .none
 
+            case .inbox(.delegate(.connectGoogleRequested)):
+                // One Connections flow, and it lives on Profile. The inbox asks;
+                // Profile's card owns the OAuth and the connected state after it.
+                state.tab = .profile
+                return .send(.profile(.view(.connectGoogleTapped)))
+
+            case .profile(.connections(.connectSucceeded)):
+                return .send(.inbox(.googleConnectionChanged(true)))
+
+            case .profile(.connections(.disconnectSucceeded)):
+                // The server flushed that mailbox's drafts — the inbox must not
+                // keep showing a cached copy of mail it can no longer refresh.
+                return .send(.inbox(.googleConnectionChanged(false)))
+
             case .profile(.delegate(.signedOut)):
                 return .send(.delegate(.signedOut))
 

@@ -3,6 +3,7 @@ import CalendarClient
 import ComposableArchitecture
 import DraftsClient
 import EvenCore
+import GoogleClient
 import InboxFeature
 import ToastClient
 import ToastUI
@@ -16,6 +17,7 @@ final class InboxFeatureTests: XCTestCase {
         } withDependencies: {
             $0.draftsClient.pending = { PreviewData.pendingDrafts }
             $0.authClient.householdMembers = { (PreviewData.ada, PreviewData.umut) }
+            $0.googleClient.status = { PreviewData.googleConnected }
         }
         store.exhaustivity = .off
 
@@ -42,6 +44,7 @@ final class InboxFeatureTests: XCTestCase {
         } withDependencies: {
             $0.draftsClient.pending = { PreviewData.pendingDrafts }
             $0.authClient.householdMembers = { (PreviewData.ada, PreviewData.umut) }
+            $0.googleClient.status = { PreviewData.googleConnected }
         }
         store.exhaustivity = .off
 
@@ -120,6 +123,7 @@ final class InboxFeatureTests: XCTestCase {
             InboxReducer()
         } withDependencies: {
             $0.draftsClient.pending = { PreviewData.pendingDrafts }
+            $0.googleClient.status = { PreviewData.googleConnected }
         }
         store.exhaustivity = .off
 
@@ -405,6 +409,262 @@ final class InboxFeatureTests: XCTestCase {
         }
     }
 
+    // MARK: - Fetch from Gmail
+
+    /// The whole fetch: start the scan, follow it, and let drafts land between
+    /// polls rather than in one jump when the job ends.
+    func testFetchStartsSyncAndPoursDraftsIn() async {
+        let clock = TestClock()
+        var state = InboxReducer.State()
+        state.isLoading = false
+        state.hasLoadedDrafts = true
+        state.googleConnected = true
+        let started = LockIsolated(0)
+        let polls = LockIsolated(0)
+        let toasted = LockIsolated<String?>(nil)
+
+        let store = TestStore(initialState: state) {
+            InboxReducer()
+        } withDependencies: {
+            $0.continuousClock = clock
+            $0.googleClient.startSync = {
+                started.withValue { $0 += 1 }
+                return GoogleSyncStart(started: true)
+            }
+            $0.googleClient.status = {
+                let n = polls.withValue { count -> Int in
+                    count += 1
+                    return count
+                }
+                return n == 1
+                    ? PreviewData.googleSyncing
+                    : GoogleStatus(connected: true, syncRunning: false, scanned: 20, created: 3)
+            }
+            $0.draftsClient.pending = { PreviewData.pendingDrafts }
+            $0.toastClient.show = { toasted.setValue($0.message) }
+        }
+        store.exhaustivity = .off
+
+        await store.send(.view(.fetchTapped)) {
+            $0.isSyncing = true
+        }
+        XCTAssertEqual(started.value, 1)
+
+        // First poll: the job is still running, and its partial harvest is
+        // already readable.
+        await clock.advance(by: .seconds(2))
+        await store.receive(\.syncProgressed) {
+            $0.syncScanned = 12
+        }
+        await store.receive(\.draftsLoaded) {
+            $0.drafts = IdentifiedArray(uniqueElements: PreviewData.pendingDrafts)
+        }
+
+        // Second poll: settled — the control goes quiet and the count is said
+        // out loud exactly once.
+        await clock.advance(by: .seconds(2))
+        await store.receive(\.syncProgressed) {
+            $0.syncScanned = 20
+        }
+        await store.receive(\.syncFinished) {
+            $0.isSyncing = false
+        }
+        await store.skipReceivedActions(strict: false)
+        XCTAssertEqual(toasted.value, "3 new drafts from Gmail.")
+        XCTAssertEqual(polls.value, 2)
+    }
+
+    func testFetchFailureToastsAndStopsSyncing() async {
+        var state = InboxReducer.State()
+        state.isLoading = false
+        state.googleConnected = true
+        let toasted = LockIsolated<Toast.Tone?>(nil)
+
+        let store = TestStore(initialState: state) {
+            InboxReducer()
+        } withDependencies: {
+            $0.continuousClock = TestClock()
+            $0.googleClient.startSync = { throw URLError(.timedOut) }
+            $0.toastClient.show = { toasted.setValue($0.tone) }
+        }
+        store.exhaustivity = .off
+
+        await store.send(.view(.fetchTapped)) {
+            $0.isSyncing = true
+        }
+        await store.receive(\.presentToast) {
+            $0.isSyncing = false
+        }
+        XCTAssertEqual(toasted.value, .error)
+    }
+
+    /// Nothing to fetch from without a mailbox — and nothing to fetch twice.
+    func testFetchIsIgnoredWithoutAConnectionOrWhileRunning() async {
+        var state = InboxReducer.State()
+        state.isLoading = false
+        state.googleConnected = false
+
+        let store = TestStore(initialState: state) {
+            InboxReducer()
+        }
+        await store.send(.view(.fetchTapped))
+
+        var running = InboxReducer.State()
+        running.isLoading = false
+        running.googleConnected = true
+        running.isSyncing = true
+        let second = TestStore(initialState: running) {
+            InboxReducer()
+        }
+        await second.send(.view(.fetchTapped))
+    }
+
+    /// A scan the background poller already started is joined, not restarted.
+    func testAppearJoinsARunningScan() async {
+        let clock = TestClock()
+        var state = InboxReducer.State()
+        state.isLoading = false
+        state.hasLoadedDrafts = true
+
+        let store = TestStore(initialState: state) {
+            InboxReducer()
+        } withDependencies: {
+            $0.continuousClock = clock
+            $0.draftsClient.pending = { PreviewData.pendingDrafts }
+            $0.authClient.householdMembers = { (nil, nil) }
+            $0.googleClient.status = { PreviewData.googleSyncing }
+            $0.googleClient.startSync = {
+                XCTFail("joining a running scan must not start a second one")
+                return GoogleSyncStart(started: false)
+            }
+            $0.toastClient.show = { _ in }
+        }
+        store.exhaustivity = .off
+
+        await store.send(.view(.appear))
+        await store.receive(\.googleStatusLoaded) {
+            $0.googleConnected = true
+            $0.isSyncing = true
+        }
+        await clock.advance(by: .seconds(2))
+        await store.receive(\.syncProgressed)
+        await store.skipReceivedActions(strict: false)
+    }
+
+    // MARK: - Connect state
+
+    /// No mailbox: the drafts surface gives way to the invitation, and any
+    /// drafts still on screen go with it (the server flushed them).
+    func testStatusWithoutGoogleShowsConnectStateAndEmptiesTheList() async {
+        var state = InboxReducer.State()
+        state.drafts = IdentifiedArray(uniqueElements: PreviewData.pendingDrafts)
+        state.isLoading = false
+        state.hasLoadedDrafts = true
+
+        let store = TestStore(initialState: state) {
+            InboxReducer()
+        } withDependencies: {
+            $0.draftsClient.pending = { PreviewData.pendingDrafts }
+            $0.authClient.householdMembers = { (nil, nil) }
+            $0.googleClient.status = { PreviewData.googleDisconnected }
+        }
+        store.exhaustivity = .off
+
+        await store.send(.view(.appear))
+        await store.receive(\.googleStatusLoaded) {
+            $0.googleConnected = false
+            $0.drafts = []
+        }
+        XCTAssertTrue(store.state.showsConnectGoogle)
+        XCTAssertTrue(store.state.drafts.isEmpty)
+    }
+
+    /// The disconnect flush, as the inbox sees it: connect state, zero drafts,
+    /// no stale cache from before the disconnect.
+    func testDisconnectFlushesTheListAndShowsConnect() async {
+        var state = InboxReducer.State()
+        state.drafts = IdentifiedArray(uniqueElements: PreviewData.pendingDrafts)
+        state.googleConnected = true
+        state.isSyncing = true
+        state.isLoading = false
+        state.hasLoadedDrafts = true
+
+        let store = TestStore(initialState: state) {
+            InboxReducer()
+        }
+
+        await store.send(.googleConnectionChanged(false)) {
+            $0.googleConnected = false
+            $0.isSyncing = false
+            $0.drafts = []
+            $0.syncScanned = 0
+        }
+        XCTAssertTrue(store.state.showsConnectGoogle)
+        XCTAssertEqual(store.state.pendingBadgeCount, 0)
+    }
+
+    func testConnectingElsewhereReloadsTheInbox() async {
+        var state = InboxReducer.State()
+        state.googleConnected = false
+        state.isLoading = false
+        state.hasLoadedDrafts = true
+
+        let store = TestStore(initialState: state) {
+            InboxReducer()
+        } withDependencies: {
+            $0.draftsClient.pending = { PreviewData.pendingDrafts }
+        }
+        store.exhaustivity = .off
+
+        await store.send(.googleConnectionChanged(true)) {
+            $0.googleConnected = true
+        }
+        await store.receive(\.draftsLoaded) {
+            $0.drafts = IdentifiedArray(uniqueElements: PreviewData.pendingDrafts)
+        }
+        XCTAssertFalse(store.state.showsConnectGoogle)
+    }
+
+    /// The inbox asks for the connection; it never runs the OAuth itself.
+    func testConnectTappedDelegatesToTheApp() async {
+        var state = InboxReducer.State()
+        state.googleConnected = false
+        state.isLoading = false
+
+        let store = TestStore(initialState: state) {
+            InboxReducer()
+        }
+
+        await store.send(.view(.connectGoogleTapped))
+        await store.receive(\.delegate.connectGoogleRequested)
+    }
+
+    /// A status we could not read is not an error worth a toast — the inbox
+    /// keeps whatever it last knew.
+    func testUnreadableStatusIsQuiet() async {
+        var state = InboxReducer.State()
+        state.googleConnected = true
+        state.drafts = IdentifiedArray(uniqueElements: PreviewData.pendingDrafts)
+        state.isLoading = false
+        let toasted = LockIsolated(0)
+
+        let store = TestStore(initialState: state) {
+            InboxReducer()
+        } withDependencies: {
+            $0.draftsClient.pending = { PreviewData.pendingDrafts }
+            $0.authClient.householdMembers = { (nil, nil) }
+            $0.googleClient.status = { throw URLError(.timedOut) }
+            $0.toastClient.show = { _ in toasted.withValue { $0 += 1 } }
+        }
+        store.exhaustivity = .off
+
+        await store.send(.view(.appear))
+        await store.receive(\.googleStatusFailed)
+        await store.skipReceivedActions(strict: false)
+        XCTAssertEqual(toasted.value, 0)
+        XCTAssertEqual(store.state.googleConnected, true)
+    }
+
     func testLoadFailureClearsLoadingAndToasts() async {
         let toasted = LockIsolated<Toast.Tone?>(nil)
 
@@ -413,6 +673,7 @@ final class InboxFeatureTests: XCTestCase {
         } withDependencies: {
             $0.draftsClient.pending = { throw URLError(.notConnectedToInternet) }
             $0.authClient.householdMembers = { (nil, nil) }
+            $0.googleClient.status = { PreviewData.googleConnected }
             $0.toastClient.show = { toast in
                 toasted.setValue(toast.tone)
             }

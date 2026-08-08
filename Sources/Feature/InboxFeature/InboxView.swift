@@ -16,14 +16,27 @@
                 Group {
                     switch store.surface {
                     case .inbox:
-                        InboxDraftsSurface(
-                            drafts: store.drafts,
-                            isLoading: store.isLoading,
-                            onSelectDraft: { send(.selectDraft($0)) },
-                            onApprove: { send(.approveDraft($0), animation: EvenMotion.reveal) },
-                            onDismiss: { send(.dismissDraft($0), animation: EvenMotion.reveal) },
-                            onRefresh: { await send(.refresh).finish() }
-                        )
+                        // No mailbox, no drafts surface — the invitation
+                        // replaces the list rather than sitting under it.
+                        if store.showsConnectGoogle {
+                            InboxConnectGoogleSurface(
+                                onConnect: { send(.connectGoogleTapped) },
+                                onRefresh: { await send(.refresh).finish() }
+                            )
+                            .transition(EvenMotion.fadeOnly)
+                        } else {
+                            InboxDraftsSurface(
+                                drafts: store.drafts,
+                                isLoading: store.isLoading,
+                                isSyncing: store.isSyncing,
+                                onSelectDraft: { send(.selectDraft($0)) },
+                                onApprove: { send(.approveDraft($0), animation: EvenMotion.reveal) },
+                                onDismiss: { send(.dismissDraft($0), animation: EvenMotion.reveal) },
+                                onFetch: { send(.fetchTapped, animation: EvenMotion.reveal) },
+                                onRefresh: { await send(.refresh).finish() }
+                            )
+                            .transition(EvenMotion.fadeOnly)
+                        }
                     case .calendar:
                         InboxCalendarSurface(
                             monthTitle: store.calendarMonthTitle,
@@ -43,6 +56,7 @@
                 }
                 .padding(.top, 20)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .animation(EvenMotion.reveal, value: store.showsConnectGoogle)
                 .toolbar {
                     ToolbarItem(placement: .principal) {
                         EvenBrandMark()
@@ -76,6 +90,14 @@
 
     #Preview("Inbox · loading") {
         InboxView(store: InboxPreviewSupport.loading())
+    }
+
+    #Preview("Inbox · fetching") {
+        InboxView(store: InboxPreviewSupport.fetching())
+    }
+
+    #Preview("Inbox · not connected") {
+        InboxView(store: InboxPreviewSupport.notConnected())
     }
 
     #Preview("Inbox · calendar") {
