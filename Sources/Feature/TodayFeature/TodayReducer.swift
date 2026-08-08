@@ -24,6 +24,21 @@ public enum TodayOrganizeMode: String, CaseIterable, Equatable, Sendable {
     }
 }
 
+/// Who may change a todo. Both partners *see* the whole week — the beam only
+/// reads honestly when both sides are visible — but completing, editing and
+/// deleting belong to the member it is assigned to (`403 not_owner` server
+/// side). Creating work for the other partner stays allowed, and a Trade is how
+/// an existing todo moves across.
+///
+/// An unknown `me` (members still loading) is not "the partner's": the server
+/// is the authority, this layer only keeps the affordances honest.
+public enum TodayTaskPermission {
+    public static func canWrite(_ task: HouseholdTask, me: Member?) -> Bool {
+        guard let me else { return true }
+        return task.ownerMemberId == me.id
+    }
+}
+
 @Reducer
 public struct TodayReducer {
     @ObservableState
@@ -37,6 +52,12 @@ public struct TodayReducer {
         public var organizeMode: TodayOrganizeMode = .day
         @Presents public var composer: ComposerReducer.State?
         public init() {}
+
+        /// The row-level gate the view reads and the reducer re-checks — a
+        /// stale client must not fire a write the server will refuse.
+        public func canWrite(_ task: HouseholdTask) -> Bool {
+            TodayTaskPermission.canWrite(task, me: me)
+        }
     }
 
     public enum Action: ViewAction {
@@ -116,7 +137,8 @@ public struct TodayReducer {
                 // Snappy local path: flip check + pebble immediately, POST in
                 // the background. Partner devices refetch via household WS.
                 guard var summary = state.summary,
-                      var task = summary.sections.flatMap(\.tasks).first(where: { $0.id == id })
+                      var task = summary.sections.flatMap(\.tasks).first(where: { $0.id == id }),
+                      state.canWrite(task)
                 else { return .none }
                 task.done.toggle()
                 task.doneByMemberId = task.done ? task.ownerMemberId : nil
@@ -142,12 +164,16 @@ public struct TodayReducer {
                 )
 
             case let .view(.edit(id)):
-                guard let task = state.summary?.sections.flatMap(\.tasks).first(where: { $0.id == id })
+                guard let task = state.summary?.sections.flatMap(\.tasks).first(where: { $0.id == id }),
+                      state.canWrite(task)
                 else { return .none }
                 state.composer = ComposerReducer.State(editing: task, meId: state.me?.id)
                 return .none
 
             case let .view(.delete(id)):
+                guard let existing = state.summary?.sections.flatMap(\.tasks)
+                    .first(where: { $0.id == id }), state.canWrite(existing)
+                else { return .none }
                 if var summary = state.summary {
                     summary.removingTask(
                         id: id,
@@ -260,7 +286,8 @@ public struct TodayReducer {
                 guard let composer = state.composer,
                       let id = composer.editingTaskId,
                       var summary = state.summary,
-                      let existing = summary.sections.flatMap(\.tasks).first(where: { $0.id == id })
+                      let existing = summary.sections.flatMap(\.tasks).first(where: { $0.id == id }),
+                      state.canWrite(existing)
                 else { return .none }
                 let owner = composer.ownerIsMe
                     ? (state.me?.id ?? existing.ownerMemberId)
@@ -662,6 +689,15 @@ extension Toast {
     }
 
     static func todayFailure(_ error: Error, _ kind: TodayFailure) -> Toast {
-        .failure(from: error, offline: "Couldn’t reach Even", fallback: kind.fallback)
+        // A refused write is the one case where the server knows something the
+        // app cannot infer from the row — say what it said, not "couldn't".
+        // (Only reachable from a stale client: the row hides the affordance.)
+        if let api = error as? APIError,
+           case let .http(_, code, message) = api,
+           code == "not_owner", !message.isEmpty
+        {
+            return .failure(message)
+        }
+        return .failure(from: error, offline: "Couldn’t reach Even", fallback: kind.fallback)
     }
 }

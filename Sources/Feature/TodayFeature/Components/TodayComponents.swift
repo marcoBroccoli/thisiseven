@@ -322,12 +322,18 @@
         let onEdit: () -> Void
         let onDelete: () -> Void
 
+        /// Partner rows stay fully visible — the beam needs both sides on
+        /// screen — but they are read-only: no check tap, no Edit / Delete.
+        private var canWrite: Bool {
+            TodayTaskPermission.canWrite(task, me: me)
+        }
+
         var body: some View {
             // A whole-row `Button` competes with `.swipeActions`' own gesture
             // recognizer on iOS 26's floating swipe buttons — taps land on the
             // row instead of Delete/Edit. Plain tap gesture avoids the conflict.
             HStack(spacing: TodayLayout.rowItemSpacing) {
-                TodayTaskCheck(done: task.done, ownerColor: ownerColor)
+                TodayTaskCheck(done: task.done, ownerColor: ownerColor, interactive: canWrite)
                 VStack(alignment: .leading, spacing: TodayLayout.titleMetaSpacing) {
                     Text(task.title)
                         .font(.system(size: 16, design: .serif))
@@ -357,26 +363,41 @@
             .padding(.horizontal, TodayLayout.rowHorizontal)
             .background(TodayRowCapsule(done: task.done))
             .contentShape(Capsule(style: .continuous))
-            .onTapGesture {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                onToggle()
-            }
-            .accessibilityAddTraits(.isButton)
+            // `including:` rather than a conditional modifier — same view
+            // identity either way, so a row never re-inflates when members land.
+            .gesture(
+                TapGesture().onEnded {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    onToggle()
+                },
+                including: canWrite ? .all : .none
+            )
+            .accessibilityAddTraits(canWrite ? .isButton : [])
+            .accessibilityHint(readOnlyHint)
             .padding(.vertical, TodayLayout.rowGap / 2)
             .accessibilityIdentifier("check-\(task.title)")
             // Public swipe config is only: edge, full-swipe, role, tint, label.
             // There is no API for button width/height — the system sizes from
             // row height + label (iconOnly keeps iOS 26 from stacking title+icon).
-            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                Button("Delete", systemImage: "trash", role: .destructive, action: onDelete)
-                    .tint(EvenTokens.terracotta)
-                    .labelStyle(.iconOnly)
+            .swipeActions(edge: .trailing, allowsFullSwipe: canWrite) {
+                if canWrite {
+                    Button("Delete", systemImage: "trash", role: .destructive, action: onDelete)
+                        .tint(EvenTokens.terracotta)
+                        .labelStyle(.iconOnly)
 
-                Button("Edit", systemImage: "pencil", action: onEdit)
-                    .tint(EvenTokens.espresso)
-                    .labelStyle(.iconOnly)
+                    Button("Edit", systemImage: "pencil", action: onEdit)
+                        .tint(EvenTokens.espresso)
+                        .labelStyle(.iconOnly)
+                }
             }
             .todayPaperListRow()
+        }
+
+        private var readOnlyHint: Text {
+            guard !canWrite else { return Text(verbatim: "") }
+            let owner = TodayOwnerColor.member(for: task.ownerMemberId, me: me, partner: partner)?
+                .displayName ?? "Your partner"
+            return Text("\(owner)’s to finish")
         }
 
         private var ownerColor: Color {
@@ -432,11 +453,16 @@
     struct TodayTaskCheck: View {
         let done: Bool
         let ownerColor: Color
+        /// A partner's open todo draws a fainter ring — the one honest hint
+        /// that this circle is not yours to tick. No lock, no extra chrome.
+        var interactive = true
+
+        private var openRingOpacity: Double { interactive ? 0.35 : 0.18 }
 
         var body: some View {
             ZStack {
                 Circle()
-                    .stroke(ownerColor.opacity(done ? 0 : 0.35), lineWidth: 1.5)
+                    .stroke(ownerColor.opacity(done ? 0 : openRingOpacity), lineWidth: 1.5)
                     .background(
                         Circle().fill(done ? ownerColor : Color.clear)
                     )

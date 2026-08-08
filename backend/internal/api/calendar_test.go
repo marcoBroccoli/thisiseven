@@ -188,11 +188,16 @@ func TestSharedCalendarCreation(t *testing.T) {
 		creates.Store(creates.Load().(int) + 1)
 		_ = json.NewEncoder(w).Encode(map[string]string{"id": "even-cal-123"})
 	})
+	// Google hands back a fresh event id per insert, and the household has a
+	// unique index on it — a fake that repeats one id makes the second write
+	// look like a failure that would never happen in production.
+	var events atomic.Int32
 	mux.HandleFunc("/calendar/v3/calendars/", func(w http.ResponseWriter, r *http.Request) {
 		parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/calendar/v3/calendars/"), "/")
 		lastEventCal.Store(parts[0])
+		id := fmt.Sprintf("evt%d", events.Add(1))
 		_ = json.NewEncoder(w).Encode(map[string]string{
-			"id": "evt1", "htmlLink": "https://calendar.google.com/event?eid=evt1"})
+			"id": id, "htmlLink": "https://calendar.google.com/event?eid=" + id})
 	})
 	fake := httptest.NewServer(mux)
 	defer fake.Close()
@@ -296,11 +301,8 @@ func TestUpdateTaskClearsMappedCalendarEvent(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	body := strings.NewReader(`{"clear_due_on":true}`)
-	req := httptest.NewRequest(http.MethodPatch, "/v1/tasks/"+taskID, body)
-	req.Header.Set("Content-Type", "application/json")
 	m := &Membership{MemberID: member, HouseholdID: hh, Household: "Clear calendar test", WeekID: week}
-	req = req.WithContext(context.WithValue(req.Context(), memberKey{}, m))
+	req := taskRequest(m, http.MethodPatch, "/v1/tasks/"+taskID, taskID, `{"clear_due_on":true}`)
 	rec := httptest.NewRecorder()
 	a.UpdateTask(rec, req)
 	if rec.Code != http.StatusOK {
@@ -394,10 +396,8 @@ func TestResolveTaskCalendarActions(t *testing.T) {
 	m := &Membership{MemberID: member, HouseholdID: hh, Household: "Resolve calendar test", WeekID: week}
 	resolve := func(taskID, action string) {
 		t.Helper()
-		req := httptest.NewRequest(http.MethodPost, "/v1/tasks/"+taskID+"/calendar/resolve",
-			strings.NewReader(`{"action":"`+action+`"}`))
-		req.Header.Set("Content-Type", "application/json")
-		req = req.WithContext(context.WithValue(req.Context(), memberKey{}, m))
+		req := taskRequest(m, http.MethodPost, "/v1/tasks/"+taskID+"/calendar/resolve",
+			taskID, `{"action":"`+action+`"}`)
 		rec := httptest.NewRecorder()
 		a.ResolveTaskCalendar(rec, req)
 		if rec.Code != http.StatusOK {

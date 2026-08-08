@@ -212,6 +212,27 @@ type calendarResolutionTask struct {
 	DueOn     *time.Time
 	EventID   *string
 	SyncState string
+	Owner     string
+}
+
+// Ownership is the household's contract with itself: both partners *see* every
+// todo (the beam only reads honestly when both sides are visible), but only the
+// person a todo belongs to may complete, edit or remove it. Either partner may
+// still *create* work for the other, and a Trade is the sanctioned way to move
+// an existing todo across.
+var errNotTaskOwner = errors.New("task belongs to the partner")
+
+const notOwnerMessage = "this todo belongs to your partner — trade it if it should be yours"
+
+// ownsTask reports whether the caller is the current owner. The owner always
+// comes from the stored row, never from the request body, so a patch cannot
+// grant itself the right to reassign.
+func ownsTask(m *Membership, owner string) bool {
+	return strings.EqualFold(owner, m.MemberID)
+}
+
+func denyNotOwner(w http.ResponseWriter) {
+	httpx.Error(w, http.StatusForbidden, "not_owner", notOwnerMessage)
 }
 
 func (in *taskInput) validate(w http.ResponseWriter, m *Membership, forCreate bool) (out taskWrite, ok bool) {
@@ -290,10 +311,10 @@ func (in *taskInput) validate(w http.ResponseWriter, m *Membership, forCreate bo
 func (a *API) calendarTaskForResolution(ctx context.Context, m *Membership, taskID string) (calendarResolutionTask, error) {
 	var task calendarResolutionTask
 	err := a.DB.QueryRow(ctx, `
-		select id, title, due_on, google_event_id, calendar_sync_state
+		select id, title, due_on, google_event_id, calendar_sync_state, owner_member_id
 		from tasks where id = $1 and household_id = $2 and archived_at is null`,
 		taskID, m.HouseholdID).
-		Scan(&task.ID, &task.Title, &task.DueOn, &task.EventID, &task.SyncState)
+		Scan(&task.ID, &task.Title, &task.DueOn, &task.EventID, &task.SyncState, &task.Owner)
 	return task, err
 }
 
@@ -360,6 +381,7 @@ func (a *API) UpdateTask(w http.ResponseWriter, r *http.Request) {
 	}
 	var previousEventID *string
 	var current struct {
+		owner      string
 		recurrence string
 		dueOn      *time.Time
 		until      *time.Time
@@ -367,14 +389,21 @@ func (a *API) UpdateTask(w http.ResponseWriter, r *http.Request) {
 		createdAt  time.Time
 	}
 	if err := a.DB.QueryRow(r.Context(), `
-		select google_event_id, recurrence, due_on, recurrence_until, recurrence_count, created_at
+		select google_event_id, owner_member_id, recurrence, due_on, recurrence_until,
+			recurrence_count, created_at
 		from tasks where id = $1 and household_id = $2 and archived_at is null`,
-		id, m.HouseholdID).Scan(&previousEventID, &current.recurrence, &current.dueOn,
-		&current.until, &current.count, &current.createdAt); errors.Is(err, pgx.ErrNoRows) {
+		id, m.HouseholdID).Scan(&previousEventID, &current.owner, &current.recurrence,
+		&current.dueOn, &current.until, &current.count, &current.createdAt); errors.Is(err, pgx.ErrNoRows) {
 		httpx.Error(w, http.StatusNotFound, "not_found", "no such task")
 		return
 	} else if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "internal", "could not load task")
+		return
+	}
+	// The CURRENT owner decides — handing a todo over is the owner's move, so a
+	// patch carrying owner_member_id cannot be used to take one.
+	if !ownsTask(m, current.owner) {
+		denyNotOwner(w)
 		return
 	}
 
@@ -474,6 +503,23 @@ func (a *API) ResolveTaskCalendar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Who the todo belongs to is settled before anything about Google is:
+	// resolving a Calendar edit rewrites the todo, so it follows the same
+	// owner-only rule as an edit.
+	task, err := a.calendarTaskForResolution(r.Context(), m, id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		httpx.Error(w, http.StatusNotFound, "not_found", "no such task")
+		return
+	}
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "internal", "could not load task")
+		return
+	}
+	if !ownsTask(m, task.Owner) {
+		denyNotOwner(w)
+		return
+	}
+
 	if in.Action != calendarResolutionAcknowledge {
 		if !a.googleReady(w) {
 			return
@@ -485,16 +531,6 @@ func (a *API) ResolveTaskCalendar(w http.ResponseWriter, r *http.Request) {
 			httpx.Error(w, http.StatusInternalServerError, "internal", "could not load the Google connection")
 			return
 		}
-	}
-
-	task, err := a.calendarTaskForResolution(r.Context(), m, id)
-	if errors.Is(err, pgx.ErrNoRows) {
-		httpx.Error(w, http.StatusNotFound, "not_found", "no such task")
-		return
-	}
-	if err != nil {
-		httpx.Error(w, http.StatusInternalServerError, "internal", "could not load task")
-		return
 	}
 
 	switch in.Action {
@@ -558,13 +594,19 @@ func (a *API) DeleteTask(w http.ResponseWriter, r *http.Request) {
 	m := membership(r)
 	id := chi.URLParam(r, "id")
 	var eventID *string
+	var owner string
 	if err := a.DB.QueryRow(r.Context(), `
-		select google_event_id from tasks where id = $1 and household_id = $2 and archived_at is null`,
-		id, m.HouseholdID).Scan(&eventID); errors.Is(err, pgx.ErrNoRows) {
+		select google_event_id, owner_member_id from tasks
+		where id = $1 and household_id = $2 and archived_at is null`,
+		id, m.HouseholdID).Scan(&eventID, &owner); errors.Is(err, pgx.ErrNoRows) {
 		httpx.Error(w, http.StatusNotFound, "not_found", "no such task")
 		return
 	} else if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "internal", "could not load task")
+		return
+	}
+	if !ownsTask(m, owner) {
+		denyNotOwner(w)
 		return
 	}
 	tag, err := a.DB.Exec(r.Context(), `
@@ -608,6 +650,11 @@ func (a *API) ToggleTask(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
+		// Checking a box is a claim about who did the work — only the owner
+		// gets to make it, so a pebble can never land in the wrong pan.
+		if !ownsTask(m, owner) {
+			return errNotTaskOwner
+		}
 		if usesOccurrenceCompletions(recurrence) {
 			occurrence := today()
 			if !recursOnDate(recurrence, dueOn, until, createdAt, occurrence) {
@@ -641,6 +688,10 @@ func (a *API) ToggleTask(w http.ResponseWriter, r *http.Request) {
 			values ($1, $2, $3, $4)`, id, m.WeekID, owner, weight)
 		return err
 	})
+	if errors.Is(err, errNotTaskOwner) {
+		denyNotOwner(w)
+		return
+	}
 	if errors.Is(err, errTaskNotDue) {
 		httpx.Error(w, http.StatusConflict, "task_not_due", "this recurring todo is not due today")
 		return

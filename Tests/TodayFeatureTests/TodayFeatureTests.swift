@@ -894,4 +894,155 @@ final class TodayFeatureTests: XCTestCase {
         XCTAssertEqual(patched.value?.title, "Fold laundry")
         XCTAssertEqual(patched.value?.weight, 3)
     }
+
+    // MARK: - Owner-only writes
+    //
+    // Partner rows stay on screen (the beam needs both sides visible) but are
+    // read-only. The swipe never offers Edit / Delete and the check does not
+    // tap — these keep the reducer honest if a stale client fires anyway.
+
+    /// `PreviewData.dishes` belongs to Umut; `me` is Ada.
+    private func partnerTaskState() -> TodayReducer.State {
+        var state = TodayReducer.State()
+        state.summary = PreviewData.summary
+        state.me = PreviewData.ada
+        state.partner = PreviewData.umut
+        state.isLoading = false
+        return state
+    }
+
+    func testTogglingAPartnerTaskDoesNothing() async {
+        let state = partnerTaskState()
+        let toggled = LockIsolated(false)
+
+        let store = TestStore(initialState: state) {
+            TodayReducer()
+        } withDependencies: {
+            $0.tasksClient.toggle = { _ in
+                toggled.setValue(true)
+                return PreviewData.dishes
+            }
+            $0.widgetClient.publish = { _ in }
+        }
+
+        await store.send(.view(.toggle(PreviewData.dishes.id)))
+        await store.finish()
+        XCTAssertFalse(toggled.value, "partner's todo must not be completed from my phone")
+        XCTAssertEqual(store.state.summary, PreviewData.summary)
+    }
+
+    func testEditingAPartnerTaskDoesNotOpenTheComposer() async {
+        let store = TestStore(initialState: partnerTaskState()) {
+            TodayReducer()
+        }
+
+        await store.send(.view(.edit(PreviewData.dishes.id)))
+        XCTAssertNil(store.state.composer)
+    }
+
+    func testDeletingAPartnerTaskDoesNothing() async {
+        let deleted = LockIsolated(false)
+        let store = TestStore(initialState: partnerTaskState()) {
+            TodayReducer()
+        } withDependencies: {
+            $0.tasksClient.delete = { _ in deleted.setValue(true) }
+        }
+
+        await store.send(.view(.delete(PreviewData.dishes.id)))
+        await store.finish()
+        XCTAssertFalse(deleted.value, "partner's todo must not be deleted from my phone")
+        XCTAssertEqual(store.state.summary, PreviewData.summary)
+    }
+
+    /// Handing a todo over is a real edit of MY task — it must still work, and
+    /// the row must go read-only the moment the partner owns it.
+    func testHandingATaskOverStopsFurtherEdits() async {
+        var state = partnerTaskState()
+        let task = PreviewData.laundry
+        state.composer = ComposerReducer.State(editing: task, meId: PreviewData.ada.id)
+        state.composer?.ownerIsMe = false
+
+        let patched = LockIsolated<EvenAPIClient.TaskDraftBody?>(nil)
+        let store = TestStore(initialState: state) {
+            TodayReducer()
+        } withDependencies: {
+            $0.tasksClient.update = { _, body in
+                patched.setValue(body)
+                var handed = task
+                handed.ownerMemberId = PreviewData.umutId
+                return handed
+            }
+            $0.widgetClient.publish = { _ in }
+            $0.toastClient.show = { _ in }
+        }
+        store.exhaustivity = .off
+
+        await store.send(.composer(.presented(.view(.saveTapped))))
+        await store.receive(\.updateTask)
+        await store.receive(\.updateSucceeded)
+        await store.finish()
+        XCTAssertEqual(patched.value?.ownerMemberId, PreviewData.umutId)
+
+        // Now it is theirs — no more edits, no more toggling from my side.
+        await store.send(.view(.edit(task.id)))
+        XCTAssertNil(store.state.composer)
+        await store.send(.view(.toggle(task.id)))
+        await store.finish()
+        XCTAssertEqual(
+            store.state.summary?.sections.flatMap(\.tasks).first { $0.id == task.id }?.done,
+            false
+        )
+    }
+
+    /// A stale client can still fire a refused write. The 403 must reach the
+    /// user in the server's words and the list must resync — never crash, never
+    /// leave the optimistic flip standing.
+    func testRefusedWriteSurfacesTheServerMessageAndRefreshes() async {
+        var state = partnerTaskState()
+        // Members not loaded yet → the client gate is open, as on a stale row.
+        state.me = nil
+        state.partner = nil
+        let refused = APIError.http(
+            status: 403,
+            code: "not_owner",
+            message: "this todo belongs to your partner — trade it if it should be yours"
+        )
+        let toasted = LockIsolated<Toast?>(nil)
+        let refreshed = LockIsolated(false)
+
+        let store = TestStore(initialState: state) {
+            TodayReducer()
+        } withDependencies: {
+            $0.tasksClient.toggle = { _ in throw refused }
+            $0.summaryClient.fetch = {
+                refreshed.setValue(true)
+                return PreviewData.summary
+            }
+            $0.widgetClient.publish = { _ in }
+            $0.toastClient.show = { toasted.setValue($0) }
+        }
+        store.exhaustivity = .off
+
+        await store.send(.view(.toggle(PreviewData.dishes.id)))
+        await store.receive(\.presentToast)
+        await store.receive(\.view.refresh)
+        await store.receive(\.summaryLoaded)
+        await store.finish()
+
+        XCTAssertEqual(toasted.value?.tone, .error)
+        XCTAssertEqual(
+            toasted.value?.message,
+            "this todo belongs to your partner — trade it if it should be yours"
+        )
+        XCTAssertTrue(refreshed.value)
+        XCTAssertEqual(store.state.summary, PreviewData.summary)
+    }
+
+    func testPermissionIsPermissiveWhileMembersAreStillLoading() {
+        // `me` unknown: the server stays the authority; the client must not
+        // freeze every row into read-only during the first frames.
+        XCTAssertTrue(TodayTaskPermission.canWrite(PreviewData.dishes, me: nil))
+        XCTAssertTrue(TodayTaskPermission.canWrite(PreviewData.laundry, me: PreviewData.ada))
+        XCTAssertFalse(TodayTaskPermission.canWrite(PreviewData.dishes, me: PreviewData.ada))
+    }
 }

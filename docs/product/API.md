@@ -82,14 +82,36 @@ trade       {id, task_id, task_title, from_member_id, to_member_id, accepted}
     in-process hub (home `evend`); not multi-replica.
 
 - `POST /v1/tasks` `{title, section, owner_member_id, weight, recurrence, due_on?,
-  recurrence_until?, recurrence_count?}`
+  recurrence_until?, recurrence_count?}` — either partner may create, for
+  **either** owner (sending work over is allowed)
 - `PATCH /v1/tasks/{id}` (same fields, plus `clear_due_on?: true` to remove a
   date and its mapped Calendar event, and `clear_recurrence_end?: true` to make a
-  repeat unbounded again) · `DELETE /v1/tasks/{id}` (archives)
-- `POST /v1/tasks/{id}/toggle` → task — creates/removes open-week completion
+  repeat unbounded again) · `DELETE /v1/tasks/{id}` (archives) — **owner only**
+- `POST /v1/tasks/{id}/toggle` → task — creates/removes open-week completion —
+  **owner only**
 - `POST /v1/tasks/{id}/calendar/resolve` `{action:"acknowledge"|"restore"|"retry"}`
   → task — acknowledges an imported Calendar edit, recreates an event removed
-  directly in Google Calendar, or retries a failed Calendar write
+  directly in Google Calendar, or retries a failed Calendar write —
+  **owner only**
+
+### Task ownership — see everything, change only your own
+
+Both partners read every todo (`/v1/summary` and `/v1/calendar` are
+household-wide; the beam only reads honestly when both sides are visible), but
+completing, editing, resolving and deleting a todo belong to the member it is
+assigned to. `PATCH` / `DELETE` / `toggle` / `calendar/resolve` return `403
+not_owner` — *"this todo belongs to your partner — trade it if it should be
+yours"* — when `owner_member_id` is not the caller.
+
+- `POST /v1/tasks` is deliberately **not** gated: a member may capture work for
+  the other (the Inbox review sheet and the Today composer both offer the owner
+  toggle).
+- Reassignment is an edit, so it follows the same rule: the **current** owner
+  (read from the stored row, never from the request body) is the only one who
+  can hand a todo over via `PATCH {owner_member_id}`. A partner cannot claim a
+  todo by patching itself in.
+- `POST /v1/trades` stays the way work moves across for the coming week; it is
+  unaffected by this rule.
 
 ### Recurrence — one task row, an unbounded or bounded series
 
@@ -169,7 +191,8 @@ VATTENFALL · TODAY           one-off from a Gmail draft
   "Level. Enjoy it while it lasts"; ≤4 → "Close to even. Not a competition —
   but noted"; else "Leaning <name> — mostly the admin and the remembering"
 - All queries household-scoped by the authenticated member; cross-household
-  access is 404, never 403.
+  access is 404, never 403. Inside a household, 403 means the resource exists
+  and is visible but is not the caller's to change (`not_owner` on tasks).
 - Solo household (partner not joined): percent_partner = 0, money endpoints
   usable, trades/appreciations 409 `no_partner`.
 - Google Calendar is read only through the dedicated household calendar, never
