@@ -56,6 +56,7 @@ func Router(a *API, verifier httpx.AccessVerifier, gotrueURL string) http.Handle
 		// person may hold several, and an invitee holds none yet.
 		r.Post("/v1/households/{id}/invite", a.InviteToHousehold)
 		r.Delete("/v1/households/{id}/invite", a.RevokeHouseholdInvite)
+		r.Post("/v1/households/{id}/leave", a.LeaveHousehold)
 		r.Post("/v1/invites/{id}/accept", a.AcceptInvite)
 		r.Post("/v1/invites/{id}/decline", a.DeclineInvite)
 	})

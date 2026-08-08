@@ -31,7 +31,8 @@ func (a *API) householdJSON(ctx context.Context, householdID, meID string) (Hous
 	rows, err := a.DB.Query(ctx, `
 		select id, display_name, color, avatar_path is not null
 		from members
-		where household_id = $1 order by created_at`, householdID)
+		where household_id = $1 and left_at is null
+		order by created_at`, householdID)
 	if err != nil {
 		return h, err
 	}
@@ -205,25 +206,35 @@ var (
 // Caller holds the household lock. `want` is the colour the flow would like;
 // if the sitting member already wears it the newcomer gets the other half of
 // the pair, so a household never reads as one person twice.
+//
+// Somebody who left this household before is *revived*, not inserted again:
+// unique (user_id, household_id) allows exactly one row per person per
+// household, and the history hanging off that row is theirs. They come back
+// with the name and colour of this arrival — a return is a new start, not a
+// restore. Only an **active** membership is `already_in_household`.
 func seatMember(ctx context.Context, tx pgx.Tx, householdID, userID, displayName, want string) error {
 	rows, err := tx.Query(ctx,
-		`select user_id, color from members where household_id = $1`, householdID)
+		`select user_id, color, left_at is null from members where household_id = $1`, householdID)
 	if err != nil {
 		return err
 	}
 	taken := map[string]bool{}
 	count := 0
-	mine := false
+	mine, returning := false, false
 	for rows.Next() {
 		var uid, color string
-		if err := rows.Scan(&uid, &color); err != nil {
+		var active bool
+		if err := rows.Scan(&uid, &color, &active); err != nil {
 			rows.Close()
 			return err
 		}
-		count++
-		taken[canonicalizeMemberColor(color)] = true
+		if active {
+			count++
+			taken[canonicalizeMemberColor(color)] = true
+		}
 		if uid == userID {
-			mine = true
+			mine = active
+			returning = !active
 		}
 	}
 	rows.Close()
@@ -243,6 +254,13 @@ func seatMember(ctx context.Context, tx pgx.Tx, householdID, userID, displayName
 		} else {
 			color = defaultCreatorColor
 		}
+	}
+	if returning {
+		_, err = tx.Exec(ctx, `
+			update members set left_at = null, display_name = $1, color = $2
+			where household_id = $3 and user_id = $4`,
+			displayName, color, householdID, userID)
+		return err
 	}
 	_, err = tx.Exec(ctx, `
 		insert into members (household_id, user_id, display_name, color)

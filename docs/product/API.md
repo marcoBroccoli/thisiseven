@@ -101,6 +101,29 @@ trade       {id, task_id, task_title, from_member_id, to_member_id, accepted}
 - `DELETE /v1/households/{id}/invite` → `{ok:true}` — revoke the outstanding
   invite and free the seat for another address. `404 no_invite` when none is
   out; `403 not_in_household`.
+- `POST /v1/households/{id}/leave` → `{ok:true, household_deleted: bool}` — walk
+  out of one household (addressed by path, not by `X-Household-Id`: it is rarely
+  the one on screen). `403 not_in_household` when the caller is not a member
+  there — including a household they already left. What it does, in order:
+  - their Google connection is dropped exactly as `POST /v1/google/disconnect`
+    does it — shared-calendar handover first, then the token, then the mailbox
+    flush (their drafts and `processed_emails` go, the todos those drafts became
+    stay);
+  - their **open todos are archived** and taken off the shared calendar, so the
+    remaining partner is not left holding work nobody owns;
+  - the member becomes invisible: membership resolution, the member list,
+    `member_count`, `/v1/summary` and the two-person cap all stop counting them,
+    and every household-scoped route answers them `403 not_in_household`;
+  - **history stays.** The member row survives behind the departure, so closed
+    weeks, completions, expenses, settlements, trades and appreciations keep
+    pointing at a real person;
+  - the seat is free again — the household may invite or share its code — and
+    coming back (invite or `invite_code`) **revives the same seat** with the new
+    name and the free colour, never a second membership;
+  - **last one out deletes the household**: when nobody is left the household
+    row and everything in it are removed, and `household_deleted` is `true`.
+  A leaver's open WebSocket is not evicted; it stops mattering at the next
+  reconnect, which no longer resolves a membership.
 - `POST /v1/invites/{id}/accept` `{display_name}` → household — take the seat:
   creates the member row (colour = the free half of the terracotta/pine pair)
   and marks the invite accepted. `404 no_invite` when the invite is not pending
@@ -123,11 +146,13 @@ trade       {id, task_id, task_title, from_member_id, to_member_id, accepted}
   ```
 
   - `scopes` — which REST resources to refetch (`summary` today; more later).
-  - `reason` — `task_created` | `task_updated` | `task_deleted` | `task_toggled`.
+  - `reason` — `task_created` | `task_updated` | `task_deleted` | `task_toggled`
+    | `member_left`.
   - Clients ignore unknown `type`s. Optional client `{"type":"ping"}` →
     server `{"type":"pong"}` (keepalive); protocol-level WS pings also fine.
-  - Emitted after successful task create / patch / delete / toggle. Single-node
-    in-process hub (home `evend`); not multi-replica.
+  - Emitted after successful task create / patch / delete / toggle, and after a
+    member leaves (`member_left`, so the partner's Today refetches without
+    them). Single-node in-process hub (home `evend`); not multi-replica.
 
 - `POST /v1/tasks` `{title, section, owner_member_id, weight, recurrence, due_on?,
   recurrence_until?, recurrence_count?}` — either partner may create, for
@@ -325,6 +350,12 @@ VATTENFALL · TODAY           one-off from a Gmail draft
   Gmail connection, one colour, one name) per household. Nothing is shared
   across them: tasks, drafts, money and the realtime channel are all scoped to
   the resolved household.
+- **Leaving is a soft departure.** `…/leave` marks the member as gone rather
+  than deleting them: every count of "who lives here" filters them out, and
+  every record that already names them keeps working. `member_count`,
+  `my_member_id`, `is_owner` and the household cap therefore describe the
+  *current* members only, and a person who left may be invited back into the
+  same seat.
 - **Invites are records, not mail.** evend has no SMTP. `…/invite` writes the
   address; the invitee discovers it by signing in and reading
   `GET /v1/households`. Matching is on the GoTrue email, case-insensitive, so

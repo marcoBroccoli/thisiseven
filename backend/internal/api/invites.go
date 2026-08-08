@@ -59,16 +59,20 @@ func (a *API) ListHouseholds(w http.ResponseWriter, r *http.Request) {
 	userID := httpx.UserID(r)
 	ctx := r.Context()
 
-	// One row per membership; the creator is the household's first member.
+	// One row per *live* membership; the creator is the household's first
+	// member. Everything here counts the people who live there now — a member
+	// who left is history, not a household of the caller's and not a head.
 	rows, err := a.DB.Query(ctx, `
 		select h.id, h.name, h.invite_code, m.id,
-		       (select count(*) from members x where x.household_id = h.id),
-		       m.id = (select f.id from members f where f.household_id = h.id
+		       (select count(*) from members x
+		        where x.household_id = h.id and x.left_at is null),
+		       m.id = (select f.id from members f
+		               where f.household_id = h.id and f.left_at is null
 		               order by f.created_at, f.id limit 1),
 		       (select i.email from household_invites i
 		        where i.household_id = h.id and i.status = 'pending' limit 1)
 		from members m join households h on h.id = m.household_id
-		where m.user_id = $1
+		where m.user_id = $1 and m.left_at is null
 		order by m.created_at, m.id`, userID)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "internal", "lookup failed")
@@ -102,7 +106,11 @@ func (a *API) ListHouseholds(w http.ResponseWriter, r *http.Request) {
 
 // pendingInvitesFor lists the live invites addressed to this user's email. An
 // invite to a household they already sit in is filtered out — that seat is
-// theirs already.
+// theirs already. Somebody who *left* that household is not sitting in it, so
+// an invite back is exactly what they should see.
+//
+// The inviter join is deliberately unfiltered: an invite records who wrote it,
+// and that stays true after they leave.
 func (a *API) pendingInvitesFor(ctx context.Context, userID string) ([]InviteJSON, error) {
 	out := []InviteJSON{}
 	email := a.userEmail(ctx, userID)
@@ -116,7 +124,8 @@ func (a *API) pendingInvitesFor(ctx context.Context, userID string) ([]InviteJSO
 		join members m on m.id = i.invited_by_member_id
 		where i.status = 'pending' and i.email = $1
 		  and not exists (select 1 from members me
-		                  where me.household_id = i.household_id and me.user_id = $2)
+		                  where me.household_id = i.household_id and me.user_id = $2
+		                    and me.left_at is null)
 		order by i.created_at`, email, userID)
 	if err != nil {
 		return nil, err
@@ -168,7 +177,8 @@ func (a *API) InviteToHousehold(w http.ResponseWriter, r *http.Request) {
 		}
 		var count int
 		if err := tx.QueryRow(r.Context(),
-			`select count(*) from members where household_id = $1`, m.HouseholdID).Scan(&count); err != nil {
+			`select count(*) from members where household_id = $1 and left_at is null`,
+			m.HouseholdID).Scan(&count); err != nil {
 			return err
 		}
 		if count >= 2 {

@@ -84,7 +84,9 @@ func (a *API) loadMembership(ctx context.Context, userID string) (*Membership, e
 
 // loadMembershipIn resolves the caller inside a specific household. An empty
 // householdID falls back to the default (most recent) membership.
-// pgx.ErrNoRows means "not a member (t)here".
+// pgx.ErrNoRows means "not a member (t)here" — which includes a member who
+// left: their row survives for the history that points at it, but it resolves
+// to nothing, so every data route answers as it would for a stranger.
 func (a *API) loadMembershipIn(ctx context.Context, userID, householdID string) (*Membership, error) {
 	m := &Membership{UserID: userID}
 	const cols = `m.id, m.display_name, m.color, h.id, h.name, h.invite_code`
@@ -93,13 +95,13 @@ func (a *API) loadMembershipIn(ctx context.Context, userID, householdID string) 
 		err = a.DB.QueryRow(ctx, `
 			select `+cols+`
 			from members m join households h on h.id = m.household_id
-			where m.user_id = $1 and m.household_id = $2`, userID, householdID).
+			where m.user_id = $1 and m.household_id = $2 and m.left_at is null`, userID, householdID).
 			Scan(&m.MemberID, &m.DisplayName, &m.Color, &m.HouseholdID, &m.Household, &m.InviteCode)
 	} else {
 		err = a.DB.QueryRow(ctx, `
 			select `+cols+`
 			from members m join households h on h.id = m.household_id
-			where m.user_id = $1
+			where m.user_id = $1 and m.left_at is null
 			order by m.created_at desc, m.id desc limit 1`, userID).
 			Scan(&m.MemberID, &m.DisplayName, &m.Color, &m.HouseholdID, &m.Household, &m.InviteCode)
 	}
@@ -115,8 +117,8 @@ func (a *API) loadMembershipIn(ctx context.Context, userID, householdID string) 
 	}
 	_ = a.DB.QueryRow(ctx, `
 		select id, display_name from members
-		where household_id = $1 and id <> $2`, m.HouseholdID, m.MemberID).
-		Scan(&m.PartnerID, &m.PartnerName) // ErrNoRows fine: solo household
+		where household_id = $1 and id <> $2 and left_at is null`, m.HouseholdID, m.MemberID).
+		Scan(&m.PartnerID, &m.PartnerName) // ErrNoRows fine: solo household (or a partner who left)
 	return m, nil
 }
 
