@@ -159,6 +159,84 @@
         }
     }
 
+    /// "At what time?" — optional, and only offered once the todo has a day.
+    /// All day is the default and stays one tap away, because most household
+    /// chores do not care about the hour.
+    struct ComposerDueTimeRow: View {
+        let hasTime: Bool
+        @Binding var time: Date
+        let add: () -> Void
+        let clear: () -> Void
+
+        var body: some View {
+            VStack(alignment: .leading, spacing: 0) {
+                ComposerSectionLabel(text: "Time")
+                if hasTime {
+                    HStack(spacing: 8) {
+                        ComposerTimeChip(time: $time)
+                        ComposerChoiceChip(title: "All day", selected: false, action: clear)
+                    }
+                    .padding(.top, 4)
+                    Text("Reminders count back from this hour.")
+                        .font(.system(size: 11, design: .serif))
+                        .italic()
+                        .foregroundStyle(EvenTokens.stone)
+                        .padding(.top, 6)
+                } else {
+                    HStack(spacing: 8) {
+                        ComposerChoiceChip(title: "Add a time", selected: false, action: add)
+                    }
+                    .padding(.top, 4)
+                    Text("All day unless you give it an hour.")
+                        .font(.system(size: 11, design: .serif))
+                        .italic()
+                        .foregroundStyle(EvenTokens.stone)
+                        .padding(.top, 6)
+                }
+            }
+        }
+    }
+
+    /// The hour a todo is due, drawn in the Composer chip language. Same trick as
+    /// `ComposerDateChip`: our capsule, the system wheel riding invisibly on top
+    /// so any minute is still reachable.
+    struct ComposerTimeChip: View {
+        @Binding var time: Date
+
+        private static let formatter: DateFormatter = {
+            let formatter = DateFormatter()
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            formatter.timeZone = Calendar.evenHousehold.timeZone
+            formatter.dateFormat = "HH:mm"
+            return formatter
+        }()
+
+        var body: some View {
+            Text(Self.formatter.string(from: time))
+                .font(ComposerChipStyle.labelFont)
+                .tracking(ComposerChipStyle.tracking)
+                .monospacedDigit()
+                .foregroundStyle(EvenTokens.espresso)
+                .padding(.horizontal, ComposerChipStyle.horizontalPad)
+                .padding(.vertical, ComposerChipStyle.verticalPad)
+                .overlay(
+                    Capsule().stroke(
+                        ComposerChipStyle.unselectedStroke,
+                        lineWidth: ComposerChipStyle.strokeWidth
+                    )
+                )
+                .overlay {
+                    DatePicker("", selection: $time, displayedComponents: .hourAndMinute)
+                        .labelsHidden()
+                        .datePickerStyle(.compact)
+                        .blendMode(.destinationOver)
+                }
+                .contentShape(Capsule())
+                .animation(EvenMotion.reveal, value: time)
+                .accessibilityIdentifier("task-due-time")
+        }
+    }
+
     /// Last day of a bounded repeat, drawn in the Composer chip language.
     ///
     /// `.compact` `DatePicker` paints a cool grey system capsule that fights the
@@ -285,6 +363,31 @@
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(EvenTokens.paperRaised)
             }
+        }
+
+        private struct ComposerDueTimePreview: View {
+            @State var hasTime: Bool
+            @State private var time = Date()
+
+            var body: some View {
+                ComposerDueTimeRow(
+                    hasTime: hasTime,
+                    time: $time,
+                    add: { hasTime = true },
+                    clear: { hasTime = false }
+                )
+                .padding(24)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(EvenTokens.paperRaised)
+            }
+        }
+
+        #Preview("Composer · all day") {
+            ComposerDueTimePreview(hasTime: false)
+        }
+
+        #Preview("Composer · timed") {
+            ComposerDueTimePreview(hasTime: true)
         }
 
         #Preview("Composer · repeat ends after") {

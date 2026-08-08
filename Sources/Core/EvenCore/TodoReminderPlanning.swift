@@ -25,12 +25,18 @@ public struct TodoReminderPlan: Identifiable, Equatable, Sendable {
     }
 }
 
-/// Creates one gentle, on-the-day alert at 09:00 for each upcoming calendar
-/// occurrence. Google Calendar remains the shared source of truth; this is a
-/// phone-local nudge for the person carrying the phone.
+/// Creates one gentle, on-the-day alert for each upcoming calendar occurrence:
+/// at the todo's own hour when it has one, otherwise 09:00. Google Calendar
+/// remains the shared source of truth; this is a phone-local nudge for the
+/// person carrying the phone.
+///
+/// `/v1/calendar` items carry the occurrence date only — the hour lives on the
+/// task — so a caller that knows the times passes them in keyed by task id
+/// (the part of a calendar item id before the `:`).
 public enum TodoReminderPlanner {
     public static func plans(
         items: [CalendarItem],
+        dueTimes: [String: String] = [:],
         now: Date = Date(),
         calendar: Calendar = .autoupdatingCurrent,
         minimumLeadTime: TimeInterval = 60
@@ -38,10 +44,11 @@ public enum TodoReminderPlanner {
         let today = calendar.startOfDay(for: now)
 
         return items.compactMap { item in
+            let time = HouseholdTask.normalizedTimeOfDay(dueTimes[taskID(of: item)])
             guard item.kind == .task, item.done != true,
                   let occurrence = date(from: item.dueOn, calendar: calendar),
                   occurrence >= today,
-                  let trigger = triggerDate(for: occurrence, calendar: calendar),
+                  let trigger = triggerDate(for: occurrence, at: time, calendar: calendar),
                   trigger.timeIntervalSince(now) >= minimumLeadTime
             else { return nil }
 
@@ -50,7 +57,8 @@ public enum TodoReminderPlanner {
                 occurrenceOn: item.dueOn,
                 triggerDate: trigger,
                 title: "Todo due today",
-                body: "\(item.title) needs doing today."
+                body: time.map { "\(item.title) is due at \($0)." }
+                    ?? "\(item.title) needs doing today."
             )
         }
         .sorted { left, right in
@@ -65,10 +73,19 @@ public enum TodoReminderPlanner {
         return calendar.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2]))
     }
 
-    private static func triggerDate(for occurrence: Date, calendar: Calendar) -> Date? {
+    /// A repeat's calendar item id is `"{task_id}:{YYYY-MM-DD}"`; a one-off is
+    /// the bare task id.
+    private static func taskID(of item: CalendarItem) -> String {
+        String(item.id.split(separator: ":").first ?? "")
+    }
+
+    private static func triggerDate(
+        for occurrence: Date, at time: String?, calendar: Calendar
+    ) -> Date? {
         var components = calendar.dateComponents([.year, .month, .day], from: occurrence)
-        components.hour = 9
-        components.minute = 0
+        let parts = (time ?? "09:00").split(separator: ":").compactMap { Int($0) }
+        components.hour = parts.first ?? 9
+        components.minute = parts.count > 1 ? parts[1] : 0
         return calendar.date(from: components)
     }
 }

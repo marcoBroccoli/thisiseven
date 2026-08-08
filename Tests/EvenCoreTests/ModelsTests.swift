@@ -281,6 +281,93 @@ final class ModelsTests: XCTestCase {
         XCTAssertEqual(json?["clear_recurrence_end"] as? Bool, false)
     }
 
+    /// A todo that says *when*: the hour rides just after the day it belongs to,
+    /// and daily repeats — which print no day — still show it.
+    func testMetaLineCarriesTheTimeOfDay() throws {
+        let calendar = Calendar.evenHousehold
+        let now = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 8, day: 7)))
+
+        XCTAssertEqual(
+            HouseholdTask.makeMetaLine(
+                dueOn: "2026-08-08", dueTime: "14:00", recurrence: .none,
+                now: now, calendar: calendar
+            ),
+            "TOMORROW · 14:00"
+        )
+        XCTAssertEqual(
+            HouseholdTask.makeMetaLine(
+                dueOn: "2026-08-07", dueTime: "18:30", recurrence: .daily,
+                now: now, calendar: calendar
+            ),
+            "18:30 · DAILY"
+        )
+        // All day is every todo without one — nothing extra on the row.
+        XCTAssertEqual(
+            HouseholdTask.makeMetaLine(
+                dueOn: "2026-08-08", recurrence: .none, now: now, calendar: calendar
+            ),
+            "TOMORROW"
+        )
+        // The hour hangs off the date: no day, nothing to say.
+        XCTAssertEqual(
+            HouseholdTask.makeMetaLine(
+                dueOn: nil, dueTime: "14:00", recurrence: .none, now: now, calendar: calendar
+            ),
+            ""
+        )
+        // Postgres spells a `time` with seconds; a half-typed one is dropped.
+        XCTAssertEqual(HouseholdTask.normalizedTimeOfDay("09:05:00"), "09:05")
+        XCTAssertEqual(HouseholdTask.normalizedTimeOfDay("9:5"), "09:05")
+        XCTAssertNil(HouseholdTask.normalizedTimeOfDay("24:00"))
+        XCTAssertNil(HouseholdTask.normalizedTimeOfDay("noon"))
+        XCTAssertNil(HouseholdTask.normalizedTimeOfDay(nil))
+        // A leading hour is the todo's time, never a Gmail origin label.
+        XCTAssertNil(HouseholdTask.originLabel(fromMetaLine: "14:00 · DAILY"))
+    }
+
+    func testTaskCarriesTheTimeOfDayOverTheWire() throws {
+        let json = """
+        {"id":"11111111-1111-1111-1111-111111111111","title":"Pick up the parcel",
+         "section":"chore","owner_member_id":"22222222-2222-2222-2222-222222222222",
+         "weight":1,"recurrence":"none","due_on":"2026-08-08","due_time":"14:00",
+         "done":false,"meta_line":"TOMORROW","calendar_sync_state":"synced"}
+        """.data(using: .utf8)!
+
+        let task = try EvenAPIClient.decoder.decode(HouseholdTask.self, from: json)
+        XCTAssertEqual(task.dueTime, "14:00")
+
+        // An all-day todo — every todo that existed before the field — decodes
+        // with no time rather than failing.
+        let allDay = try EvenAPIClient.decoder.decode(
+            HouseholdTask.self,
+            from: Data(String(data: json, encoding: .utf8)!
+                .replacingOccurrences(of: "\"due_time\":\"14:00\",", with: "").utf8)
+        )
+        XCTAssertNil(allDay.dueTime)
+
+        let body = EvenAPIClient.TaskDraftBody(
+            title: task.title, section: .chore, ownerMemberId: task.ownerMemberId,
+            weight: 1, recurrence: .none, dueOn: "2026-08-08", dueTime: "14:00"
+        )
+        let encoded = try JSONSerialization.jsonObject(
+            with: EvenAPIClient.encoder.encode(body)
+        ) as? [String: Any]
+        XCTAssertEqual(encoded?["due_time"] as? String, "14:00")
+        XCTAssertEqual(encoded?["clear_due_time"] as? Bool, false)
+
+        // Back to all day: the flag has to say so out loud, and never alongside
+        // a time — the API answers `400 bad_time` to both together.
+        let clearing = EvenAPIClient.TaskDraftBody(
+            title: task.title, section: .chore, ownerMemberId: task.ownerMemberId,
+            weight: 1, recurrence: .none, dueOn: "2026-08-08", clearDueTime: true
+        )
+        let clearingJSON = try JSONSerialization.jsonObject(
+            with: EvenAPIClient.encoder.encode(clearing)
+        ) as? [String: Any]
+        XCTAssertNil(clearingJSON?["due_time"])
+        XCTAssertEqual(clearingJSON?["clear_due_time"] as? Bool, true)
+    }
+
     func testTaskDecodesTheRecurrenceEnd() throws {
         let json = """
         {"id":"11111111-1111-1111-1111-111111111111","title":"Water the plants",

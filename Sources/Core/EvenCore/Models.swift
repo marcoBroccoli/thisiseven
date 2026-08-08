@@ -296,6 +296,10 @@ public struct HouseholdTask: Codable, Identifiable, Hashable, Sendable {
     public var weight: Int
     public var recurrence: Recurrence
     public var dueOn: String?
+    /// Optional wall clock on the due day — `"HH:MM"` in the household's zone,
+    /// `nil` for an all-day todo. The time hangs off the date: the API answers
+    /// `400 bad_time` to a `due_time` without a `due_on`.
+    public var dueTime: String?
     /// Last scheduled day of a bounded repeat (`nil` = runs until deleted).
     /// Derived server-side from `recurrenceCount` when a count was picked.
     public var recurrenceUntil: String?
@@ -318,6 +322,7 @@ public struct HouseholdTask: Codable, Identifiable, Hashable, Sendable {
         weight: Int,
         recurrence: Recurrence,
         dueOn: String? = nil,
+        dueTime: String? = nil,
         recurrenceUntil: String? = nil,
         recurrenceCount: Int? = nil,
         done: Bool = false,
@@ -335,6 +340,7 @@ public struct HouseholdTask: Codable, Identifiable, Hashable, Sendable {
         self.weight = weight
         self.recurrence = recurrence
         self.dueOn = dueOn
+        self.dueTime = dueTime
         self.recurrenceUntil = recurrenceUntil
         self.recurrenceCount = recurrenceCount
         self.done = done
@@ -353,6 +359,7 @@ public struct HouseholdTask: Codable, Identifiable, Hashable, Sendable {
         Self.makeMetaLine(
             originLabel: Self.originLabel(fromMetaLine: metaLine),
             dueOn: dueOn,
+            dueTime: dueTime,
             recurrence: recurrence,
             recurrenceUntil: recurrenceUntil,
             recurrenceCount: recurrenceCount
@@ -361,9 +368,14 @@ public struct HouseholdTask: Codable, Identifiable, Hashable, Sendable {
 
     /// Mirrors `metaLine` in `backend/internal/api/types.go` — small-caps row
     /// under the title, e.g. `"VATTENFALL · TOMORROW · WEEKLY · 6 TIMES"`.
+    ///
+    /// A `dueTime` rides just after the day it belongs to (`"TOMORROW · 14:00"`).
+    /// The server leaves the hour out of its own `meta_line`, so this is the one
+    /// place the row learns to say *when*.
     public static func makeMetaLine(
         originLabel: String? = nil,
         dueOn: String?,
+        dueTime: String? = nil,
         recurrence: Recurrence,
         recurrenceUntil: String? = nil,
         recurrenceCount: Int? = nil,
@@ -380,6 +392,12 @@ public struct HouseholdTask: Codable, Identifiable, Hashable, Sendable {
             dueOn: dueOn, recurrence: recurrence, until: until, now: now, calendar: calendar
         ) {
             parts.append(duePhrase(for: day, now: now, calendar: calendar))
+        }
+
+        // Daily / every-2-day repeats carry no day phrase (they are only listed
+        // on a day they are due) — the hour still belongs on the row.
+        if dueOn != nil, let time = normalizedTimeOfDay(dueTime) {
+            parts.append(time)
         }
 
         switch recurrence {
@@ -455,7 +473,22 @@ public struct HouseholdTask: Codable, Identifiable, Hashable, Sendable {
         return first
     }
 
+    /// A wall clock the row can print, or `nil` when the value is absent or
+    /// malformed — a half-typed time never leaks into the meta line. Accepts
+    /// `"HH:MM"` and the `"HH:MM:SS"` Postgres sometimes spells a `time` as.
+    public static func normalizedTimeOfDay(_ text: String?) -> String? {
+        guard let text else { return nil }
+        let parts = text.trimmingCharacters(in: .whitespaces).split(separator: ":")
+        guard parts.count == 2 || parts.count == 3,
+              let hour = Int(parts[0]), let minute = Int(parts[1]),
+              (0 ... 23).contains(hour), (0 ... 59).contains(minute)
+        else { return nil }
+        return String(format: "%02d:%02d", hour, minute)
+    }
+
     private static func looksLikeDueOrRecurrencePhrase(_ segment: String) -> Bool {
+        // A leading hour is the todo's time, never an origin label.
+        if normalizedTimeOfDay(segment) != nil { return true }
         let u = segment.uppercased()
         if u == "TODAY" || u == "TOMORROW" || u == "WEEKLY" || u == "DAILY"
             || u == "EVERY 2 DAYS" || u.hasPrefix("EVERY ")

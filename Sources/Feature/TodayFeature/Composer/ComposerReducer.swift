@@ -16,6 +16,12 @@ public struct ComposerReducer {
         /// Calendar-imported date), keep the civil day here until the household
         /// picks a chip — `resolvedDueOnISO` prefers this over `dueOption`.
         public var dueOnOverride: String?
+        /// All-day until the household asks for an hour. The picked clock is
+        /// kept across a removal so re-adding a time reopens on the last pick.
+        public var hasDueTime = false
+        /// Only meaningful while `hasDueTime`; a wall clock in the household
+        /// zone, carried as a `Date` so the system picker can bind to it.
+        public var dueTime: Date
         public var endOption: EndOption = .never
         /// Only meaningful while `endOption == .onDate`; kept across a toggle so
         /// reopening the picker restores the household's last pick.
@@ -44,6 +50,8 @@ public struct ComposerReducer {
             recurrence: Recurrence = .none,
             dueOption: DueOption = .today,
             dueOnOverride: String? = nil,
+            hasDueTime: Bool = false,
+            dueTime: Date? = nil,
             endOption: EndOption = .never,
             endDate: Date? = nil,
             endCount: Int = 6,
@@ -56,6 +64,8 @@ public struct ComposerReducer {
             self.recurrence = recurrence
             self.dueOption = dueOption
             self.dueOnOverride = dueOnOverride
+            self.hasDueTime = hasDueTime
+            self.dueTime = dueTime ?? Self.defaultDueTime()
             self.endOption = endOption
             self.endDate = endDate ?? Self.defaultEndDate()
             self.endCount = endCount
@@ -77,6 +87,7 @@ public struct ComposerReducer {
                 }
                 return (.never, nil, 6)
             }()
+            let time = HouseholdTask.normalizedTimeOfDay(task.dueTime)
             self.init(
                 title: task.title,
                 weight: task.weight,
@@ -85,6 +96,8 @@ public struct ComposerReducer {
                 recurrence: task.recurrence,
                 dueOption: due ?? .none,
                 dueOnOverride: override,
+                hasDueTime: time != nil,
+                dueTime: time.flatMap { Self.date(fromTimeOfDay: $0, now: now) },
                 endOption: task.recurrence == .none ? .never : end.0,
                 endDate: end.1,
                 endCount: end.2,
@@ -95,6 +108,36 @@ public struct ComposerReducer {
         public func resolvedDueOnISO(now: Date = Date()) -> String? {
             if let dueOnOverride { return dueOnOverride }
             return dueOption.dueOnISO(now: now)
+        }
+
+        /// `"HH:MM"` for `TaskDraftBody`, or `nil` for an all-day todo. The time
+        /// hangs off the date, so "No date" is always all day — the API rejects
+        /// a `due_time` without a `due_on`.
+        public func resolvedDueTime(now: Date = Date()) -> String? {
+            guard hasDueTime, resolvedDueOnISO(now: now) != nil else { return nil }
+            let parts = Calendar.evenHousehold.dateComponents([.hour, .minute], from: dueTime)
+            guard let hour = parts.hour, let minute = parts.minute else { return nil }
+            return String(format: "%02d:%02d", hour, minute)
+        }
+
+        /// A time row only makes sense once the todo has a day to sit on.
+        public var showsDueTime: Bool {
+            resolvedDueOnISO() != nil
+        }
+
+        /// 09:00 — the hour a household morning actually starts, and a round
+        /// quarter so the picker opens on a sane slot.
+        static func defaultDueTime(now: Date = Date()) -> Date {
+            date(fromTimeOfDay: "09:00", now: now) ?? now
+        }
+
+        public static func date(fromTimeOfDay time: String, now: Date = Date()) -> Date? {
+            let calendar = Calendar.evenHousehold
+            let parts = time.split(separator: ":").compactMap { Int($0) }
+            guard parts.count >= 2 else { return nil }
+            return calendar.date(
+                bySettingHour: parts[0], minute: parts[1], second: 0, of: now
+            )
         }
 
         /// Two months out — far enough that the picker opens on a plausible end
@@ -205,6 +248,8 @@ public struct ComposerReducer {
             case selectSection(TaskSection)
             case selectRecurrence(Recurrence)
             case selectDue(DueOption)
+            case addDueTimeTapped
+            case clearDueTimeTapped
             case selectEnd(EndOption)
         }
     }
@@ -232,11 +277,21 @@ public struct ComposerReducer {
             case let .view(.selectDue(due)):
                 state.dueOption = due
                 state.dueOnOverride = nil
+                // No day, no hour — the API rejects a time without a date.
+                if due == .none { state.hasDueTime = false }
                 // The anchor moved, so an earlier end date may now precede the
                 // first occurrence. Pull it forward rather than send an
                 // impossible series.
                 let earliest = state.endDateRange.lowerBound
                 if state.endDate < earliest { state.endDate = earliest }
+                return .none
+            case .view(.addDueTimeTapped):
+                state.hasDueTime = true
+                return .none
+            case .view(.clearDueTimeTapped):
+                // Back to all day. The picked clock stays put so re-adding a
+                // time reopens where the household left it.
+                state.hasDueTime = false
                 return .none
             case let .view(.selectEnd(end)):
                 state.endOption = end

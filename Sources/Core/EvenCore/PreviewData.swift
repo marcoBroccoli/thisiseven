@@ -80,6 +80,7 @@ public enum PreviewData {
         weight: Int = 2,
         recurrence: Recurrence = .none,
         dueOn: String? = "2026-08-05",
+        dueTime: String? = nil,
         done: Bool = false,
         meta: String = "TODAY · ONE-OFF"
     ) -> HouseholdTask {
@@ -91,6 +92,7 @@ public enum PreviewData {
             weight: weight,
             recurrence: recurrence,
             dueOn: dueOn,
+            dueTime: dueTime,
             done: done,
             doneByMemberId: done ? owner : nil,
             metaLine: meta,
@@ -117,6 +119,8 @@ public enum PreviewData {
         weight: 1,
         recurrence: .daily,
         dueOn: "2026-08-08",
+        // A todo that says *when* — the row reads "18:30 · DAILY".
+        dueTime: "18:30",
         meta: "TOMORROW · DAILY"
     )
 

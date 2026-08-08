@@ -92,6 +92,19 @@
                 }
                 .padding(.top, 4)
 
+                // A time only exists once there is a day to hang it on.
+                if store.showsDueTime {
+                    ComposerDueTimeRow(
+                        hasTime: store.hasDueTime,
+                        time: $store.dueTime,
+                        add: { send(.addDueTimeTapped, animation: AutoSizingSheet.contentAnimation) },
+                        clear: {
+                            send(.clearDueTimeTapped, animation: AutoSizingSheet.contentAnimation)
+                        }
+                    )
+                    .padding(.top, 10)
+                }
+
                 ComposerSectionLabel(text: "Section")
                 HStack(spacing: 8) {
                     ComposerChoiceChip(

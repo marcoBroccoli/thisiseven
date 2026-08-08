@@ -47,6 +47,25 @@ final class TodoReminderPlanningTests: XCTestCase {
         XCTAssertEqual(plans.map(\.id), ["dog-wash:2026-07-20", "dog-wash:2026-07-22"])
     }
 
+    /// A timed todo is nudged at its own hour, and the copy says so — an alert
+    /// at 09:00 claiming "today" is dishonest once the household picked 14:00.
+    func testTimedTodoIsNudgedAtItsOwnHour() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let now = calendar.date(from: DateComponents(year: 2026, month: 7, day: 19, hour: 8))!
+
+        let plans = TodoReminderPlanner.plans(
+            items: [item(id: "dog-wash:2026-07-19", dueOn: "2026-07-19")],
+            dueTimes: ["dog-wash": "14:00"],
+            now: now, calendar: calendar
+        )
+
+        XCTAssertEqual(plans.count, 1)
+        XCTAssertEqual(plans[0].triggerDate,
+                       calendar.date(from: DateComponents(year: 2026, month: 7, day: 19, hour: 14)))
+        XCTAssertEqual(plans[0].body, "Wash the dog is due at 14:00.")
+    }
+
     private func item(id: String, dueOn: String, done: Bool? = nil) -> CalendarItem {
         CalendarItem(kind: .task, id: id, title: "Wash the dog", category: nil,
                      ownerMemberId: owner, amountCents: nil, dueOn: dueOn,

@@ -342,6 +342,11 @@ public extension EvenAPIClient {
         public var recurrence: Recurrence
         public var dueOn: String?
         public var clearDueOn: Bool
+        /// `"HH:MM"` on the due day. Sending it without a `dueOn` — or alongside
+        /// `clearDueTime` — is `400 bad_time` (`docs/product/API.md`).
+        public var dueTime: String?
+        /// Drops a timed todo back to all-day while keeping its date.
+        public var clearDueTime: Bool
         /// A bounded repeat sends one of these, never both — see
         /// `docs/product/API.md` → Recurrence.
         public var recurrenceUntil: String?
@@ -349,7 +354,8 @@ public extension EvenAPIClient {
         public var clearRecurrenceEnd: Bool
         public init(title: String, section: TaskSection, ownerMemberId: UUID,
                     weight: Int, recurrence: Recurrence, dueOn: String? = nil,
-                    clearDueOn: Bool = false, recurrenceUntil: String? = nil,
+                    clearDueOn: Bool = false, dueTime: String? = nil,
+                    clearDueTime: Bool = false, recurrenceUntil: String? = nil,
                     recurrenceCount: Int? = nil, clearRecurrenceEnd: Bool = false)
         {
             self.title = title
@@ -359,6 +365,8 @@ public extension EvenAPIClient {
             self.recurrence = recurrence
             self.dueOn = dueOn
             self.clearDueOn = clearDueOn
+            self.dueTime = dueTime
+            self.clearDueTime = clearDueTime
             self.recurrenceUntil = recurrenceUntil
             self.recurrenceCount = recurrenceCount
             self.clearRecurrenceEnd = clearRecurrenceEnd

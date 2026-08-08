@@ -1066,4 +1066,161 @@ extension TodayFeatureTests {
         XCTAssertEqual(beam.configuration.leading.tone, .clay)
         XCTAssertEqual(beam.configuration.trailing.tone, .pine)
     }
+
+    // MARK: - A time of day
+    //
+    // Optional, and only once the todo has a day to sit on: the API answers
+    // `400 bad_time` to a `due_time` without a `due_on`.
+
+    func testComposerAddsAndRemovesATimeOfDay() async throws {
+        let store = TestStore(initialState: ComposerReducer.State()) {
+            ComposerReducer()
+        }
+
+        XCTAssertNil(store.state.resolvedDueTime())
+        XCTAssertTrue(store.state.showsDueTime)
+
+        await store.send(.view(.addDueTimeTapped)) { $0.hasDueTime = true }
+        // The picker opens on a round household hour.
+        XCTAssertEqual(store.state.resolvedDueTime(), "09:00")
+
+        let fourteen = try XCTUnwrap(ComposerReducer.State.date(fromTimeOfDay: "14:15"))
+        await store.send(.binding(.set(\.dueTime, fourteen))) { $0.dueTime = fourteen }
+        XCTAssertEqual(store.state.resolvedDueTime(), "14:15")
+
+        // Removing the time keeps the pick, so re-adding reopens where the
+        // household left it.
+        await store.send(.view(.clearDueTimeTapped)) { $0.hasDueTime = false }
+        XCTAssertNil(store.state.resolvedDueTime())
+        await store.send(.view(.addDueTimeTapped)) { $0.hasDueTime = true }
+        XCTAssertEqual(store.state.resolvedDueTime(), "14:15")
+
+        // Dropping the date drops the hour with it, and hides the row.
+        await store.send(.view(.selectDue(.none))) {
+            $0.dueOption = .none
+            $0.hasDueTime = false
+        }
+        XCTAssertNil(store.state.resolvedDueTime())
+        XCTAssertFalse(store.state.showsDueTime)
+    }
+
+    func testEditingATimedTodoRestoresItsHour() throws {
+        let task = PreviewData.task(
+            title: "Pick up the parcel",
+            dueOn: ComposerReducer.DueOption.tomorrow.dueOnISO(),
+            dueTime: "14:00"
+        )
+        let composer = ComposerReducer.State(editing: task, meId: PreviewData.ada.id)
+        XCTAssertTrue(composer.hasDueTime)
+        XCTAssertEqual(composer.resolvedDueTime(), "14:00")
+
+        let allDay = ComposerReducer.State(
+            editing: PreviewData.task(title: "Sweep", dueOn: "2026-08-08"),
+            meId: PreviewData.ada.id
+        )
+        XCTAssertFalse(allDay.hasDueTime)
+        XCTAssertNil(allDay.resolvedDueTime())
+    }
+
+    func testCreateSendsTheTimeAndTheRowSaysWhen() async throws {
+        var state = TodayReducer.State()
+        state.summary = PreviewData.summary
+        state.me = PreviewData.ada
+        state.partner = PreviewData.umut
+        state.isLoading = false
+        var composer = ComposerReducer.State()
+        composer.title = "Pick up the parcel"
+        composer.dueOption = .tomorrow
+        composer.hasDueTime = true
+        composer.dueTime = try XCTUnwrap(ComposerReducer.State.date(fromTimeOfDay: "14:00"))
+        state.composer = composer
+
+        let expectedDue = ComposerReducer.DueOption.tomorrow.dueOnISO()
+        let posted = LockIsolated<EvenAPIClient.TaskDraftBody?>(nil)
+        let created = PreviewData.task(
+            title: "Pick up the parcel", dueOn: expectedDue, dueTime: "14:00", meta: "TOMORROW"
+        )
+
+        let store = TestStore(initialState: state) {
+            TodayReducer()
+        } withDependencies: {
+            $0.tasksClient.create = { body in
+                posted.setValue(body)
+                return created
+            }
+            $0.widgetClient.publish = { _ in }
+            $0.toastClient.show = { _ in }
+        }
+        store.exhaustivity = .off
+
+        await store.send(.composer(.presented(.view(.saveTapped))))
+        await store.receive(\.createTask)
+
+        XCTAssertEqual(posted.value?.dueOn, expectedDue)
+        XCTAssertEqual(posted.value?.dueTime, "14:00")
+        XCTAssertEqual(posted.value?.clearDueTime, false)
+
+        let optimistic = store.state.summary?.sections
+            .flatMap(\.tasks)
+            .first(where: { $0.title == "Pick up the parcel" })
+        XCTAssertEqual(optimistic?.dueTime, "14:00")
+        XCTAssertEqual(optimistic?.resolvedMetaLine, "TOMORROW · 14:00")
+
+        await store.receive(\.createSucceeded)
+        await store.finish()
+    }
+
+    func testUpdateDropsATimedTodoBackToAllDay() async throws {
+        var state = TodayReducer.State()
+        var summary = PreviewData.summary
+        let timed = PreviewData.task(
+            id: try XCTUnwrap(UUID(uuidString: "cccccccc-cccc-cccc-cccc-cccccccccccc")),
+            title: "Pick up the parcel",
+            dueOn: ComposerReducer.DueOption.tomorrow.dueOnISO(),
+            dueTime: "14:00",
+            meta: "TOMORROW · 14:00"
+        )
+        summary.insertingCreatedTask(timed)
+        state.summary = summary
+        state.me = PreviewData.ada
+        state.partner = PreviewData.umut
+        state.isLoading = false
+        var composer = ComposerReducer.State(editing: timed, meId: PreviewData.ada.id)
+        XCTAssertTrue(composer.hasDueTime)
+        composer.hasDueTime = false
+        state.composer = composer
+
+        let patched = LockIsolated<EvenAPIClient.TaskDraftBody?>(nil)
+        let store = TestStore(initialState: state) {
+            TodayReducer()
+        } withDependencies: {
+            $0.tasksClient.update = { _, body in
+                patched.setValue(body)
+                var allDay = timed
+                allDay.dueTime = nil
+                return allDay
+            }
+            $0.widgetClient.publish = { _ in }
+            $0.toastClient.show = { _ in }
+        }
+        store.exhaustivity = .off
+
+        await store.send(.composer(.presented(.view(.saveTapped))))
+        await store.receive(\.updateTask)
+
+        // PATCH keeps the stored hour when the field is omitted, so the clear
+        // has to be explicit — and never alongside a time.
+        XCTAssertNil(patched.value?.dueTime)
+        XCTAssertEqual(patched.value?.clearDueTime, true)
+        XCTAssertEqual(patched.value?.clearDueOn, false)
+
+        let row = store.state.summary?.sections
+            .flatMap(\.tasks)
+            .first(where: { $0.id == timed.id })
+        XCTAssertNil(row?.dueTime)
+        XCTAssertEqual(row?.resolvedMetaLine, "TOMORROW")
+
+        await store.receive(\.updateSucceeded)
+        await store.finish()
+    }
 }

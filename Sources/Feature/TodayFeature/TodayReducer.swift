@@ -222,6 +222,7 @@ public struct TodayReducer {
                 guard var summary = state.summary, let owner else { return .none }
                 let title = composer.title.trimmingCharacters(in: .whitespacesAndNewlines)
                 let dueOn = composer.resolvedDueOnISO()
+                let dueTime = composer.resolvedDueTime()
                 let end = composer.recurrenceEnd()
                 let body = EvenAPIClient.TaskDraftBody(
                     title: title,
@@ -230,6 +231,7 @@ public struct TodayReducer {
                     weight: composer.weight,
                     recurrence: composer.recurrence,
                     dueOn: dueOn,
+                    dueTime: dueTime,
                     recurrenceUntil: end.until,
                     recurrenceCount: end.count
                 )
@@ -255,11 +257,13 @@ public struct TodayReducer {
                     weight: composer.weight,
                     recurrence: composer.recurrence,
                     dueOn: dueOn,
+                    dueTime: dueTime,
                     recurrenceUntil: localUntil,
                     recurrenceCount: end.count,
                     done: false,
                     metaLine: HouseholdTask.makeMetaLine(
                         dueOn: dueOn,
+                        dueTime: dueTime,
                         recurrence: composer.recurrence,
                         recurrenceUntil: localUntil,
                         recurrenceCount: end.count
@@ -294,8 +298,13 @@ public struct TodayReducer {
                     : (state.partner?.id ?? existing.ownerMemberId)
                 let title = composer.title.trimmingCharacters(in: .whitespacesAndNewlines)
                 let dueOn = composer.resolvedDueOnISO()
+                let dueTime = composer.resolvedDueTime()
                 let end = composer.recurrenceEnd()
                 let clearDueOn = dueOn == nil
+                // PATCH keeps the stored hour when the field is omitted, so
+                // dropping back to all day has to say so out loud. Clearing the
+                // date clears the time with it — one flag is enough.
+                let clearDueTime = dueTime == nil && !clearDueOn
                 // PATCH keeps the stored end when both fields are omitted — an
                 // explicit clear is required to make a bounded repeat unbounded
                 // again (`docs/product/API.md`).
@@ -309,6 +318,8 @@ public struct TodayReducer {
                     recurrence: composer.recurrence,
                     dueOn: dueOn,
                     clearDueOn: clearDueOn,
+                    dueTime: dueTime,
+                    clearDueTime: clearDueTime,
                     recurrenceUntil: clearRecurrenceEnd ? nil : end.until,
                     recurrenceCount: clearRecurrenceEnd ? nil : end.count,
                     clearRecurrenceEnd: clearRecurrenceEnd
@@ -330,11 +341,13 @@ public struct TodayReducer {
                 localTask.weight = composer.weight
                 localTask.recurrence = composer.recurrence
                 localTask.dueOn = dueOn
+                localTask.dueTime = dueTime
                 localTask.recurrenceUntil = localUntil
                 localTask.recurrenceCount = localCount
                 localTask.metaLine = HouseholdTask.makeMetaLine(
                     originLabel: HouseholdTask.originLabel(fromMetaLine: existing.metaLine),
                     dueOn: dueOn,
+                    dueTime: dueTime,
                     recurrence: composer.recurrence,
                     recurrenceUntil: localUntil,
                     recurrenceCount: localCount
@@ -395,11 +408,13 @@ public struct TodayReducer {
                     // `TOMORROW · WEEKLY · 6 TIMES` instead of bare `WEEKLY`.
                     let local = summary.sections.flatMap(\.tasks).first { $0.id == localId }
                     merged.dueOn = merged.dueOn ?? local?.dueOn
+                    merged.dueTime = merged.dueTime ?? local?.dueTime
                     merged.recurrenceUntil = merged.recurrenceUntil ?? local?.recurrenceUntil
                     merged.recurrenceCount = merged.recurrenceCount ?? local?.recurrenceCount
                     merged.metaLine = HouseholdTask.makeMetaLine(
                         originLabel: HouseholdTask.originLabel(fromMetaLine: task.metaLine),
                         dueOn: merged.dueOn,
+                        dueTime: merged.dueTime,
                         recurrence: merged.recurrence,
                         recurrenceUntil: merged.recurrenceUntil,
                         recurrenceCount: merged.recurrenceCount
@@ -414,6 +429,7 @@ public struct TodayReducer {
                     var merged = task
                     let local = summary.sections.flatMap(\.tasks).first { $0.id == task.id }
                     merged.dueOn = merged.dueOn ?? local?.dueOn
+                    merged.dueTime = merged.dueTime ?? local?.dueTime
                     merged.recurrenceUntil = merged.recurrenceUntil ?? local?.recurrenceUntil
                     merged.recurrenceCount = merged.recurrenceCount ?? local?.recurrenceCount
                     // Preserve completion — PATCH doesn't touch done state.
@@ -422,6 +438,7 @@ public struct TodayReducer {
                     merged.metaLine = HouseholdTask.makeMetaLine(
                         originLabel: HouseholdTask.originLabel(fromMetaLine: task.metaLine),
                         dueOn: merged.dueOn,
+                        dueTime: merged.dueTime,
                         recurrence: merged.recurrence,
                         recurrenceUntil: merged.recurrenceUntil,
                         recurrenceCount: merged.recurrenceCount

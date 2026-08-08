@@ -183,11 +183,13 @@ private final class PreviewSummarySession: @unchecked Sendable {
                     weight: body.weight,
                     recurrence: body.recurrence,
                     dueOn: body.dueOn,
+                    dueTime: body.dueTime,
                     recurrenceUntil: until,
                     recurrenceCount: body.recurrenceCount,
                     done: false,
                     metaLine: HouseholdTask.makeMetaLine(
                         dueOn: body.dueOn,
+                        dueTime: body.dueTime,
                         recurrence: body.recurrence,
                         recurrenceUntil: until,
                         recurrenceCount: body.recurrenceCount
@@ -260,11 +262,14 @@ private final class PreviewSummarySession: @unchecked Sendable {
                     task.weight = body.weight
                     task.recurrence = body.recurrence
                     task.dueOn = body.clearDueOn ? nil : body.dueOn
+                    // The hour hangs off the date — clearing the day clears it.
+                    task.dueTime = (body.clearDueTime || task.dueOn == nil) ? nil : body.dueTime
                     task.recurrenceUntil = until
                     task.recurrenceCount = count
                     task.metaLine = HouseholdTask.makeMetaLine(
                         originLabel: HouseholdTask.originLabel(fromMetaLine: task.metaLine),
                         dueOn: task.dueOn,
+                        dueTime: task.dueTime,
                         recurrence: task.recurrence,
                         recurrenceUntil: task.recurrenceUntil,
                         recurrenceCount: task.recurrenceCount
