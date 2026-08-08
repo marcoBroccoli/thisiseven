@@ -1,9 +1,12 @@
 package httpx
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"strings"
 	"sync"
@@ -126,6 +129,26 @@ func (w *statusWriter) WriteHeader(code int) {
 	w.status = code
 	w.ResponseWriter.WriteHeader(code)
 }
+
+// Hijack keeps WebSocket upgrades alive through Log: gorilla asserts
+// http.Hijacker on the writer it is handed, not on the original one.
+func (w *statusWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	h, ok := w.ResponseWriter.(http.Hijacker)
+	if !ok {
+		return nil, nil, fmt.Errorf("httpx: %T is not an http.Hijacker", w.ResponseWriter)
+	}
+	w.status = http.StatusSwitchingProtocols
+	return h.Hijack()
+}
+
+func (w *statusWriter) Flush() {
+	if f, ok := w.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
+// Unwrap lets http.ResponseController reach the real writer.
+func (w *statusWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
 
 func MaxBytes(n int64) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
